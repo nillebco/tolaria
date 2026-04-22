@@ -11,6 +11,7 @@ import {
   NOTE_CONTENT_CACHE_MAX_BYTES,
   NOTE_CONTENT_ENTRY_MAX_BYTES,
   NOTE_CONTENT_PREFETCH_CONCURRENCY,
+  tabSessionStorageKey,
 } from './useTabManagement'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
@@ -114,6 +115,12 @@ function makeAsciiContent(byteCount: number): string {
   return 'x'.repeat(byteCount)
 }
 
+async function flushAsyncRestore() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+}
+
 function seedCacheBeyondByteLimit() {
   const cachedContent = makeAsciiContent(Math.floor(NOTE_CONTENT_ENTRY_MAX_BYTES * 0.9))
   const cachedPaths = Array.from(
@@ -138,6 +145,7 @@ describe('useTabManagement (single-note model)', () => {
     clearPrefetchCache()
     vi.mocked(isTauri).mockReturnValue(false)
     vi.mocked(mockInvoke).mockResolvedValue('# Mock content')
+    localStorage.clear()
     window.history.replaceState({}, '', '/')
   })
 
@@ -145,6 +153,193 @@ describe('useTabManagement (single-note model)', () => {
     const { result } = renderHook(() => useTabManagement())
     expect(result.current.tabs).toEqual([])
     expect(result.current.activeTabPath).toBeNull()
+  })
+
+  describe('session persistence', () => {
+    it('persists open paths and the active note for the session key', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      const { result } = renderHook(() => useTabManagement({ sessionKey }))
+
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+      await selectNote(result, { path: '/vault/b.md', title: 'B' })
+
+      expect(JSON.parse(localStorage.getItem(sessionKey) ?? '{}')).toEqual({
+        version: 1,
+        openPaths: ['/vault/a.md', '/vault/b.md'],
+        activePath: '/vault/b.md',
+      })
+    })
+
+    it('restores stored open notes when matching entries are available', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      localStorage.setItem(sessionKey, JSON.stringify({
+        version: 1,
+        openPaths: ['/vault/a.md', '/vault/b.md'],
+        activePath: '/vault/a.md',
+      }))
+      vi.mocked(mockInvoke)
+        .mockResolvedValueOnce('# A')
+        .mockResolvedValueOnce('# B')
+
+      const entries = [
+        makeEntry({ path: '/vault/a.md', title: 'A' }),
+        makeEntry({ path: '/vault/b.md', title: 'B' }),
+      ]
+      const { result } = renderHook(() => useTabManagement({ entries, sessionKey }))
+
+      await flushAsyncRestore()
+
+      expect(result.current.tabs.map((tab) => tab.entry.path)).toEqual(['/vault/a.md', '/vault/b.md'])
+      expect(result.current.activeTabPath).toBe('/vault/a.md')
+      expect(result.current.tabs[0].content).toBe('# A')
+      expect(result.current.tabs[1].content).toBe('# B')
+    })
+
+    it('restores after the vault path and entries load after startup', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      localStorage.setItem(sessionKey, JSON.stringify({
+        version: 1,
+        openPaths: ['/vault/a.md'],
+        activePath: '/vault/a.md',
+      }))
+      vi.mocked(mockInvoke).mockResolvedValueOnce('# A')
+      const entries = [makeEntry({ path: '/vault/a.md', title: 'A' })]
+
+      const { result, rerender } = renderHook(
+        ({ activeSessionKey, activeEntries }) => useTabManagement({
+          entries: activeEntries,
+          sessionKey: activeSessionKey,
+        }),
+        { initialProps: { activeSessionKey: null as string | null, activeEntries: [] as VaultEntry[] } },
+      )
+
+      rerender({ activeSessionKey: sessionKey, activeEntries: [] })
+      rerender({ activeSessionKey: sessionKey, activeEntries: entries })
+      await flushAsyncRestore()
+
+      expect(result.current.tabs.map((tab) => tab.entry.path)).toEqual(['/vault/a.md'])
+      expect(result.current.activeTabPath).toBe('/vault/a.md')
+    })
+
+    it('restores when correct vault entries load after entries from wrong vault were present first', async () => {
+      // Regression: restoredSessionKeyRef was set before checking entriesToRestore.length,
+      // so if sessionKey changed while entries from a different vault were loaded, the ref
+      // would be pre-set and the restore would never run when the correct entries arrived.
+      const wrongVaultEntries = [makeEntry({ path: '/demo-vault/note.md', title: 'Demo' })]
+      const targetSessionKey = tabSessionStorageKey('/target-vault')!
+      localStorage.setItem(targetSessionKey, JSON.stringify({
+        version: 1,
+        openPaths: ['/target-vault/a.md'],
+        activePath: '/target-vault/a.md',
+      }))
+      vi.mocked(mockInvoke).mockResolvedValueOnce('# A')
+      const targetEntries = [makeEntry({ path: '/target-vault/a.md', title: 'A' })]
+
+      const { result, rerender } = renderHook(
+        ({ activeSessionKey, activeEntries }) => useTabManagement({
+          entries: activeEntries,
+          sessionKey: activeSessionKey,
+        }),
+        { initialProps: { activeSessionKey: null as string | null, activeEntries: [] as VaultEntry[] } },
+      )
+
+      // sessionKey arrives while entries are still from the wrong vault
+      rerender({ activeSessionKey: targetSessionKey, activeEntries: wrongVaultEntries })
+      await flushAsyncRestore()
+
+      // No tabs yet — wrong entries, restore must NOT be permanently blocked
+      expect(result.current.tabs).toEqual([])
+
+      // Correct vault entries arrive
+      rerender({ activeSessionKey: targetSessionKey, activeEntries: targetEntries })
+      await flushAsyncRestore()
+
+      expect(result.current.tabs.map((tab) => tab.entry.path)).toEqual(['/target-vault/a.md'])
+      expect(result.current.activeTabPath).toBe('/target-vault/a.md')
+    })
+
+    it('ignores missing stored paths during restore', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      localStorage.setItem(sessionKey, JSON.stringify({
+        version: 1,
+        openPaths: ['/vault/missing.md', '/vault/b.md'],
+        activePath: '/vault/missing.md',
+      }))
+      vi.mocked(mockInvoke).mockResolvedValueOnce('# B')
+
+      const entries = [makeEntry({ path: '/vault/b.md', title: 'B' })]
+      const { result } = renderHook(() => useTabManagement({ entries, sessionKey }))
+
+      await flushAsyncRestore()
+
+      expect(result.current.tabs[0].entry.path).toBe('/vault/b.md')
+      expect(result.current.activeTabPath).toBe('/vault/b.md')
+    })
+
+    it('leaves the stored session intact when no stored path matches current entries', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      const storedSession = {
+        version: 1,
+        openPaths: ['/vault/missing.md'],
+        activePath: '/vault/missing.md',
+      }
+      localStorage.setItem(sessionKey, JSON.stringify(storedSession))
+
+      const entries = [makeEntry({ path: '/vault/other.md', title: 'Other' })]
+      const { result } = renderHook(() => useTabManagement({ entries, sessionKey }))
+
+      await flushAsyncRestore()
+
+      expect(result.current.tabs).toEqual([])
+      expect(result.current.activeTabPath).toBeNull()
+      expect(JSON.parse(localStorage.getItem(sessionKey) ?? '{}')).toEqual(storedSession)
+    })
+
+    it('does not write an empty session on startup when no stored session exists', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      const entries = [makeEntry({ path: '/vault/other.md', title: 'Other' })]
+
+      const { result } = renderHook(() => useTabManagement({ entries, sessionKey }))
+
+      await flushAsyncRestore()
+
+      expect(result.current.tabs).toEqual([])
+      expect(result.current.activeTabPath).toBeNull()
+      expect(localStorage.getItem(sessionKey)).toBeNull()
+    })
+
+    it('can clear tabs without erasing the stored session during vault switches', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      const { result } = renderHook(() => useTabManagement({ sessionKey }))
+
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+      const storedSession = localStorage.getItem(sessionKey)
+
+      act(() => {
+        result.current.closeAllTabs({ preserveSession: true })
+      })
+
+      expect(result.current.tabs).toEqual([])
+      expect(result.current.activeTabPath).toBeNull()
+      expect(localStorage.getItem(sessionKey)).toBe(storedSession)
+    })
+
+    it('persists an empty session when the user explicitly closes the last tab', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      const { result } = renderHook(() => useTabManagement({ sessionKey }))
+
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+
+      act(() => {
+        result.current.closeTab('/vault/a.md')
+      })
+
+      expect(JSON.parse(localStorage.getItem(sessionKey) ?? '{}')).toEqual({
+        version: 1,
+        openPaths: [],
+        activePath: null,
+      })
+    })
   })
 
   describe('handleSelectNote', () => {

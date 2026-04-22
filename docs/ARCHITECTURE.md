@@ -507,6 +507,7 @@ Per-vault UI settings stored locally per vault path (currently in browser/Tauri 
 - `view_mode`: "all" | "editor-list" | "editor-only"
 - `editor_mode`: "raw" | "preview" (persists across note switches and sessions)
 - `note_layout`: "centered" | "left" (wide-screen note column alignment for rich and raw editors)
+- `tab-sessions.json` in the app config directory (`~/.config/com.tolaria.app/` on Linux-like config paths; platform config dir on macOS): installation-local open-note sessions keyed by `tolaria:tab-session:<vault-path>`, storing open paths plus the active path so the editor restores on next launch without syncing through the vault
 - `tag_colors`, `status_colors`: Custom color overrides
 - `property_display_modes`: Property display preferences
 - `inbox.noteListProperties`: Optional Inbox-only property chip override for the note list

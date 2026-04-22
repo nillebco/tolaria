@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -91,6 +92,13 @@ pub struct Settings {
     pub all_notes_show_images: Option<bool>,
     pub all_notes_show_unsupported: Option<bool>,
     pub multi_workspace_enabled: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct TabSession {
+    pub version: u8,
+    pub open_paths: Vec<String>,
+    pub active_path: Option<String>,
 }
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
@@ -258,6 +266,45 @@ fn save_settings_at(path: &PathBuf, settings: Settings) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&cleaned)
         .map_err(|e| format!("Failed to serialize settings: {}", e))?;
     fs::write(path, json).map_err(|e| format!("Failed to write settings: {}", e))
+}
+
+fn tab_sessions_path() -> Result<PathBuf, String> {
+    resolve_existing_or_preferred_app_config_path("tab-sessions.json")
+}
+
+fn get_tab_sessions_at(path: &PathBuf) -> Result<HashMap<String, TabSession>, String> {
+    if !path.exists() {
+        return Ok(HashMap::new());
+    }
+
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read tab sessions: {}", e))?;
+    serde_json::from_str(&content).map_err(|e| format!("Failed to parse tab sessions: {}", e))
+}
+
+fn save_tab_sessions_at(
+    path: &PathBuf,
+    sessions: &HashMap<String, TabSession>,
+) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create config directory: {}", e))?;
+    }
+
+    let json = serde_json::to_string_pretty(sessions)
+        .map_err(|e| format!("Failed to serialize tab sessions: {}", e))?;
+    fs::write(path, json).map_err(|e| format!("Failed to write tab sessions: {}", e))
+}
+
+pub fn get_tab_session(session_key: String) -> Result<Option<TabSession>, String> {
+    Ok(get_tab_sessions_at(&tab_sessions_path()?)?.remove(&session_key))
+}
+
+pub fn save_tab_session(session_key: String, session: TabSession) -> Result<(), String> {
+    let path = preferred_app_config_path("tab-sessions.json")?;
+    let mut sessions = get_tab_sessions_at(&path)?;
+    sessions.insert(session_key, session);
+    save_tab_sessions_at(&path, &sessions)
 }
 
 pub fn get_settings() -> Result<Settings, String> {
@@ -735,5 +782,25 @@ mod tests {
         let (_dir, path) = create_last_vault_path(&["last-vault.txt"]);
         write_and_assert_last_vault(&path, "/Users/test/OldVault");
         write_and_assert_last_vault(&path, "/Users/test/NewVault");
+    }
+
+    #[test]
+    fn test_tab_session_roundtrip() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("tab-sessions.json");
+        let mut sessions = HashMap::new();
+        sessions.insert(
+            "tolaria:tab-session:/tmp/vault".to_string(),
+            TabSession {
+                version: 1,
+                open_paths: vec!["/tmp/vault/a.md".to_string(), "/tmp/vault/b.md".to_string()],
+                active_path: Some("/tmp/vault/b.md".to_string()),
+            },
+        );
+
+        save_tab_sessions_at(&path, &sessions).unwrap();
+        let loaded = get_tab_sessions_at(&path).unwrap();
+
+        assert_eq!(loaded, sessions);
     }
 }

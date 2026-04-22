@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
-import { useTabManagement } from './useTabManagement'
+import { tabSessionStorageKey, useTabManagement } from './useTabManagement'
 import {
   GITIGNORED_VISIBILITY_APPLIED_EVENT,
   type GitignoredVisibilityAppliedEvent,
@@ -474,7 +474,11 @@ function useRenamedNotePathResolver(onPathRenamed?: (oldPath: string, newPath: s
 export function useNoteActions(config: NoteActionsConfig) {
   const { entries, setToastMessage, updateEntry } = config
   const { handlePathRenamed, resolveActionPath } = useRenamedNotePathResolver(config.onPathRenamed)
-  const tabMgmt = useTabManagement(buildTabManagementOptions(config))
+  const tabMgmt = useTabManagement({
+    ...buildTabManagementOptions(config),
+    entries,
+    sessionKey: tabSessionStorageKey(config.vaultPath),
+  })
   const { setTabs, handleSelectNote, openTabWithContent, activeTabPathRef, handleSwitchTab } = tabMgmt
   useGitignoredVisibilityTabCleanup({
     activeTabPathRef,

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { isTauri } from '../mock-tauri'
 import type { VaultEntry } from '../types'
 import {
   beginNoteOpenTrace,
@@ -50,6 +52,101 @@ export function cacheNoteContent(
   cacheNoteContentInMemory(path, content, entry, options)
 }
 
+export const TAB_SESSION_STORAGE_PREFIX = 'tolaria:tab-session:'
+
+interface PersistedTabSession {
+  version: 1
+  openPaths: string[]
+  activePath: string | null
+}
+
+interface CloseAllTabsOptions {
+  preserveSession?: boolean
+}
+
+export function tabSessionStorageKey(vaultPath: string): string | null {
+  return vaultPath ? `${TAB_SESSION_STORAGE_PREFIX}${vaultPath.replaceAll('\\', '/').replace(/\/+$/g, '').toLowerCase()}` : null
+}
+
+function parseStoredTabSession(raw: string | null): PersistedTabSession | null {
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersistedTabSession>
+    if (parsed.version !== 1 || !Array.isArray(parsed.openPaths)) return null
+    const openPaths = parsed.openPaths.filter((path): path is string => typeof path === 'string' && path.length > 0)
+    const activePath = typeof parsed.activePath === 'string' && parsed.activePath.length > 0
+      ? parsed.activePath
+      : null
+    return { version: 1, openPaths, activePath }
+  } catch {
+    return null
+  }
+}
+
+function loadStoredTabSession(sessionKey: string): PersistedTabSession | null {
+  try {
+    return parseStoredTabSession(localStorage.getItem(sessionKey))
+  } catch {
+    return null
+  }
+}
+
+async function loadPersistedTabSession(sessionKey: string): Promise<PersistedTabSession | null> {
+  if (!isTauri()) return loadStoredTabSession(sessionKey)
+
+  try {
+    const session = await invoke<{
+      version: number
+      open_paths: string[]
+      active_path: string | null
+    } | null>('get_tab_session', { sessionKey })
+    if (!session || session.version !== 1 || !Array.isArray(session.open_paths)) return null
+    const openPaths = session.open_paths.filter((path): path is string => typeof path === 'string' && path.length > 0)
+    const activePath = typeof session.active_path === 'string' && session.active_path.length > 0
+      ? session.active_path
+      : null
+    return { version: 1, openPaths, activePath }
+  } catch (err) {
+    console.warn('Failed to load tab session:', err)
+    return null
+  }
+}
+
+function saveStoredTabSession(sessionKey: string, tabs: Tab[], activePath: string | null): void {
+  const openPaths = tabs.map((tab) => tab.entry.path)
+  const session = {
+    version: 1,
+    openPaths,
+    activePath: activePath && openPaths.some((path) => notePathsMatch(path, activePath)) ? activePath : null,
+  } satisfies PersistedTabSession
+
+  try {
+    localStorage.setItem(sessionKey, JSON.stringify(session))
+  } catch (err) {
+    console.warn('Failed to save tab session:', err)
+  }
+}
+
+function savePersistedTabSession(sessionKey: string, tabs: Tab[], activePath: string | null): void {
+  if (!isTauri()) {
+    saveStoredTabSession(sessionKey, tabs, activePath)
+    return
+  }
+
+  const openPaths = tabs.map((tab) => tab.entry.path)
+  void Promise.resolve(invoke('save_tab_session', {
+    sessionKey,
+    session: {
+      version: 1,
+      open_paths: openPaths,
+      active_path: activePath && openPaths.some((path) => notePathsMatch(path, activePath)) ? activePath : null,
+    },
+  })).catch((err) => {
+    console.warn('Failed to save tab session:', err)
+  })
+}
+
 /** Clear note-open caches. Call on vault reload to prevent stale content. */
 export function clearPrefetchCache(): void {
   clearNoteContentCache()
@@ -60,10 +157,12 @@ export type { Tab }
 
 interface TabManagementOptions {
   beforeNavigate?: (fromPath: string, toPath: string) => Promise<void>
+  entries?: VaultEntry[]
   hasUnsavedChanges?: (path: string) => boolean
   onMissingActiveVault?: (entry: VaultEntry, error: unknown) => void | Promise<void>
   onMissingNotePath?: (entry: VaultEntry, error: unknown) => void | Promise<void>
   onUnreadableNoteContent?: (entry: VaultEntry, error: unknown) => void | Promise<void>
+  sessionKey?: string | null
 }
 
 interface NavigateToEntryOptions {
@@ -115,7 +214,7 @@ function addOrSwitchTab(
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
   nextTab: Tab,
 ) {
-  const existingIdx = tabsRef.current.findIndex(t => pathsMatch(t.entry.path, nextTab.entry.path))
+  const existingIdx = tabsRef.current.findIndex(t => notePathsMatch(t.entry.path, nextTab.entry.path))
   const newTabs = existingIdx >= 0
     ? tabsRef.current.map((t, i) => i === existingIdx ? nextTab : t)
     : [...tabsRef.current, nextTab]
@@ -128,7 +227,7 @@ function replaceTabInList(
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
   nextTab: Tab,
 ) {
-  const existingIdx = tabsRef.current.findIndex(t => pathsMatch(t.entry.path, nextTab.entry.path))
+  const existingIdx = tabsRef.current.findIndex(t => notePathsMatch(t.entry.path, nextTab.entry.path))
   if (existingIdx >= 0) {
     const newTabs = tabsRef.current.map((t, i) => i === existingIdx ? nextTab : t)
     tabsRef.current = newTabs
@@ -536,10 +635,100 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   const navSeqRef = useRef(0)
   const beforeNavigateSeqRef = useRef(0)
   const beforeNavigate = options.beforeNavigate
+  const entries = options.entries
   const hasUnsavedChanges = options.hasUnsavedChanges
   const onMissingActiveVault = options.onMissingActiveVault
   const onMissingNotePath = options.onMissingNotePath
   const onUnreadableNoteContent = options.onUnreadableNoteContent
+  // Refs keep callbacks current without triggering the restore effect on every render.
+  // The restore effect must only re-run when sessionKey or entries change — not when
+  // these callbacks are recreated by the parent (which happens on every render).
+  const onMissingNotePathRef = useRef(onMissingNotePath)
+  const onUnreadableNoteContentRef = useRef(onUnreadableNoteContent)
+  useEffect(() => { onMissingNotePathRef.current = onMissingNotePath })
+  useEffect(() => { onUnreadableNoteContentRef.current = onUnreadableNoteContent })
+  const sessionKey = options.sessionKey ?? null
+  const restoredSessionKeyRef = useRef<string | null>(null)
+  const suppressNextEmptySessionPersistRef = useRef(false)
+  const suppressEmptySessionPersistUntilNonEmptyRef = useRef(false)
+  const allowNextEmptySessionPersistRef = useRef(false)
+  const restoreRequestSeqRef = useRef(0)
+
+  useEffect(() => {
+    restoredSessionKeyRef.current = null
+    suppressNextEmptySessionPersistRef.current = false
+    suppressEmptySessionPersistUntilNonEmptyRef.current = false
+    allowNextEmptySessionPersistRef.current = false
+  }, [sessionKey])
+
+  useEffect(() => {
+    if (!sessionKey || restoredSessionKeyRef.current === sessionKey) return
+    if (tabsRef.current.length > 0 || activeTabPathRef.current) {
+      restoredSessionKeyRef.current = sessionKey
+      return
+    }
+
+    if (!entries || entries.length === 0) return
+
+    const seq = ++restoreRequestSeqRef.current
+    void (async () => {
+      const storedSession = await loadPersistedTabSession(sessionKey)
+      if (restoreRequestSeqRef.current !== seq || restoredSessionKeyRef.current === sessionKey) return
+      if (!storedSession || storedSession.openPaths.length === 0) {
+        restoredSessionKeyRef.current = sessionKey
+        return
+      }
+
+      const entriesToRestore = storedSession.openPaths
+        .map((path) => entries.find((entry) => notePathsMatch(entry.path, path)))
+        .filter((entry): entry is VaultEntry => entry !== undefined && entry.fileKind !== 'binary')
+
+      // Don't mark as restored if entries are from the wrong vault — retry when correct entries load
+      if (entriesToRestore.length === 0) return
+      restoredSessionKeyRef.current = sessionKey
+
+      const activeRestoreEntry = entriesToRestore.find((entry) => notePathsMatch(entry.path, storedSession.activePath))
+        ?? entriesToRestore[entriesToRestore.length - 1]
+
+      for (const entry of entriesToRestore) {
+        await navigateToEntry({
+          entry,
+          tabMode: 'add',
+          navSeqRef,
+          tabsRef,
+          activeTabPathRef,
+          setTabs,
+          setActiveTabPath,
+          hasUnsavedChanges,
+          onMissingActiveVault,
+          onMissingNotePath: onMissingNotePathRef.current,
+          onUnreadableNoteContent: onUnreadableNoteContentRef.current,
+        })
+      }
+      syncActiveTabPath(activeTabPathRef, setActiveTabPath, activeRestoreEntry.path)
+    })()
+  }, [entries, sessionKey])
+
+  useEffect(() => {
+    if (!sessionKey) return
+    if (suppressNextEmptySessionPersistRef.current && tabs.length === 0 && activeTabPath === null) {
+      suppressNextEmptySessionPersistRef.current = false
+      return
+    }
+    if (tabs.length === 0 && activeTabPath === null) {
+      if (!allowNextEmptySessionPersistRef.current) return
+      allowNextEmptySessionPersistRef.current = false
+    }
+    if (suppressEmptySessionPersistUntilNonEmptyRef.current) {
+      if (tabs.length === 0 && activeTabPath === null) return
+      suppressEmptySessionPersistUntilNonEmptyRef.current = false
+    }
+    if (restoredSessionKeyRef.current !== sessionKey) {
+      if (tabs.length === 0 && activeTabPath === null) return
+      restoredSessionKeyRef.current = sessionKey
+    }
+    savePersistedTabSession(sessionKey, tabsRef.current, activeTabPathRef.current)
+  }, [activeTabPath, sessionKey, tabs])
 
   const executeNavigationWithBoundary = useCallback(async (
     targetPath: string,
@@ -640,21 +829,29 @@ export function useTabManagement(options: TabManagementOptions = {}) {
 
   const closeTab = useCallback((path: string) => {
     const currentTabs = tabsRef.current
-    const index = currentTabs.findIndex(tab => pathsMatch(tab.entry.path, path))
+    const index = currentTabs.findIndex(tab => notePathsMatch(tab.entry.path, path))
     if (index < 0) return
     const newTabs = currentTabs.filter((_, tabIndex) => tabIndex !== index)
     tabsRef.current = newTabs
+    if (newTabs.length === 0) {
+      allowNextEmptySessionPersistRef.current = true
+    }
     setTabs(newTabs)
-    if (pathsMatch(activeTabPathRef.current, path)) {
+    if (notePathsMatch(activeTabPathRef.current, path)) {
       const nextTab = newTabs[index - 1] ?? newTabs[index] ?? null
       requestedActiveTabPathRef.current = nextTab?.entry.path ?? null
       syncActiveTabPath(activeTabPathRef, setActiveTabPath, nextTab?.entry.path ?? null)
     }
   }, [])
 
-  const closeAllTabs = useCallback(() => {
+  const closeAllTabs = useCallback((closeOptions: CloseAllTabsOptions = {}) => {
     navSeqRef.current += 1
     beforeNavigateSeqRef.current += 1
+    if (closeOptions.preserveSession) {
+      suppressNextEmptySessionPersistRef.current = true
+    } else {
+      allowNextEmptySessionPersistRef.current = true
+    }
     tabsRef.current = []
     setTabs([])
     requestedActiveTabPathRef.current = null

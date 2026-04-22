@@ -312,7 +312,7 @@ function App() {
     onSwitch: () => {
       if (noteWindowParams) return
       handleSetSelection(DEFAULT_SELECTION)
-      notes.closeAllTabs()
+      notes.closeAllTabs({ preserveSession: true })
     },
     onToast: (msg) => setToastMessage(msg),
   })

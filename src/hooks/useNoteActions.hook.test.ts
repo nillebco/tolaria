@@ -595,8 +595,10 @@ describe('useNoteActions hook', () => {
       vi.mocked(isTauri).mockReturnValue(true)
       const entry = makeEntry({ path: '/test/vault/qa-test.md', filename: 'qa-test.md', title: 'Qa Test' })
       vi.mocked(invoke).mockImplementation(async (command) => {
+        if (command === 'get_tab_session') return null
         if (command === 'validate_note_content') return true
         if (command === 'get_note_content') return '# Qa Test\n'
+        if (command === 'save_tab_session') return null
         return null
       })
 
@@ -609,9 +611,9 @@ describe('useNoteActions hook', () => {
       await act(async () => { await result.current.handleSelectNote(desyncedEntry) })
 
       expect(vi.mocked(invoke)).toHaveBeenCalledTimes(callCountAfterFirstOpen)
-      expect(vi.mocked(invoke).mock.calls).toEqual([
-        ['get_note_content', { path: '/test/vault/qa-test.md' }],
-      ])
+      expect(vi.mocked(invoke).mock.calls).toContainEqual(['get_note_content', { path: '/test/vault/qa-test.md' }])
+      expect(vi.mocked(invoke).mock.calls.some(([command]) => command === 'sync_note_title')).toBe(false)
+      expect(vi.mocked(invoke).mock.calls.some(([command]) => command === 'reload_vault_entry')).toBe(false)
       expect(result.current.tabs[0].entry.title).toBe('Qa Test')
     })
   })

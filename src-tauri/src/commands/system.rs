@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 
 #[cfg(desktop)]
 use crate::menu;
-use crate::settings::Settings;
+use crate::settings::{Settings, TabSession};
 use crate::vault_list;
 use crate::vault_list::VaultList;
 use serde::Deserialize;
@@ -502,6 +502,16 @@ pub fn get_settings() -> Result<Settings, String> {
 #[tauri::command]
 pub fn save_settings(settings: Settings) -> Result<(), String> {
     crate::settings::save_settings(settings)
+}
+
+#[tauri::command]
+pub fn get_tab_session(session_key: String) -> Result<Option<TabSession>, String> {
+    crate::settings::get_tab_session(session_key)
+}
+
+#[tauri::command]
+pub fn save_tab_session(session_key: String, session: TabSession) -> Result<(), String> {
+    crate::settings::save_tab_session(session_key, session)
 }
 
 #[cfg(desktop)]
