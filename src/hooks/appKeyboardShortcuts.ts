@@ -35,6 +35,8 @@ export type KeyboardActions = Pick<
   | 'onToggleFavorite'
   | 'onToggleOrganized'
   | 'onOpenInNewWindow'
+  | 'onNextTab'
+  | 'onPrevTab'
   | 'activeTabPathRef'
   | 'multiSelectionCommandRef'
 >

@@ -520,6 +520,9 @@ pub async fn check_for_app_update(
     app_handle: tauri::AppHandle,
     release_channel: Option<String>,
 ) -> Result<Option<crate::app_updater::AppUpdateMetadata>, String> {
+    if cfg!(debug_assertions) {
+        return Ok(None);
+    }
     crate::app_updater::check_for_app_update(app_handle, release_channel).await
 }
 

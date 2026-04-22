@@ -15,6 +15,9 @@ interface NavigationCommandsConfig {
   onGoForward?: () => void
   canGoBack?: boolean
   canGoForward?: boolean
+  onNextTab?: () => void
+  onPrevTab?: () => void
+  hasMultipleTabs?: boolean
 }
 
 interface FolderCommandsConfig {
@@ -86,6 +89,9 @@ function buildBaseCommands(config: NavigationCommandsConfig): CommandAction[] {
     onGoForward,
     canGoBack,
     canGoForward,
+    onNextTab,
+    onPrevTab,
+    hasMultipleTabs,
   } = config
 
   return [
@@ -96,6 +102,8 @@ function buildBaseCommands(config: NavigationCommandsConfig): CommandAction[] {
     { id: 'go-pulse', label: 'Go to History', group: 'Navigation', keywords: ['activity', 'history', 'commits', 'git', 'feed'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'pulse' }) },
     { id: 'go-back', label: 'Go Back', group: 'Navigation', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewGoBack), keywords: ['previous', 'history', 'back'], enabled: !!canGoBack, execute: () => onGoBack?.() },
     { id: 'go-forward', label: 'Go Forward', group: 'Navigation', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewGoForward), keywords: ['next', 'history', 'forward'], enabled: !!canGoForward, execute: () => onGoForward?.() },
+    { id: 'tab-next', label: 'Next Tab', group: 'Navigation', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.tabNextTab), keywords: ['tab', 'cycle', 'switch', 'next'], enabled: !!hasMultipleTabs && !!onNextTab, execute: () => onNextTab?.() },
+    { id: 'tab-prev', label: 'Previous Tab', group: 'Navigation', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.tabPrevTab), keywords: ['tab', 'cycle', 'switch', 'previous', 'back'], enabled: !!hasMultipleTabs && !!onPrevTab, execute: () => onPrevTab?.() },
   ]
 }
 

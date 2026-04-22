@@ -60,6 +60,7 @@ import { useBulkActions } from './hooks/useBulkActions'
 import { useDeleteActions } from './hooks/useDeleteActions'
 import { useFolderActions } from './hooks/useFolderActions'
 import { useFileActions } from './hooks/useFileActions'
+import { REQUEST_CREATE_FOLDER_EVENT } from './components/folder-tree/folderTreeEvents'
 import { useLayoutPanels } from './hooks/useLayoutPanels'
 import { useConflictFlow } from './hooks/useConflictFlow'
 import { useAppSave } from './hooks/useAppSave'
@@ -1614,6 +1615,9 @@ function App() {
     onZoomIn: zoom.zoomIn, onZoomOut: zoom.zoomOut, onZoomReset: zoom.zoomReset,
     zoomLevel: zoom.zoomLevel,
     onSelect: handleSetSelection,
+    onCreateFolder: () => {
+      window.dispatchEvent(new CustomEvent(REQUEST_CREATE_FOLDER_EVENT))
+    },
     onRenameFolder: folderActions.renameSelectedFolder,
     onDeleteFolder: folderActions.deleteSelectedFolder,
     onRevealSelectedFolder: fileActions.revealSelectedFolder,
@@ -1660,6 +1664,9 @@ function App() {
     noteListColumnsLabel,
     onRestoreDeletedNote: restoreDeletedNoteCommand,
     canRestoreDeletedNote: !!activeDeletedFile,
+    onNextTab: notes.nextTab,
+    onPrevTab: notes.prevTab,
+    hasMultipleTabs: notes.tabs.length > 1,
   })
 
   const inboxCount = useMemo(() => filterInboxEntries(visibleEntries, inboxPeriod).length, [visibleEntries, inboxPeriod])

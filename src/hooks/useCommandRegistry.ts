@@ -108,6 +108,7 @@ interface CommandRegistryConfig {
   onZoomReset: () => void
   zoomLevel: number
   onSelect: (sel: SidebarSelection) => void
+  onCreateFolder?: () => void
   onRenameFolder?: () => void
   onDeleteFolder?: () => void
   onRevealSelectedFolder?: () => void
@@ -121,6 +122,9 @@ interface CommandRegistryConfig {
   onRestoreGettingStarted?: () => void
   isGettingStartedHidden?: boolean
   vaultCount?: number
+  onNextTab?: () => void
+  onPrevTab?: () => void
+  hasMultipleTabs?: boolean
   selection?: SidebarSelection
   noteListFilter?: NoteListFilter
   onSetNoteListFilter?: (filter: NoteListFilter) => void
@@ -136,11 +140,12 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     selectedViewName, onMoveSelectedViewUp, onMoveSelectedViewDown, canMoveSelectedViewUp, canMoveSelectedViewDown,
     activeNoteModified,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
-    onSelect, onRenameFolder, onDeleteFolder, onRevealSelectedFolder, onCopySelectedFolderPath,
+    onSelect, onCreateFolder, onRenameFolder, onDeleteFolder, onRevealSelectedFolder, onCopySelectedFolderPath,
     showInbox,
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates, onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
+    onNextTab, onPrevTab, hasMultipleTabs,
     mcpStatus, onInstallMcp, aiFeaturesEnabled,
     aiAgentsStatus, vaultAiGuidanceStatus,
     onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
@@ -175,6 +180,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onQuickOpen,
     onSelect,
     selection,
+    onCreateFolder,
     onRenameFolder,
     onDeleteFolder,
     onRevealSelectedFolder,
@@ -184,10 +190,13 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onGoForward,
     canGoBack,
     canGoForward,
+    onNextTab,
+    onPrevTab,
+    hasMultipleTabs,
   }), [
-    onQuickOpen, onSelect, selection, onRenameFolder, onDeleteFolder,
+    onQuickOpen, onSelect, selection, onCreateFolder, onRenameFolder, onDeleteFolder,
     onRevealSelectedFolder, onCopySelectedFolderPath, showInbox,
-    onGoBack, onGoForward, canGoBack, canGoForward,
+    onGoBack, onGoForward, canGoBack, canGoForward, onNextTab, onPrevTab, hasMultipleTabs,
   ])
 
   const noteCommands = useMemo(() => buildNoteCommands({

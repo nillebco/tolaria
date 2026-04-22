@@ -226,6 +226,30 @@
         "requiresManualNativeAcceleratorQa": true
       }
     },
+    "tabNextTab": {
+      "id": "tab-next-tab",
+      "route": { "kind": "handler", "handler": "onNextTab" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "Tab",
+        "code": "Tab",
+        "display": "⌃⇥",
+        "accelerator": "Ctrl+Tab"
+      }
+    },
+    "tabPrevTab": {
+      "id": "tab-prev-tab",
+      "route": { "kind": "handler", "handler": "onPrevTab" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl-shift",
+        "key": "Tab",
+        "code": "Tab",
+        "display": "⌃⇧⇥",
+        "accelerator": "Ctrl+Shift+Tab"
+      }
+    },
     "viewZoomIn": {
       "id": "view-zoom-in",
       "route": { "kind": "handler", "handler": "onZoomIn" },

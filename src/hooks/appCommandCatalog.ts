@@ -66,6 +66,8 @@ type SimpleHandlerKey =
   | 'onRepairVault'
   | 'onOpenInNewWindow'
   | 'onRestoreDeletedNote'
+  | 'onNextTab'
+  | 'onPrevTab'
 
 type ActiveTabHandlerKey =
   | 'onToggleOrganized'

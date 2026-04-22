@@ -119,6 +119,9 @@ interface AppCommandsConfig {
   onCopySelectedFolderPath?: () => void
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
+  onNextTab?: () => void
+  onPrevTab?: () => void
+  hasMultipleTabs?: boolean
   onCustomizeNoteListColumns?: () => void
   canCustomizeNoteListColumns?: boolean
   noteListColumnsLabel?: string
@@ -145,6 +148,9 @@ type CommandRegistrySelectionState = Pick<
   | 'onGoForward'
   | 'canGoBack'
   | 'canGoForward'
+  | 'onNextTab'
+  | 'onPrevTab'
+  | 'hasMultipleTabs'
   | 'selection'
 >
 type CommandRegistryCoreActions = Pick<
@@ -279,6 +285,8 @@ function createKeyboardActions(
     onToggleFavorite: config.onToggleFavorite,
     onToggleOrganized: config.onToggleOrganized,
     onOpenInNewWindow: config.onOpenInNewWindow,
+    onNextTab: config.onNextTab,
+    onPrevTab: config.onPrevTab,
     activeTabPathRef: config.activeTabPathRef,
     multiSelectionCommandRef: config.multiSelectionCommandRef,
   }
@@ -433,6 +441,9 @@ function createCommandRegistrySelectionConfig(
     onGoForward: config.onGoForward,
     canGoBack: config.canGoBack,
     canGoForward: config.canGoForward,
+    onNextTab: config.onNextTab,
+    onPrevTab: config.onPrevTab,
+    hasMultipleTabs: config.hasMultipleTabs,
     selection: config.selection,
   }
 }
