@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
-import { useCodeMirror, type CodeMirrorCallbacks } from './useCodeMirror'
+import { useCodeMirror, toggleTodoLine, type CodeMirrorCallbacks } from './useCodeMirror'
 
 const noop = () => {}
 const noopCallbacks: CodeMirrorCallbacks = {
@@ -151,5 +152,43 @@ describe('useCodeMirror', () => {
     const view = result.current.current!
     // The extension overrides posAtCoords on the instance (not the prototype)
     expect(Object.prototype.hasOwnProperty.call(view, 'posAtCoords')).toBe(true)
+  })
+})
+
+function makeView(text: string, cursorPos = 0) {
+  const state = EditorState.create({ doc: text, selection: { anchor: cursorPos } })
+  return new EditorView({ state })
+}
+
+describe('toggleTodoLine', () => {
+  it('prepends "- [ ] " to a plain line', () => {
+    const view = makeView('buy milk')
+    toggleTodoLine(view)
+    expect(view.state.doc.toString()).toBe('- [ ] buy milk')
+  })
+
+  it('checks an unchecked todo line', () => {
+    const view = makeView('- [ ] buy milk')
+    toggleTodoLine(view)
+    expect(view.state.doc.toString()).toBe('- [x] buy milk')
+  })
+
+  it('removes the todo prefix from a checked todo line', () => {
+    const view = makeView('- [x] buy milk')
+    toggleTodoLine(view)
+    expect(view.state.doc.toString()).toBe('buy milk')
+  })
+
+  it('operates on the line under the cursor, not line 1', () => {
+    const text = 'first line\nsecond line'
+    const view = makeView(text, text.indexOf('second'))
+    toggleTodoLine(view)
+    expect(view.state.doc.toString()).toBe('first line\n- [ ] second line')
+  })
+
+  it('works on an empty line', () => {
+    const view = makeView('')
+    toggleTodoLine(view)
+    expect(view.state.doc.toString()).toBe('- [ ] ')
   })
 })

@@ -171,6 +171,25 @@ function buildSaveKeymap(callbacks: { current: CodeMirrorCallbacks }) {
   }]))
 }
 
+export function toggleTodoLine(view: EditorView): boolean {
+  const line = view.state.doc.lineAt(view.state.selection.main.head)
+  const text = line.text
+  let newText: string
+  if (text.startsWith('- [x] ')) {
+    newText = text.slice('- [x] '.length)
+  } else if (text.startsWith('- [ ] ')) {
+    newText = '- [x] ' + text.slice('- [ ] '.length)
+  } else {
+    newText = '- [ ] ' + text
+  }
+  view.dispatch({ changes: { from: line.from, to: line.to, insert: newText }, userEvent: 'input' })
+  return true
+}
+
+function buildTodoToggleKeymap() {
+  return keymap.of([{ key: 'Mod-l', run: toggleTodoLine }])
+}
+
 function buildArrowLigaturesExtension() {
   let literalAsciiCursor: number | null = null
 
@@ -245,6 +264,7 @@ export function useCodeMirror(
         buildArrowLigaturesExtension(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         buildSaveKeymap(callbacksRef),
+        buildTodoToggleKeymap(),
         buildBaseTheme(),
         EditorView.cspNonce.of(RUNTIME_STYLE_NONCE),
         EditorView.contentAttributes.of(nativeTextAssistanceDisabledAttributes),
