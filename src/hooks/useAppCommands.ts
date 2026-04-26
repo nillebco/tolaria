@@ -121,6 +121,7 @@ interface AppCommandsConfig {
   onToggleOrganized?: (path: string) => void
   onNextTab?: () => void
   onPrevTab?: () => void
+  onCloseCurrentTab?: () => void
   onCloseAllTabs?: () => void
   onCloseOtherTabs?: () => void
   hasMultipleTabs?: boolean
@@ -152,6 +153,7 @@ type CommandRegistrySelectionState = Pick<
   | 'canGoForward'
   | 'onNextTab'
   | 'onPrevTab'
+  | 'onCloseCurrentTab'
   | 'onCloseAllTabs'
   | 'onCloseOtherTabs'
   | 'hasMultipleTabs'
@@ -291,6 +293,7 @@ function createKeyboardActions(
     onOpenInNewWindow: config.onOpenInNewWindow,
     onNextTab: config.onNextTab,
     onPrevTab: config.onPrevTab,
+    onCloseCurrentTab: config.onCloseCurrentTab,
     onCloseAllTabs: config.onCloseAllTabs,
     onCloseOtherTabs: config.onCloseOtherTabs,
     activeTabPathRef: config.activeTabPathRef,
@@ -405,6 +408,7 @@ function createMenuEventVaultHandlers(
     onRepairVault: config.onRepairVault,
     onOpenInNewWindow: config.onOpenInNewWindow,
     onRestoreDeletedNote: config.onRestoreDeletedNote,
+    onCloseCurrentTab: config.onCloseCurrentTab,
     onCloseAllTabs: config.onCloseAllTabs,
     onCloseOtherTabs: config.onCloseOtherTabs,
   }
@@ -453,6 +457,7 @@ function createCommandRegistrySelectionConfig(
     canGoForward: config.canGoForward,
     onNextTab: config.onNextTab,
     onPrevTab: config.onPrevTab,
+    onCloseCurrentTab: config.onCloseCurrentTab,
     onCloseAllTabs: config.onCloseAllTabs,
     onCloseOtherTabs: config.onCloseOtherTabs,
     hasMultipleTabs: config.hasMultipleTabs,

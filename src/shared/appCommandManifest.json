@@ -250,6 +250,19 @@
         "accelerator": "Ctrl+Shift+Tab"
       }
     },
+    "tabCloseCurrentTab": {
+      "id": "tab-close-current-tab",
+      "route": { "kind": "handler", "handler": "onCloseCurrentTab" },
+      "menuOwned": true,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "w",
+        "code": "KeyW",
+        "display": "⌘W",
+        "accelerator": "CmdOrCtrl+W",
+        "requiresManualNativeAcceleratorQa": true
+      }
+    },
     "tabCloseAllTabs": {
       "id": "tab-close-all-tabs",
       "route": { "kind": "handler", "handler": "onCloseAllTabs" },
@@ -535,6 +548,7 @@
         { "kind": "separator" },
         { "kind": "command", "command": "noteOpenInNewWindow", "label": "Open in New Window" },
         { "kind": "separator" },
+        { "kind": "command", "command": "tabCloseCurrentTab", "label": "Close Tab" },
         { "kind": "command", "command": "tabCloseOtherTabs", "label": "Close Other Tabs" },
         { "kind": "command", "command": "tabCloseAllTabs", "label": "Close All Tabs" },
         { "kind": "separator" },

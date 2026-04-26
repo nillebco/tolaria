@@ -844,6 +844,11 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     }
   }, [])
 
+  const closeCurrentTab = useCallback(() => {
+    const path = activeTabPathRef.current
+    if (path) closeTab(path)
+  }, [closeTab])
+
   const closeAllTabs = useCallback((closeOptions: CloseAllTabsOptions = {}) => {
     navSeqRef.current += 1
     beforeNavigateSeqRef.current += 1
@@ -897,6 +902,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     handleSwitchTab,
     handleReplaceActiveTab,
     closeTab,
+    closeCurrentTab,
     closeAllTabs,
     closeOtherTabs,
     nextTab,

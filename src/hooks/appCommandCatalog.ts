@@ -68,6 +68,7 @@ type SimpleHandlerKey =
   | 'onRestoreDeletedNote'
   | 'onNextTab'
   | 'onPrevTab'
+  | 'onCloseCurrentTab'
   | 'onCloseAllTabs'
   | 'onCloseOtherTabs'
 

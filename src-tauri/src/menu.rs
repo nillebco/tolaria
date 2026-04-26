@@ -1,4 +1,3 @@
-#[cfg(not(target_os = "macos"))]
 use crate::window_state::MAIN_WINDOW_LABEL;
 use serde::{Deserialize, Deserializer};
 use std::{
@@ -8,13 +7,13 @@ use std::{
     sync::OnceLock,
 };
 #[cfg(not(target_os = "macos"))]
-use tauri::{menu::MenuEvent, Manager};
+use tauri::menu::MenuEvent;
 use tauri::{
     menu::{
         MenuBuilder, MenuItem, MenuItemBuilder, MenuItemKind, Submenu, SubmenuBuilder,
         WINDOW_SUBMENU_ID,
     },
-    App, AppHandle, Emitter,
+    App, AppHandle, Emitter, Manager,
 };
 
 const APP_COMMAND_MANIFEST_JSON: &str = include_str!("../../src/shared/appCommandManifest.json");
@@ -25,6 +24,7 @@ const RESTORE_DELETED_DEPENDENT_GROUP: &str = "restoreDeletedDependent";
 const GIT_COMMIT_DEPENDENT_GROUP: &str = "gitCommitDependent";
 const GIT_CONFLICT_DEPENDENT_GROUP: &str = "gitConflictDependent";
 const GIT_NO_REMOTE_DEPENDENT_GROUP: &str = "gitNoRemoteDependent";
+const WINDOW_CLOSE_ID: &str = "window-close";
 
 type MenuResult = Result<Submenu<tauri::Wry>, Box<dyn Error>>;
 type AppSubmenuBuilder<'a> = SubmenuBuilder<'a, tauri::Wry, App>;
@@ -383,11 +383,15 @@ fn build_window_menu(app: &App) -> MenuResult {
         builder = builder.id(id);
     }
 
+    let close_window = MenuItemBuilder::new("Close Window")
+        .id(WINDOW_CLOSE_ID)
+        .build(app)?;
+
     Ok(builder
         .minimize()
         .maximize()
         .separator()
-        .close_window()
+        .item(&close_window)
         .build()?)
 }
 
@@ -416,6 +420,12 @@ pub fn setup_menu(app: &App) -> Result<(), Box<dyn Error>> {
 
     app.on_menu_event(|app_handle, event| {
         let id = event.id().0.as_str();
+        if id == WINDOW_CLOSE_ID {
+            if let Some(window) = app_handle.get_webview_window(MAIN_WINDOW_LABEL) {
+                let _ = window.close();
+            }
+            return;
+        }
         let _ = emit_custom_menu_event(app_handle, id);
     });
 
