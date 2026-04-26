@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { FolderTree } from './FolderTree'
 import { FOLDER_ROW_SINGLE_CLICK_DELAY_MS } from './folder-tree/useFolderRowInteractions'
 import { FOLDER_ROW_NESTING_INDENT, getFolderConnectorLeft } from './folder-tree/folderTreeLayout'
-import type { FolderNode, SidebarSelection } from '../types'
+import type { FolderNode, SidebarSelection, VaultEntry } from '../types'
 
 const mockFolders: FolderNode[] = [
   {
@@ -21,6 +21,54 @@ const mockFolders: FolderNode[] = [
 
 const defaultSelection: SidebarSelection = { kind: 'filter', filter: 'all' }
 const vaultRootPath = '/Users/luca/Laputa'
+
+const mockFileEntry: VaultEntry = {
+  path: '/vault/mock.md',
+  filename: 'mock.md',
+  title: 'mock',
+  isA: 'Note',
+  aliases: [],
+  belongsTo: [],
+  relatedTo: [],
+  status: null,
+  archived: false,
+  modifiedAt: 0,
+  createdAt: 0,
+  fileSize: 0,
+  snippet: '',
+  wordCount: 0,
+  relationships: {},
+  icon: null,
+  color: null,
+  order: null,
+  outgoingLinks: [],
+  sidebarLabel: null,
+  template: null,
+  sort: null,
+  view: null,
+  visible: null,
+  properties: {},
+  organized: false,
+  favorite: false,
+  favoriteIndex: null,
+  listPropertiesDisplay: [],
+  hasH1: true,
+  fileKind: 'markdown',
+}
+
+function fileEntry(path: string): VaultEntry {
+  const filename = path.substring(path.lastIndexOf('/') + 1)
+  return {
+    ...mockFileEntry,
+    path,
+    filename,
+    title: filename,
+  }
+}
+
+function renderedFilePaths(): string[] {
+  return screen.getAllByTestId(/file-row:/).map((row) => row.getAttribute('data-testid')?.replace('file-row:', '') ?? '')
+}
 
 describe('FolderTree', () => {
   it('renders nothing when folders is empty', () => {
@@ -66,6 +114,59 @@ describe('FolderTree', () => {
     )
 
     expect(screen.getByText('Laputa')).toBeInTheDocument()
+  })
+
+  it('sorts root ISO-date filenames in calendar order', () => {
+    render(
+      <FolderTree
+        folders={[]}
+        entries={[
+          fileEntry('/vault/2026-10-01.md'),
+          fileEntry('/vault/2026-01-31.md'),
+          fileEntry('/vault/2026-02-01.md'),
+          fileEntry('/vault/2026-01-02.md'),
+        ]}
+        vaultPath="/vault"
+        selection={defaultSelection}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    expect(renderedFilePaths()).toEqual([
+      '/vault/2026-01-02.md',
+      '/vault/2026-01-31.md',
+      '/vault/2026-02-01.md',
+      '/vault/2026-10-01.md',
+    ])
+  })
+
+  it('sorts nested ISO-date filenames in calendar order', () => {
+    vi.useFakeTimers()
+    render(
+      <FolderTree
+        folders={[{ name: 'journal', path: 'journal', children: [] }]}
+        entries={[
+          fileEntry('/vault/journal/2026-12-01.md'),
+          fileEntry('/vault/journal/2026-02-01.md'),
+          fileEntry('/vault/journal/2026-01-31.md'),
+        ]}
+        vaultPath="/vault"
+        selection={defaultSelection}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('folder-row:journal'))
+    act(() => {
+      vi.advanceTimersByTime(FOLDER_ROW_SINGLE_CLICK_DELAY_MS)
+    })
+
+    expect(renderedFilePaths()).toEqual([
+      '/vault/journal/2026-01-31.md',
+      '/vault/journal/2026-02-01.md',
+      '/vault/journal/2026-12-01.md',
+    ])
+    vi.useRealTimers()
   })
 
   it('renders one scoped root per mounted workspace and selects folders inside that root', () => {
