@@ -1819,6 +1819,9 @@ function App() {
               onKeepTheirs={conflictFlow.handleKeepTheirs}
               flushPendingEditorContentRef={flushPendingEditorContentRef}
               flushPendingRawContentRef={flushPendingRawContentRef}
+              onSwitchTab={notes.handleSwitchTab}
+              onCloseTab={notes.closeTab}
+              unsavedPaths={vault.unsavedPaths}
               locale={appLocale}
             />
           </div>

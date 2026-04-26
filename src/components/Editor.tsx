@@ -36,6 +36,7 @@ import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardE
 import { createMathInputExtension } from './mathInputExtension'
 import { createRichEditorTransformErrorRecoveryExtension } from './richEditorTransformErrorRecoveryExtension'
 import { useFilenameAutolinkGuard } from './useFilenameAutolinkGuard'
+import { TabBar } from './TabBar'
 import './Editor.css'
 import './EditorTheme.css'
 
@@ -123,6 +124,9 @@ interface EditorProps {
   flushPendingEditorContentRef?: React.MutableRefObject<((path: string) => void) | null>
   /** Registers a hook that flushes the raw editor buffer into app state before external actions. */
   flushPendingRawContentRef?: React.MutableRefObject<((path: string) => void) | null>
+  onSwitchTab?: (path: string) => void
+  onCloseTab?: (path: string) => void
+  unsavedPaths?: Set<string>
   locale?: AppLocale
 }
 
@@ -388,6 +392,9 @@ function EditorLayout({
   onVaultChanged,
   workspaces,
   onUnsupportedAiPaste,
+  onSwitchTab,
+  onCloseTab,
+  unsavedPaths,
   locale,
 }: {
   tabs: Tab[]
@@ -459,6 +466,9 @@ function EditorLayout({
   onVaultChanged?: () => void
   workspaces?: WorkspaceIdentity[]
   onUnsupportedAiPaste?: (message: string) => void
+  onSwitchTab?: (path: string) => void
+  onCloseTab?: (path: string) => void
+  unsavedPaths?: Set<string>
   locale?: AppLocale
 }) {
   const activeBinaryTab = activeTab?.entry.fileKind === 'binary' ? activeTab : null
@@ -466,6 +476,15 @@ function EditorLayout({
 
   return (
     <div className="editor flex flex-col min-h-0 overflow-hidden bg-background text-foreground">
+      {tabs.length > 0 && onSwitchTab && onCloseTab && (
+        <TabBar
+          tabs={tabs}
+          activeTabPath={activeTabPath}
+          onSwitchTab={onSwitchTab}
+          onCloseTab={onCloseTab}
+          unsavedPaths={unsavedPaths}
+        />
+      )}
       <div className="flex flex-1 min-h-0">
         {showEmptyState
           ? <EditorEmptyState locale={locale} />

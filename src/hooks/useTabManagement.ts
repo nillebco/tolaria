@@ -70,6 +70,7 @@ interface NavigateToEntryOptions {
   entry: VaultEntry
   sourceEntry?: VaultEntry
   forceReload?: boolean
+  tabMode: 'add' | 'replace'
   navSeqRef: React.MutableRefObject<number>
   tabsRef: React.MutableRefObject<Tab[]>
   activeTabPathRef: React.MutableRefObject<string | null>
@@ -109,6 +110,34 @@ function setSingleTab(
   setTabs([nextTab])
 }
 
+function addOrSwitchTab(
+  tabsRef: React.MutableRefObject<Tab[]>,
+  setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
+  nextTab: Tab,
+) {
+  const existingIdx = tabsRef.current.findIndex(t => pathsMatch(t.entry.path, nextTab.entry.path))
+  const newTabs = existingIdx >= 0
+    ? tabsRef.current.map((t, i) => i === existingIdx ? nextTab : t)
+    : [...tabsRef.current, nextTab]
+  tabsRef.current = newTabs
+  setTabs(newTabs)
+}
+
+function replaceTabInList(
+  tabsRef: React.MutableRefObject<Tab[]>,
+  setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
+  nextTab: Tab,
+) {
+  const existingIdx = tabsRef.current.findIndex(t => pathsMatch(t.entry.path, nextTab.entry.path))
+  if (existingIdx >= 0) {
+    const newTabs = tabsRef.current.map((t, i) => i === existingIdx ? nextTab : t)
+    tabsRef.current = newTabs
+    setTabs(newTabs)
+    return
+  }
+  setSingleTab(tabsRef, setTabs, nextTab)
+}
+
 function clearTabs(
   tabsRef: React.MutableRefObject<Tab[]>,
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
@@ -139,14 +168,20 @@ function isAlreadyViewingPath(
 function startEntryNavigation(options: {
   entry: VaultEntry
   navSeqRef: React.MutableRefObject<number>
+  tabsRef: React.MutableRefObject<Tab[]>
+  setTabs: React.Dispatch<React.SetStateAction<Tab[]>>
   activeTabPathRef: React.MutableRefObject<string | null>
   setActiveTabPath: React.Dispatch<React.SetStateAction<string | null>>
+  tabMode: 'add' | 'replace'
 }) {
   const {
     entry,
     navSeqRef,
+    tabsRef,
+    setTabs,
     activeTabPathRef,
     setActiveTabPath,
+    tabMode,
   } = options
 
   const seq = ++navSeqRef.current
@@ -154,6 +189,12 @@ function startEntryNavigation(options: {
   syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
   if (hasResolvedCachedContent(cachedEntry)) {
     markNoteOpenTrace(entry.path, 'cacheReady')
+    const nextTab = { entry, content: cachedEntry.value }
+    if (tabMode === 'add') {
+      addOrSwitchTab(tabsRef, setTabs, nextTab)
+    } else {
+      replaceTabInList(tabsRef, setTabs, nextTab)
+    }
   }
 
   return { seq, cachedEntry }
@@ -166,6 +207,7 @@ function openBinaryEntry(options: {
   activeTabPathRef: React.MutableRefObject<string | null>
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>
   setActiveTabPath: React.Dispatch<React.SetStateAction<string | null>>
+  tabMode: 'add' | 'replace'
 }) {
   const {
     entry,
@@ -174,11 +216,16 @@ function openBinaryEntry(options: {
     activeTabPathRef,
     setTabs,
     setActiveTabPath,
+    tabMode,
   } = options
 
   navSeqRef.current += 1
   syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
-  setSingleTab(tabsRef, setTabs, { entry, content: '' })
+  if (tabMode === 'add') {
+    addOrSwitchTab(tabsRef, setTabs, { entry, content: '' })
+  } else {
+    replaceTabInList(tabsRef, setTabs, { entry, content: '' })
+  }
   finishNoteOpenTrace(entry.path)
 }
 
@@ -415,8 +462,11 @@ async function loadTextEntry(options: Required<Pick<NavigateToEntryOptions, 'for
   const { seq, cachedEntry } = startEntryNavigation({
     entry,
     navSeqRef,
+    tabsRef,
+    setTabs,
     activeTabPathRef,
     setActiveTabPath,
+    tabMode: options.tabMode,
   })
 
   try {
@@ -436,7 +486,11 @@ async function loadTextEntry(options: Required<Pick<NavigateToEntryOptions, 'for
       tabsRef,
       path: entry.path,
     })) return
-    setSingleTab(tabsRef, setTabs, { entry, content })
+    if (options.tabMode === 'add') {
+      addOrSwitchTab(tabsRef, setTabs, { entry, content })
+    } else {
+      replaceTabInList(tabsRef, setTabs, { entry, content })
+    }
   } catch (err) {
     handleEntryLoadFailure({
       entry,
@@ -509,7 +563,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     return true
   }, [beforeNavigate])
 
-  /** Open a note — replaces the current note (single-note model). */
+  /** Open a note, adding a tab when needed. */
   const handleSelectNote = useCallback(async (entry: VaultEntry) => {
     const openEntry = normalizeOpenEntry(entry)
     if (!openEntry) return
@@ -522,6 +576,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     const navigated = await executeNavigationWithBoundary(openEntry.path, () => navigateToEntry({
       entry: openEntry,
       sourceEntry: entry,
+      tabMode: 'add',
       navSeqRef,
       tabsRef,
       activeTabPathRef,
@@ -549,7 +604,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     requestedActiveTabPathRef.current = openEntry.path
     void executeNavigationWithBoundary(openEntry.path, () => {
       cacheNoteContent(openEntry.path, content, openEntry)
-      setSingleTab(tabsRef, setTabs, { entry: openEntry, content })
+      addOrSwitchTab(tabsRef, setTabs, { entry: openEntry, content })
       syncActiveTabPath(activeTabPathRef, setActiveTabPath, openEntry.path)
     }).then((navigated) => {
       if (!navigated) resetRequestedPathIfStillPending(requestedActiveTabPathRef, activeTabPathRef, openEntry.path)
@@ -568,6 +623,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
       entry: openEntry,
       sourceEntry: entry,
       forceReload: !replacingDifferentEntry,
+      tabMode: 'replace',
       navSeqRef,
       tabsRef,
       activeTabPathRef,
@@ -581,6 +637,20 @@ export function useTabManagement(options: TabManagementOptions = {}) {
       resetRequestedPathIfStillPending(requestedActiveTabPathRef, activeTabPathRef, openEntry.path)
     }
   }, [executeNavigationWithBoundary, onMissingActiveVault, onMissingNotePath, onUnreadableNoteContent])
+
+  const closeTab = useCallback((path: string) => {
+    const currentTabs = tabsRef.current
+    const index = currentTabs.findIndex(tab => pathsMatch(tab.entry.path, path))
+    if (index < 0) return
+    const newTabs = currentTabs.filter((_, tabIndex) => tabIndex !== index)
+    tabsRef.current = newTabs
+    setTabs(newTabs)
+    if (pathsMatch(activeTabPathRef.current, path)) {
+      const nextTab = newTabs[index - 1] ?? newTabs[index] ?? null
+      requestedActiveTabPathRef.current = nextTab?.entry.path ?? null
+      syncActiveTabPath(activeTabPathRef, setActiveTabPath, nextTab?.entry.path ?? null)
+    }
+  }, [])
 
   const closeAllTabs = useCallback(() => {
     navSeqRef.current += 1
@@ -601,6 +671,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     openTabWithContent,
     handleSwitchTab,
     handleReplaceActiveTab,
+    closeTab,
     closeAllTabs,
   }
 }
