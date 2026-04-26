@@ -220,7 +220,9 @@ fn validate_relative_folder_path(folder_path: &str) -> Result<(), String> {
                 validate_folder_name(segment.to_string_lossy().as_ref())?;
             }
             Component::CurDir => {}
-            Component::ParentDir => return Err(super::boundary::ACTIVE_VAULT_PATH_ERROR.to_string()),
+            Component::ParentDir => {
+                return Err(super::boundary::ACTIVE_VAULT_PATH_ERROR.to_string())
+            }
             Component::RootDir | Component::Prefix(_) => {
                 return Err("Folder path must be relative to the vault root".to_string())
             }
