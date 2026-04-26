@@ -21,7 +21,7 @@ fn build_repository() -> Option<String> {
     std::env::var("GITHUB_REPOSITORY")
         .ok()
         .filter(|value| !value.trim().is_empty())
-        .or_else(|| repository_from_origin_remote())
+        .or_else(repository_from_origin_remote)
 }
 
 fn repository_from_origin_remote() -> Option<String> {
