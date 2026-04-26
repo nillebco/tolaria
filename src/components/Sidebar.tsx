@@ -35,6 +35,8 @@ import type { AllNotesFileVisibility } from '../utils/allNotesFileVisibility'
 
 interface SidebarProps {
   entries: VaultEntry[]
+  activeNotePath?: string
+  vaultPath?: string
   selection: SidebarSelection
   onSelect: (selection: SidebarSelection) => void
   onSelectNote?: (entry: VaultEntry) => void
@@ -55,7 +57,7 @@ interface SidebarProps {
   onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
   onReorderViews?: (orderedFilenames: string[]) => void
   folders?: FolderNode[]
-  onCreateFolder?: (name: string) => Promise<boolean> | boolean
+  onCreateFolder?: (name: string, parentPath?: string) => Promise<boolean> | boolean
   onRenameFolder?: (folderPath: string, nextName: string) => Promise<boolean> | boolean
   onDeleteFolder?: (folderPath: string) => void
   folderFileActions?: FolderFileActions
@@ -74,13 +76,19 @@ interface SidebarProps {
   canGoBack?: boolean
   canGoForward?: boolean
   loading?: boolean
+  icons?: Record<string, string>
+  showOriginalFilenames?: boolean
+  onSetPathIcon?: (relativePath: string, emoji: string | null) => void
 }
 
 interface SidebarNavigationProps extends Pick<
   SidebarProps,
   | 'entries'
+  | 'activeNotePath'
+  | 'vaultPath'
   | 'selection'
   | 'onSelect'
+  | 'onSelectNote'
   | 'onSelectFavorite'
   | 'onReorderFavorites'
   | 'views'
@@ -103,6 +111,9 @@ interface SidebarNavigationProps extends Pick<
   | 'onCreateNewType'
   | 'locale'
   | 'loading'
+  | 'icons'
+  | 'showOriginalFilenames'
+  | 'onSetPathIcon'
 > {
   activeCount: number
   archivedCount: number
@@ -171,9 +182,13 @@ type SidebarTypesNavigationProps = Pick<
 type SidebarFoldersNavigationProps = Pick<
   SidebarNavigationProps,
   | 'loading'
+  | 'entries'
+  | 'activeNotePath'
+  | 'vaultPath'
   | 'folders'
   | 'selection'
   | 'onSelect'
+  | 'onSelectNote'
   | 'onCreateFolder'
   | 'onRenameFolder'
   | 'onDeleteFolder'
@@ -185,6 +200,9 @@ type SidebarFoldersNavigationProps = Pick<
   | 'groupCollapsed'
   | 'toggleGroup'
   | 'locale'
+  | 'icons'
+  | 'showOriginalFilenames'
+  | 'onSetPathIcon'
 >
 
 function SidebarFavoritesNavigation({
@@ -321,9 +339,13 @@ function SidebarTypesNavigation({
 
 function SidebarFoldersNavigation({
   loading,
+  entries,
+  activeNotePath,
+  vaultPath,
   folders,
   selection,
   onSelect,
+  onSelectNote,
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
@@ -335,6 +357,9 @@ function SidebarFoldersNavigation({
   groupCollapsed,
   toggleGroup,
   locale,
+  icons,
+  showOriginalFilenames,
+  onSetPathIcon,
 }: SidebarFoldersNavigationProps) {
   if (loading) {
     return (
@@ -350,8 +375,12 @@ function SidebarFoldersNavigation({
   return (
     <FolderTree
       folders={folders ?? []}
+      entries={entries}
+      activeNotePath={activeNotePath}
+      vaultPath={vaultPath}
       selection={selection}
       onSelect={onSelect}
+      onSelectNote={onSelectNote}
       onCreateFolder={onCreateFolder}
       onRenameFolder={onRenameFolder}
       onDeleteFolder={onDeleteFolder}
@@ -363,6 +392,9 @@ function SidebarFoldersNavigation({
       locale={locale}
       onToggle={() => toggleGroup('folders')}
       vaultRootPath={vaultRootPath}
+      icons={icons}
+      showOriginalFilenames={showOriginalFilenames}
+      onSetPathIcon={onSetPathIcon}
     />
   )
 }
@@ -448,9 +480,13 @@ function SidebarNavigation(props: SidebarNavigationProps) {
       <SidebarViewAndTypeNavigation {...props} />
       <SidebarFoldersNavigation
         loading={props.loading}
+        entries={props.entries}
+        activeNotePath={props.activeNotePath}
+        vaultPath={props.vaultPath}
         folders={props.folders ?? []}
         selection={props.selection}
         onSelect={props.onSelect}
+        onSelectNote={props.onSelectNote}
         onCreateFolder={props.onCreateFolder}
         onRenameFolder={props.onRenameFolder}
         onDeleteFolder={props.onDeleteFolder}
@@ -462,6 +498,9 @@ function SidebarNavigation(props: SidebarNavigationProps) {
         groupCollapsed={props.groupCollapsed}
         toggleGroup={props.toggleGroup}
         locale={props.locale}
+        icons={props.icons}
+        showOriginalFilenames={props.showOriginalFilenames}
+        onSetPathIcon={props.onSetPathIcon}
       />
     </nav>
   )
@@ -562,8 +601,11 @@ function SidebarRuntimeNavigation({
   return (
     <SidebarNavigation
       entries={props.entries}
+      activeNotePath={props.activeNotePath}
+      vaultPath={props.vaultPath}
       selection={props.selection}
       onSelect={props.onSelect}
+      onSelectNote={props.onSelectNote}
       onSelectFavorite={props.onSelectFavorite}
       onReorderFavorites={props.onReorderFavorites}
       views={props.views}
@@ -586,6 +628,9 @@ function SidebarRuntimeNavigation({
       locale={props.locale}
       loading={props.loading}
       onCreateNewType={props.onCreateNewType}
+      icons={props.icons}
+      showOriginalFilenames={props.showOriginalFilenames}
+      onSetPathIcon={props.onSetPathIcon}
       activeCount={runtime.activeCount}
       archivedCount={runtime.archivedCount}
       groupCollapsed={runtime.groupCollapsed}

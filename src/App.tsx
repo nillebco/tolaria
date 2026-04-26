@@ -44,6 +44,7 @@ import { useAutoSync } from './hooks/useAutoSync'
 import { useConflictResolver } from './hooks/useConflictResolver'
 import { useZoom } from './hooks/useZoom'
 import { useVaultConfig } from './hooks/useVaultConfig'
+import { useVaultIcons } from './hooks/useVaultIcons'
 import { useBuildNumber } from './hooks/useBuildNumber'
 import { useOnboarding } from './hooks/useOnboarding'
 import { useGettingStartedClone } from './hooks/useGettingStartedClone'
@@ -114,6 +115,14 @@ import {
   sanitizeSelectionForOrganization,
 } from './utils/organizationWorkflow'
 import { requestPlainTextPaste } from './utils/plainTextPaste'
+import {
+  buildDailyNoteContent,
+  buildDailyNoteEntry,
+  dailyNoteAbsolutePath,
+  dailyNoteRelativePath,
+  findDailyNoteEntry,
+  parseDailyNotesConfig,
+} from './utils/dailyNotes'
 import { SETTINGS_SECTION_IDS } from './components/settingsSectionIds'
 import {
   vaultPathForEntry,
@@ -219,6 +228,26 @@ function savedViewDefinition(
 
 function shouldPreserveViewRootPath(views: ViewFile[], editingRootPath?: string): boolean {
   return Boolean(editingRootPath) || views.some((view) => view.rootPath)
+}
+
+async function readVaultText(path: string, vaultPath: string): Promise<string | null> {
+  try {
+    const request = { path, vaultPath }
+    return isTauri()
+      ? await invoke<string>('get_note_content', request)
+      : await mockInvoke<string>('get_note_content', request)
+  } catch {
+    return null
+  }
+}
+
+async function createVaultText(path: string, vaultPath: string, content: string): Promise<void> {
+  const request = { path, vaultPath, content }
+  if (isTauri()) {
+    await invoke<void>('create_note_content', request)
+    return
+  }
+  await mockInvoke('save_note_content', request)
 }
 
 /** Wraps useEditorSave to also keep outgoingLinks in sync on save and on content change. */
@@ -412,6 +441,7 @@ function App() {
     buildVaultAiGuidanceRefreshKey(vault.entries),
   )
   const { config: vaultConfig, updateConfig } = useVaultConfig(resolvedPath)
+  const obsidianIcons = useVaultIcons(resolvedPath)
   const explicitOrganizationEnabled = isExplicitOrganizationEnabled(vaultConfig.inbox?.explicitOrganization)
   const effectiveSelection = sanitizeSelectionForOrganization(selection, vaultConfig.inbox?.explicitOrganization)
   const isChangesSelection = effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'changes'
@@ -612,6 +642,40 @@ function App() {
     closeAllTabs,
     openTabWithContent,
   } = notes
+  const handleOpenDailyNote = useCallback(async () => {
+    if (!resolvedPath) return
+    const today = new Date()
+    const configPath = dailyNoteAbsolutePath(resolvedPath, '.obsidian/daily-notes.json')
+    const config = parseDailyNotesConfig(await readVaultText(configPath, resolvedPath))
+    const relativePath = dailyNoteRelativePath(config, today)
+    const targetPath = dailyNoteAbsolutePath(resolvedPath, relativePath)
+    const existingEntry = findDailyNoteEntry(visibleEntries, targetPath)
+
+    if (existingEntry) {
+      await notes.handleSelectNote(existingEntry)
+      return
+    }
+
+    await createVaultText(targetPath, resolvedPath, buildDailyNoteContent(today))
+    markRecentVaultWrite(targetPath)
+    const freshEntries = await vault.reloadVault()
+    const createdEntry = findDailyNoteEntry(freshEntries, targetPath)
+      ?? buildDailyNoteEntry(targetPath, today)
+    if (!findDailyNoteEntry(freshEntries, targetPath)) {
+      vault.addEntry(createdEntry)
+    }
+    await notes.handleSelectNote(createdEntry)
+  }, [markRecentVaultWrite, notes, resolvedPath, vault, visibleEntries])
+
+  const handleSetPathIcon = useCallback((relativePath: string, emoji: string | null) => {
+    const current = vaultConfig.path_icons ?? {}
+    if (emoji === null) {
+      const { [relativePath]: _removed, ...remaining } = current
+      updateConfig('path_icons', Object.keys(remaining).length > 0 ? remaining : null)
+      return
+    }
+    updateConfig('path_icons', { ...current, [relativePath]: emoji })
+  }, [updateConfig, vaultConfig.path_icons])
   useNoteWindowLifecycle({
     activeTabPath: notes.activeTabPath,
     handleSelectNote,
@@ -863,15 +927,16 @@ function App() {
     })
   }, [updateConfig, vaultConfig.inbox])
 
-  const handleCreateFolder = useCallback(async (name: string) => {
+  const handleCreateFolder = useCallback(async (name: string, parentPath?: string) => {
+    const folderName = parentPath ? `${parentPath.replace(/\/+$/g, '')}/${name}` : name
     try {
       if (isTauri()) {
-        await invoke('create_vault_folder', { vaultPath: resolvedPath, folderName: name })
+        await invoke('create_vault_folder', { vaultPath: resolvedPath, folderName })
       } else {
-        await mockInvoke('create_vault_folder', { vaultPath: resolvedPath, folderName: name })
+        await mockInvoke('create_vault_folder', { vaultPath: resolvedPath, folderName })
       }
       await vault.reloadFolders()
-      setToastMessage(`Created folder "${name}"`)
+      setToastMessage(`Created folder "${folderName}"`)
       return true
     } catch (e) {
       setToastMessage(`Failed to create folder: ${e}`)
@@ -1520,6 +1585,7 @@ function App() {
     onReplaceInNote: activeDeletedFile ? undefined : replaceInNoteCommand,
     onPastePlainText: pastePlainTextCommand,
     onCreateNote: notes.handleCreateNoteImmediate,
+    onOpenDailyNote: handleOpenDailyNote,
     onCreateNoteOfType: notes.handleCreateNoteImmediate,
     onSave: appSave.handleSave,
     onOpenSettings: handleOpenSettings,
@@ -1666,7 +1732,7 @@ function App() {
           {sidebarVisible && (
             <>
               <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-                <Sidebar entries={visibleEntries} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onDeleteType={handleDeleteType} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} onUpdateViewDefinition={handleSidebarUpdateViewDefinition} onReorderViews={canReorderSavedViews ? viewOrdering.onReorderViews : undefined} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} allNotesFileVisibility={allNotesFileVisibility} pluralizeTypeLabels={settings.sidebar_type_pluralization_enabled ?? true} onCollapse={handleCollapseSidebar} onGoBack={handleGoBack} onGoForward={handleGoForward} canGoBack={canGoBack} canGoForward={canGoForward} locale={appLocale} loading={isVaultContentLoading} vaultRootPath={resolvedPath} />
+                <Sidebar entries={visibleEntries} activeNotePath={notes.activeTabPath ?? undefined} vaultPath={resolvedPath} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onDeleteType={handleDeleteType} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} onUpdateViewDefinition={handleSidebarUpdateViewDefinition} onReorderViews={canReorderSavedViews ? viewOrdering.onReorderViews : undefined} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} allNotesFileVisibility={allNotesFileVisibility} pluralizeTypeLabels={settings.sidebar_type_pluralization_enabled ?? true} onCollapse={handleCollapseSidebar} onGoBack={handleGoBack} onGoForward={handleGoForward} canGoBack={canGoBack} canGoForward={canGoForward} locale={appLocale} loading={isVaultContentLoading} vaultRootPath={resolvedPath} icons={{ ...obsidianIcons, ...(vaultConfig.path_icons ?? {}) }} showOriginalFilenames={vaultConfig.show_original_filenames === true} onSetPathIcon={handleSetPathIcon} />
               </div>
               <ResizeHandle onResize={layout.handleSidebarResize} />
             </>

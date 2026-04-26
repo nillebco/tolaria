@@ -560,6 +560,25 @@ describe('SettingsPanel', () => {
     })
   })
 
+  it('saves the original filename display preference', () => {
+    const onSaveDisplayOriginalFilenames = vi.fn()
+    render(
+      <SettingsPanel
+        open={true}
+        settings={emptySettings}
+        onSave={onSave}
+        showOriginalFilenames={false}
+        onSaveDisplayOriginalFilenames={onSaveDisplayOriginalFilenames}
+        onClose={onClose}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Show original filenames in file tree' }))
+    fireEvent.click(screen.getByTestId('settings-save'))
+
+    expect(onSaveDisplayOriginalFilenames).toHaveBeenCalledWith(true)
+  })
+
   it('preserves a saved dark color mode until changed', () => {
     render(
       <SettingsPanel

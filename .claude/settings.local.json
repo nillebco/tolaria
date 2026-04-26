@@ -5,7 +5,10 @@
       "Read(*)",
       "Bash(cat*)",
       "Bash(ls*)",
-      "Write(*)"
+      "Write(*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(pnpm --filter tolaria exec tsc --noEmit)",
+      "Bash(pnpm build *)"
     ]
   }
 }

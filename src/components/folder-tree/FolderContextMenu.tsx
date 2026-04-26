@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { ClipboardText, FolderOpen, PencilSimple, Trash } from '@phosphor-icons/react'
+import { ClipboardText, FolderOpen, PencilSimple, Plus, Smiley, Trash, X } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { translate, type AppLocale } from '../../lib/i18n'
 
@@ -13,9 +13,13 @@ interface FolderContextMenuProps {
   menu: FolderContextMenuState | null
   menuRef: RefObject<HTMLDivElement | null>
   onDelete?: (folderPath: string) => void
+  onCreateChild?: (folderPath: string) => void
   onReveal?: (folderPath: string) => void
   onCopyPath?: (folderPath: string) => void
   onRename: (folderPath: string) => void
+  onSetIcon?: (folderPath: string, x: number, y: number) => void
+  onRemoveIcon?: (folderPath: string) => void
+  hasIcon?: boolean
   locale?: AppLocale
 }
 
@@ -23,9 +27,13 @@ export function FolderContextMenu({
   menu,
   menuRef,
   onDelete,
+  onCreateChild,
   onReveal,
   onCopyPath,
   onRename,
+  onSetIcon,
+  onRemoveIcon,
+  hasIcon = false,
   locale = 'en',
 }: FolderContextMenuProps) {
   if (!menu) return null
@@ -60,6 +68,39 @@ export function FolderContextMenu({
         >
           <ClipboardText size={14} />
           {translate(locale, 'sidebar.action.copyFolderPathMenu')}
+        </Button>
+      )}
+      {canMutateFolder && (
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-auto w-full justify-start gap-2 px-2 py-1.5 text-sm"
+          onClick={() => onCreateChild?.(menu.path)}
+        >
+          <Plus size={14} />
+          New folder inside
+        </Button>
+      )}
+      {onSetIcon && (
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-auto w-full justify-start gap-2 px-2 py-1.5 text-sm"
+          onClick={() => onSetIcon(menu.path, menu.x, menu.y)}
+        >
+          <Smiley size={14} />
+          Set icon
+        </Button>
+      )}
+      {hasIcon && onRemoveIcon && (
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-auto w-full justify-start gap-2 px-2 py-1.5 text-sm"
+          onClick={() => onRemoveIcon(menu.path)}
+        >
+          <X size={14} />
+          Remove icon
         </Button>
       )}
       {canMutateFolder && (

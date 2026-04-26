@@ -484,9 +484,13 @@ describe('App', () => {
     localStorage.setItem(CLAUDE_CODE_ONBOARDING_DISMISSED_STORAGE_NAME, '1')
   })
 
-  it('renders the four-panel layout', async () => {
+  it('renders the app shell with sidebar and editor', async () => {
     render(<App />)
-    expect(await screen.findByText('All Notes', {}, { timeout: 5000 })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(document.querySelector('.app-shell')).toBeInTheDocument()
+      expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
+      expect(document.querySelector('.app__editor')).toBeInTheDocument()
+    })
   })
 
   it('creates custom views with a portable fallback filename for symbol-only names', async () => {
@@ -616,7 +620,7 @@ describe('App', () => {
   it('registers keyboard shortcuts without error', async () => {
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByText('All Notes')).toBeInTheDocument()
+      expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
     })
 
     // Cmd+S with no pending changes shows "Nothing to save"
@@ -1073,12 +1077,11 @@ describe('App', () => {
     promptSpy.mockRestore()
   })
 
-  it('renders sidebar with correct default selection (All Notes)', async () => {
+  it('renders sidebar with the file tree', async () => {
     render(<App />)
     await waitFor(() => {
-      // "All Notes" should be rendered as the selected nav item
-      expect(screen.getByText('All Notes')).toBeInTheDocument()
-      expect(screen.getByText('Archive')).toBeInTheDocument()
+      expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
+      expect(screen.getByText('FILES')).toBeInTheDocument()
     })
   })
 

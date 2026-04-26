@@ -203,6 +203,8 @@ export interface VaultConfig {
   property_display_modes: Record<string, string> | null
   inbox?: InboxConfig | null
   allNotes?: AllNotesConfig | null
+  path_icons?: Record<string, string> | null
+  show_original_filenames?: boolean | null
 }
 
 export interface PulseFile {

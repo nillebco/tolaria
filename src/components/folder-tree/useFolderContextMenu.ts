@@ -4,12 +4,14 @@ import type { FolderFileActions } from '../../hooks/useFileActions'
 import { useSidebarContextMenu } from '../sidebar/sidebarHooks'
 
 interface UseFolderContextMenuInput {
+  onCreateFolderInside?: (folderPath: string) => void
   onDeleteFolder?: (folderPath: string) => void
   folderFileActions?: FolderFileActions
   onStartRenameFolder?: (folderPath: string) => void
 }
 
 export function useFolderContextMenu({
+  onCreateFolderInside,
   onDeleteFolder,
   folderFileActions,
   onStartRenameFolder,
@@ -35,6 +37,11 @@ export function useFolderContextMenu({
     onDeleteFolder?.(folderPath)
   }, [closeContextMenu, onDeleteFolder])
 
+  const handleCreateChildFromMenu = useCallback((folderPath: string) => {
+    closeContextMenu()
+    onCreateFolderInside?.(folderPath)
+  }, [closeContextMenu, onCreateFolderInside])
+
   const handleRevealFromMenu = useCallback((folderPath: string) => {
     closeContextMenu()
     folderFileActions?.revealFolder(folderPath)
@@ -54,6 +61,7 @@ export function useFolderContextMenu({
     closeContextMenu,
     contextMenu: menu,
     handleCopyPathFromMenu,
+    handleCreateChildFromMenu,
     handleDeleteFromMenu,
     handleOpenMenu,
     handleRevealFromMenu,

@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { FolderNode } from '../../types'
 import { useFolderRowInteractions } from './useFolderRowInteractions'
+import { isIconUrl } from '../../hooks/useVaultIcons'
 
 interface FolderItemRowProps {
   contentInset: number
   depthIndent: number
   isExpanded: boolean
   isSelected: boolean
+  icon?: string
   node: FolderNode
   onOpenMenu: (node: FolderNode, event: ReactMouseEvent<HTMLDivElement>) => void
   onSelect: () => void
@@ -26,6 +28,7 @@ export function FolderItemRow({
   depthIndent,
   isExpanded,
   isSelected,
+  icon,
   node,
   onOpenMenu,
   onSelect,
@@ -62,6 +65,7 @@ export function FolderItemRow({
       <FolderSelectButton
         contentInset={contentInset}
         hasChildren={hasChildren}
+        icon={icon}
         isExpanded={isExpanded}
         isSelected={isSelected}
         node={node}
@@ -75,6 +79,7 @@ export function FolderItemRow({
 function FolderSelectButton({
   contentInset,
   hasChildren,
+  icon,
   isExpanded,
   isSelected,
   node,
@@ -83,6 +88,7 @@ function FolderSelectButton({
 }: {
   contentInset: number
   hasChildren: boolean
+  icon?: string
   isExpanded: boolean
   isSelected: boolean
   node: FolderNode
@@ -109,7 +115,11 @@ function FolderSelectButton({
       onDoubleClick={onDoubleClick}
       data-testid={`folder-row:${node.path}`}
     >
-      {isSelected || isExpanded ? (
+      {icon ? (
+        isIconUrl(icon)
+          ? <img src={icon} className="size-[17px] shrink-0 object-contain" alt="" />
+          : <span className="size-[17px] shrink-0 text-center text-sm leading-none">{icon}</span>
+      ) : isSelected || isExpanded ? (
         <FolderOpen size={17} weight="fill" className="size-[17px] shrink-0" />
       ) : (
         <Folder size={17} className="size-[17px] shrink-0" />

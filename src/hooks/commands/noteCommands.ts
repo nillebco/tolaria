@@ -9,6 +9,7 @@ interface NoteCommandsConfig {
   isArchived: boolean
   activeNoteHasIcon?: boolean
   onCreateNote: () => void
+  onOpenDailyNote?: () => void
   onCreateType?: () => void
   onSave: () => void
   onFindInNote?: () => void
@@ -72,6 +73,14 @@ function buildCoreNoteCommands(config: NoteCommandsConfig): CommandAction[] {
       keywords: ['new', 'create', 'add'],
       enabled: true,
       execute: config.onCreateNote,
+    }),
+    createNoteCommand({
+      id: 'open-daily-note',
+      label: 'Open Daily Note',
+      shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.fileOpenDailyNote),
+      keywords: ['daily', 'today', 'journal', 'note', 'open'],
+      enabled: !!config.onOpenDailyNote,
+      execute: () => config.onOpenDailyNote?.(),
     }),
     createNoteCommand({
       id: 'create-type',

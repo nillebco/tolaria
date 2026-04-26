@@ -161,6 +161,24 @@ describe('useCommandRegistry', () => {
     expect(cmd!.label).toBe('Set Note Icon')
   })
 
+  it('includes open-daily-note command in Note group', () => {
+    const config = makeConfig({ onOpenDailyNote: vi.fn() })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'open-daily-note')
+    expect(cmd).toBeDefined()
+    expect(cmd!.group).toBe('Note')
+    expect(cmd!.label).toBe('Open Daily Note')
+    expect(cmd!.shortcut).toBe(formatShortcutDisplay({ display: '⌘⇧D' }))
+  })
+
+  it('open-daily-note executes onOpenDailyNote callback', () => {
+    const onOpenDailyNote = vi.fn()
+    const config = makeConfig({ onOpenDailyNote })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    findCommand(result.current, 'open-daily-note')!.execute()
+    expect(onOpenDailyNote).toHaveBeenCalled()
+  })
+
   it('set-note-icon is enabled when active note and callback exist', () => {
     const config = makeConfig({ onSetNoteIcon: vi.fn() })
     const { result } = renderHook(() => useCommandRegistry(config))
@@ -580,10 +598,10 @@ describe('useCommandRegistry', () => {
     expect(onDeleteFolder).toHaveBeenCalledTimes(1)
   })
 
-  it('omits the removed daily-note command', () => {
+  it('disables open-daily-note when no handler is provided', () => {
     const config = makeConfig()
     const { result } = renderHook(() => useCommandRegistry(config))
-    expect(findCommand(result.current, 'open-daily-note')).toBeUndefined()
+    expect(findCommand(result.current, 'open-daily-note')!.enabled).toBe(false)
   })
 
   it('includes Contribute in the Settings group when available', () => {

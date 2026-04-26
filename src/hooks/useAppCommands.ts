@@ -29,6 +29,7 @@ interface AppCommandsConfig {
   onReplaceInNote?: () => void
   onPastePlainText: () => void
   onCreateNote: () => void
+  onOpenDailyNote?: () => void
   onCreateNoteOfType: (type: string) => void
   onSave: () => void
   onOpenSettings: () => void
@@ -151,6 +152,7 @@ type CommandRegistryCoreActions = Pick<
   | 'modifiedCount'
   | 'onQuickOpen'
   | 'onCreateNote'
+  | 'onOpenDailyNote'
   | 'onCreateNoteOfType'
   | 'onSave'
   | 'onFindInNote'
@@ -258,6 +260,7 @@ function createKeyboardActions(
     onReplaceInNote: config.onReplaceInNote,
     onPastePlainText: config.onPastePlainText,
     onCreateNote: config.onCreateNote,
+    onOpenDailyNote: config.onOpenDailyNote,
     onSave: config.onSave,
     onOpenSettings: config.onOpenSettings,
     onDeleteNote: config.onDeleteNote,
@@ -440,6 +443,7 @@ function createCommandRegistryCoreConfig(
     modifiedCount: config.modifiedCount,
     onQuickOpen: config.onQuickOpen,
     onCreateNote: config.onCreateNote,
+    onOpenDailyNote: config.onOpenDailyNote,
     onCreateNoteOfType: config.onCreateNoteOfType,
     onSave: config.onSave,
     onOpenSettings: config.onOpenSettings,

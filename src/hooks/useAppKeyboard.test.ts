@@ -39,6 +39,7 @@ function makeActions() {
     onCommandPalette: vi.fn(),
     onSearch: vi.fn(),
     onCreateNote: vi.fn(),
+    onOpenDailyNote: vi.fn(),
     onSave: vi.fn(),
     onOpenSettings: vi.fn(),
     onDeleteNote: vi.fn(),
@@ -128,6 +129,13 @@ describe('useAppKeyboard', () => {
     renderHook(() => useAppKeyboard(actions))
     fireKey('n', { metaKey: true })
     expect(actions.onCreateNote).toHaveBeenCalled()
+  })
+
+  it('Cmd+Shift+D opens daily note', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('d', { metaKey: true, shiftKey: true, code: 'KeyD' })
+    expect(actions.onOpenDailyNote).toHaveBeenCalled()
   })
 
   it('Cmd+\\ still works in Tauri mode', () => {

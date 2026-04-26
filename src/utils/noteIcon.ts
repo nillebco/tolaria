@@ -12,10 +12,14 @@ export type ResolvedNoteIcon =
 function isHttpUrl(value: string): boolean {
   try {
     const url = new URL(value)
-    return url.protocol === 'http:' || url.protocol === 'https:'
+    return url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'asset:'
   } catch {
     return false
   }
+}
+
+function isImageDataUrl(value: string): boolean {
+  return value.startsWith('data:image/')
 }
 
 export function hasNoteIconValue(icon: string | null | undefined): icon is string {
@@ -27,7 +31,7 @@ export function resolveNoteIcon(icon: string | null | undefined): ResolvedNoteIc
 
   const trimmed = icon.trim()
   if (isEmoji(trimmed)) return { kind: 'emoji', value: trimmed }
-  if (isHttpUrl(trimmed)) return { kind: 'image', src: trimmed }
+  if (isHttpUrl(trimmed) || isImageDataUrl(trimmed)) return { kind: 'image', src: trimmed }
 
   const Icon = findIcon(trimmed)
   if (Icon) return { kind: 'phosphor', Icon }
