@@ -1666,6 +1666,8 @@ function App() {
     canRestoreDeletedNote: !!activeDeletedFile,
     onNextTab: notes.nextTab,
     onPrevTab: notes.prevTab,
+    onCloseAllTabs: notes.closeAllTabs,
+    onCloseOtherTabs: notes.closeOtherTabs,
     hasMultipleTabs: notes.tabs.length > 1,
   })
 

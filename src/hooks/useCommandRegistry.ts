@@ -124,6 +124,8 @@ interface CommandRegistryConfig {
   vaultCount?: number
   onNextTab?: () => void
   onPrevTab?: () => void
+  onCloseAllTabs?: () => void
+  onCloseOtherTabs?: () => void
   hasMultipleTabs?: boolean
   selection?: SidebarSelection
   noteListFilter?: NoteListFilter
@@ -145,7 +147,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates, onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
-    onNextTab, onPrevTab, hasMultipleTabs,
+    onNextTab, onPrevTab, onCloseAllTabs, onCloseOtherTabs, hasMultipleTabs,
     mcpStatus, onInstallMcp, aiFeaturesEnabled,
     aiAgentsStatus, vaultAiGuidanceStatus,
     onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
@@ -192,11 +194,13 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     canGoForward,
     onNextTab,
     onPrevTab,
+    onCloseAllTabs,
+    onCloseOtherTabs,
     hasMultipleTabs,
   }), [
     onQuickOpen, onSelect, selection, onCreateFolder, onRenameFolder, onDeleteFolder,
     onRevealSelectedFolder, onCopySelectedFolderPath, showInbox,
-    onGoBack, onGoForward, canGoBack, canGoForward, onNextTab, onPrevTab, hasMultipleTabs,
+    onGoBack, onGoForward, canGoBack, canGoForward, onNextTab, onPrevTab, onCloseAllTabs, onCloseOtherTabs, hasMultipleTabs,
   ])
 
   const noteCommands = useMemo(() => buildNoteCommands({

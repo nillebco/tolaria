@@ -17,6 +17,8 @@ interface NavigationCommandsConfig {
   canGoForward?: boolean
   onNextTab?: () => void
   onPrevTab?: () => void
+  onCloseAllTabs?: () => void
+  onCloseOtherTabs?: () => void
   hasMultipleTabs?: boolean
 }
 
@@ -91,6 +93,8 @@ function buildBaseCommands(config: NavigationCommandsConfig): CommandAction[] {
     canGoForward,
     onNextTab,
     onPrevTab,
+    onCloseAllTabs,
+    onCloseOtherTabs,
     hasMultipleTabs,
   } = config
 
@@ -104,6 +108,8 @@ function buildBaseCommands(config: NavigationCommandsConfig): CommandAction[] {
     { id: 'go-forward', label: 'Go Forward', group: 'Navigation', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewGoForward), keywords: ['next', 'history', 'forward'], enabled: !!canGoForward, execute: () => onGoForward?.() },
     { id: 'tab-next', label: 'Next Tab', group: 'Navigation', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.tabNextTab), keywords: ['tab', 'cycle', 'switch', 'next'], enabled: !!hasMultipleTabs && !!onNextTab, execute: () => onNextTab?.() },
     { id: 'tab-prev', label: 'Previous Tab', group: 'Navigation', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.tabPrevTab), keywords: ['tab', 'cycle', 'switch', 'previous', 'back'], enabled: !!hasMultipleTabs && !!onPrevTab, execute: () => onPrevTab?.() },
+    { id: 'tab-close-all', label: 'Close All Tabs', group: 'Navigation', keywords: ['tab', 'close', 'all'], enabled: !!onCloseAllTabs, execute: () => onCloseAllTabs?.() },
+    { id: 'tab-close-other', label: 'Close Other Tabs', group: 'Navigation', keywords: ['tab', 'close', 'other'], enabled: !!hasMultipleTabs && !!onCloseOtherTabs, execute: () => onCloseOtherTabs?.() },
   ]
 }
 

@@ -250,6 +250,16 @@
         "accelerator": "Ctrl+Shift+Tab"
       }
     },
+    "tabCloseAllTabs": {
+      "id": "tab-close-all-tabs",
+      "route": { "kind": "handler", "handler": "onCloseAllTabs" },
+      "menuOwned": true
+    },
+    "tabCloseOtherTabs": {
+      "id": "tab-close-other-tabs",
+      "route": { "kind": "handler", "handler": "onCloseOtherTabs" },
+      "menuOwned": true
+    },
     "viewZoomIn": {
       "id": "view-zoom-in",
       "route": { "kind": "handler", "handler": "onZoomIn" },
@@ -524,6 +534,9 @@
         { "kind": "command", "command": "noteRestoreDeleted", "label": "Restore Deleted Note", "enabled": false },
         { "kind": "separator" },
         { "kind": "command", "command": "noteOpenInNewWindow", "label": "Open in New Window" },
+        { "kind": "separator" },
+        { "kind": "command", "command": "tabCloseOtherTabs", "label": "Close Other Tabs" },
+        { "kind": "command", "command": "tabCloseAllTabs", "label": "Close All Tabs" },
         { "kind": "separator" },
         { "kind": "command", "command": "editToggleRawEditor", "label": "Toggle Raw Editor" },
         { "kind": "command", "command": "viewToggleTableOfContents", "label": "Toggle Table of Contents" },

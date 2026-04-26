@@ -37,6 +37,8 @@ export type KeyboardActions = Pick<
   | 'onOpenInNewWindow'
   | 'onNextTab'
   | 'onPrevTab'
+  | 'onCloseAllTabs'
+  | 'onCloseOtherTabs'
   | 'activeTabPathRef'
   | 'multiSelectionCommandRef'
 >

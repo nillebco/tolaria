@@ -71,6 +71,8 @@ export interface AppCommandHandlers {
   onRestoreDeletedNote?: () => void
   onNextTab?: () => void
   onPrevTab?: () => void
+  onCloseAllTabs?: () => void
+  onCloseOtherTabs?: () => void
   activeTabPathRef: MutableRefObject<string | null>
   multiSelectionCommandRef?: MutableRefObject<NoteListMultiSelectionCommands | null>
 }
@@ -114,6 +116,8 @@ type SimpleHandlerKey = keyof Pick<
   | 'onRestoreDeletedNote'
   | 'onNextTab'
   | 'onPrevTab'
+  | 'onCloseAllTabs'
+  | 'onCloseOtherTabs'
 >
 
 type ActiveTabHandlerKey = keyof Pick<
@@ -162,6 +166,8 @@ const SIMPLE_HANDLER_EXECUTORS: readonly [SimpleHandlerKey, SimpleHandlerExecuto
   ['onRestoreDeletedNote', (handlers) => handlers.onRestoreDeletedNote?.()],
   ['onNextTab', (handlers) => handlers.onNextTab?.()],
   ['onPrevTab', (handlers) => handlers.onPrevTab?.()],
+  ['onCloseAllTabs', (handlers) => handlers.onCloseAllTabs?.()],
+  ['onCloseOtherTabs', (handlers) => handlers.onCloseOtherTabs?.()],
 ]
 
 const ACTIVE_TAB_HANDLER_EXECUTORS: readonly [ActiveTabHandlerKey, ActiveTabHandlerExecutor][] = [

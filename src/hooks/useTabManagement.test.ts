@@ -809,6 +809,40 @@ describe('useTabManagement (single-note model)', () => {
     })
   })
 
+  describe('closeOtherTabs', () => {
+    it('keeps the active tab and closes the rest', async () => {
+      const { result } = renderHook(() => useTabManagement())
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+      await selectNote(result, { path: '/vault/b.md', title: 'B' })
+      await selectNote(result, { path: '/vault/c.md', title: 'C' })
+
+      act(() => {
+        result.current.closeOtherTabs()
+      })
+
+      expect(result.current.tabs.map((tab) => tab.entry.path)).toEqual(['/vault/c.md'])
+      expect(result.current.activeTabPath).toBe('/vault/c.md')
+    })
+
+    it('persists the active tab as the remaining session', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      const { result } = renderHook(() => useTabManagement({ sessionKey }))
+
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+      await selectNote(result, { path: '/vault/b.md', title: 'B' })
+
+      act(() => {
+        result.current.closeOtherTabs()
+      })
+
+      expect(JSON.parse(localStorage.getItem(sessionKey) ?? '{}')).toEqual({
+        version: 1,
+        openPaths: ['/vault/b.md'],
+        activePath: '/vault/b.md',
+      })
+    })
+  })
+
   describe('content prefetch cache', () => {
     it('prefetch validates cached content against disk before reuse', async () => {
       const mockInvoke = await prefetchResolvedContent('/vault/note/pre.md', '# Prefetched content')

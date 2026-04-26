@@ -68,6 +68,8 @@ type SimpleHandlerKey =
   | 'onRestoreDeletedNote'
   | 'onNextTab'
   | 'onPrevTab'
+  | 'onCloseAllTabs'
+  | 'onCloseOtherTabs'
 
 type ActiveTabHandlerKey =
   | 'onToggleOrganized'

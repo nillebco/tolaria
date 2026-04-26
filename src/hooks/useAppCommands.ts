@@ -121,6 +121,8 @@ interface AppCommandsConfig {
   onToggleOrganized?: (path: string) => void
   onNextTab?: () => void
   onPrevTab?: () => void
+  onCloseAllTabs?: () => void
+  onCloseOtherTabs?: () => void
   hasMultipleTabs?: boolean
   onCustomizeNoteListColumns?: () => void
   canCustomizeNoteListColumns?: boolean
@@ -150,6 +152,8 @@ type CommandRegistrySelectionState = Pick<
   | 'canGoForward'
   | 'onNextTab'
   | 'onPrevTab'
+  | 'onCloseAllTabs'
+  | 'onCloseOtherTabs'
   | 'hasMultipleTabs'
   | 'selection'
 >
@@ -287,6 +291,8 @@ function createKeyboardActions(
     onOpenInNewWindow: config.onOpenInNewWindow,
     onNextTab: config.onNextTab,
     onPrevTab: config.onPrevTab,
+    onCloseAllTabs: config.onCloseAllTabs,
+    onCloseOtherTabs: config.onCloseOtherTabs,
     activeTabPathRef: config.activeTabPathRef,
     multiSelectionCommandRef: config.multiSelectionCommandRef,
   }
@@ -382,6 +388,8 @@ function createMenuEventVaultHandlers(
   | 'onRepairVault'
   | 'onOpenInNewWindow'
   | 'onRestoreDeletedNote'
+  | 'onCloseAllTabs'
+  | 'onCloseOtherTabs'
 > {
   return {
     onOpenVault: config.onOpenVault,
@@ -397,6 +405,8 @@ function createMenuEventVaultHandlers(
     onRepairVault: config.onRepairVault,
     onOpenInNewWindow: config.onOpenInNewWindow,
     onRestoreDeletedNote: config.onRestoreDeletedNote,
+    onCloseAllTabs: config.onCloseAllTabs,
+    onCloseOtherTabs: config.onCloseOtherTabs,
   }
 }
 
@@ -443,6 +453,8 @@ function createCommandRegistrySelectionConfig(
     canGoForward: config.canGoForward,
     onNextTab: config.onNextTab,
     onPrevTab: config.onPrevTab,
+    onCloseAllTabs: config.onCloseAllTabs,
+    onCloseOtherTabs: config.onCloseOtherTabs,
     hasMultipleTabs: config.hasMultipleTabs,
     selection: config.selection,
   }

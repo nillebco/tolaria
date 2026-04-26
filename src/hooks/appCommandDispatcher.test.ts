@@ -66,6 +66,8 @@ function makeHandlers(): AppCommandHandlers {
     onReloadVault: vi.fn(),
     onRepairVault: vi.fn(),
     onRestoreDeletedNote: vi.fn(),
+    onCloseAllTabs: vi.fn(),
+    onCloseOtherTabs: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' },
     multiSelectionCommandRef: { current: null },
   }
@@ -296,6 +298,16 @@ describe('appCommandDispatcher', () => {
     const handlers = makeHandlers()
     expect(dispatchAppCommand(APP_COMMAND_IDS.goChanges, handlers)).toBe(true)
     expect(handlers.onSelectFilter).toHaveBeenCalledWith('changes')
+  })
+
+  it('dispatches tab closing commands through the shared command path', () => {
+    const handlers = makeHandlers()
+
+    expect(dispatchAppCommand(APP_COMMAND_IDS.tabCloseAllTabs, handlers)).toBe(true)
+    expect(dispatchAppCommand(APP_COMMAND_IDS.tabCloseOtherTabs, handlers)).toBe(true)
+
+    expect(handlers.onCloseAllTabs).toHaveBeenCalledOnce()
+    expect(handlers.onCloseOtherTabs).toHaveBeenCalledOnce()
   })
 
   it('suppresses a native-menu echo after renderer keyboard dispatch', () => {
