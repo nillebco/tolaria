@@ -122,6 +122,12 @@ Note opening uses bounded in-memory fast paths for raw content and parsed editor
 
 The note list opportunistically preloads visible and adjacent markdown/text entries after a short delay. When a large warmed Markdown note resolves, `useEditorTabSwap` may parse it into a bounded parsed-block cache only after foreground editor work has been idle and the rich editor is mounted. Parsed blocks are keyed by vault, path, and exact source content; every async swap carries a generation/source-content token so stale conversion results cannot overwrite newer file content or dirty editor state. The editor never renders a preview surface that later morphs into BlockNote. See [ADR-0105](./adr/0105-editor-correctness-and-responsiveness-contract.md).
 
+#### External filesystem changes
+
+The desktop backend keeps one OS-native watcher alive for the active vault through the `start_vault_watcher` Tauri command and drops it through `stop_vault_watcher` when the active vault changes. The watcher uses the platform-recommended `notify` backend (FSEvents / inotify / ReadDirectoryChanges), debounces bursty file operations, filters out app-private churn such as `.git` and rename transaction directories, and emits `vault://changed` with the active vault root plus relative changed paths.
+
+The React shell listens for that event only in Tauri mode. Events whose vault path does not match the current resolved vault are ignored, and matching events refresh vault-derived state only: entries, folders, views, and git status can update, but currently open editor tabs are not replaced or closed. Pull and agent refreshes still use the stronger active-note reconciliation path because those flows are explicit user/agent actions rather than background filesystem noise.
+
 ## Tech Stack
 
 | Layer | Technology | Version |

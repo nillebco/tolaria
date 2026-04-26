@@ -93,11 +93,20 @@ export function useVaultBridge({
     void refreshAgentChanges([])
   }, [refreshAgentChanges])
 
+  const handleExternalVaultChanged = useCallback(() => {
+    void Promise.all([
+      reloadVault(),
+      Promise.resolve(reloadFolders()),
+      Promise.resolve(reloadViews()),
+    ])
+  }, [reloadFolders, reloadVault, reloadViews])
+
   return {
     openNoteByPath,
     handlePulseOpenNote,
     handleAgentFileCreated: reloadAndOpen,
     handleAgentFileModified,
     handleAgentVaultChanged,
+    handleExternalVaultChanged,
   }
 }

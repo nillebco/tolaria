@@ -167,4 +167,16 @@ describe('useVaultBridge', () => {
     expect(closeAllTabs).not.toHaveBeenCalled()
     expect(replaceActiveTab).not.toHaveBeenCalled()
   })
+
+  it('handleExternalVaultChanged reloads derived state without touching open tabs', async () => {
+    const fresh = makeEntry('/vault/active.md', 'Fresh active')
+    reloadVault.mockResolvedValue([fresh])
+    const { result } = renderBridge([], '/vault/active.md')
+
+    await act(async () => { result.current.handleExternalVaultChanged(['active.md']) })
+
+    expectVaultDerivedStateReloaded({ reloadVault, reloadFolders, reloadViews })
+    expect(closeAllTabs).not.toHaveBeenCalled()
+    expect(replaceActiveTab).not.toHaveBeenCalled()
+  })
 })

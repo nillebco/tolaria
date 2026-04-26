@@ -229,6 +229,102 @@ mod tests {
         assert_save_view_cmd_rejects_invalid_filename("con.yml");
     }
 
+    #[test]
+    fn test_view_commands_save_list_and_delete_view() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().to_string_lossy().to_string();
+
+        save_view_cmd(
+            vault_path.clone(),
+            "inbox.yml".to_string(),
+            sample_view_definition(),
+        )
+        .expect("save view");
+
+        let views = list_views(vault_path.clone()).expect("list views");
+        assert_eq!(views.len(), 1);
+        assert_eq!(views[0].filename, "inbox.yml");
+        assert_eq!(views[0].definition.name, "Inbox");
+
+        delete_view_cmd(vault_path.clone(), "inbox.yml".to_string()).expect("delete view");
+        assert!(list_views(vault_path)
+            .expect("list after delete")
+            .is_empty());
+    }
+
+    #[test]
+    fn test_frontmatter_commands_update_delete_and_archive_inside_vault() {
+        let (dir, note) = temp_note("---\nstatus: Active\n---\n# Note\n");
+        let vault_path = vault_path_string_arg(dir.path());
+
+        let updated = update_frontmatter(
+            note.to_string_lossy().to_string(),
+            "priority".to_string(),
+            crate::frontmatter::FrontmatterValue::String("High".to_string()),
+            vault_path.clone(),
+        )
+        .expect("update frontmatter");
+        assert!(updated.contains("priority: High"));
+
+        let deleted = delete_frontmatter_property(
+            note.to_string_lossy().to_string(),
+            "status".to_string(),
+            vault_path.clone(),
+        )
+        .expect("delete frontmatter");
+        assert!(!deleted.contains("status: Active"));
+
+        assert_eq!(
+            batch_archive_notes(vec![note.to_string_lossy().to_string()], vault_path).unwrap(),
+            1
+        );
+        let archived = std::fs::read_to_string(note).unwrap();
+        assert!(archived.contains("_archived: true"));
+    }
+
+    #[test]
+    fn test_rename_commands_route_through_vault_boundary() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().to_string_lossy().to_string();
+        let note = dir.path().join("old-title.md");
+        std::fs::write(&note, "---\ntitle: Old Title\n---\n# Old Title\n").unwrap();
+
+        let renamed = rename_note_filename(
+            vault_path.clone(),
+            note.to_string_lossy().to_string(),
+            "new-title".to_string(),
+        )
+        .expect("rename note filename");
+        assert!(renamed.new_path.ends_with("new-title.md"));
+        assert!(dir.path().join("new-title.md").exists());
+
+        let folder = dir.path().join("Projects");
+        std::fs::create_dir_all(&folder).unwrap();
+        let moved = move_note_to_folder(
+            vault_path.clone(),
+            dir.path()
+                .join("new-title.md")
+                .to_string_lossy()
+                .to_string(),
+            "Projects".to_string(),
+        )
+        .expect("move note");
+        assert!(moved.new_path.ends_with("Projects/new-title.md"));
+        assert!(dir.path().join("Projects").join("new-title.md").exists());
+
+        let err = move_note_to_folder(
+            vault_path,
+            dir.path()
+                .join("Projects")
+                .join("new-title.md")
+                .to_string_lossy()
+                .to_string(),
+            "   ".to_string(),
+        )
+        .expect_err("blank folder should fail");
+        assert_eq!(err, "Folder path cannot be empty");
+    }
+
     #[tokio::test]
     async fn test_reload_vault_invalidates_cache_and_rescans() {
         let dir = tempfile::TempDir::new().unwrap();

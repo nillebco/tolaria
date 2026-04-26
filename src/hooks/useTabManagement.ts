@@ -858,6 +858,18 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     syncActiveTabPath(activeTabPathRef, setActiveTabPath, null)
   }, [])
 
+  const closeOtherTabs = useCallback(() => {
+    const activePath = activeTabPathRef.current
+    if (!activePath) return
+
+    const activeTab = tabsRef.current.find((tab) => pathsMatch(tab.entry.path, activePath))
+    if (!activeTab) return
+
+    tabsRef.current = [activeTab]
+    setTabs([activeTab])
+    syncActiveTabPath(activeTabPathRef, setActiveTabPath, activeTab.entry.path)
+  }, [])
+
   const nextTab = useCallback(() => {
     const currentTabs = tabsRef.current
     if (currentTabs.length <= 1) return
@@ -886,6 +898,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     handleReplaceActiveTab,
     closeTab,
     closeAllTabs,
+    closeOtherTabs,
     nextTab,
     prevTab,
   }

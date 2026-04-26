@@ -285,3 +285,174 @@ fn recover_rename_transaction(
     let _ = fs::remove_file(manifest_path);
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_manifest(path: &Path, transaction: &RenameTransaction) {
+        let data = serde_json::to_string(transaction).expect("serialize transaction");
+        fs::write(path, data).expect("write manifest");
+    }
+
+    #[test]
+    fn candidate_filename_adds_suffix_before_extension() {
+        assert_eq!(candidate_filename("note.md", 0), "note.md");
+        assert_eq!(candidate_filename("note.md", 1), "note-2.md");
+        assert_eq!(candidate_filename("note", 2), "note-3");
+    }
+
+    #[test]
+    fn staged_note_content_is_written_inside_workspace() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let workspace = RenameWorkspace::new(dir.path()).expect("workspace");
+
+        let staged = workspace
+            .stage_note_content("# Renamed\n")
+            .expect("stage content");
+
+        assert!(staged
+            .path()
+            .starts_with(dir.path().join(".tolaria-rename-txn")));
+        assert_eq!(
+            fs::read_to_string(staged.path()).expect("read staged"),
+            "# Renamed\n"
+        );
+    }
+
+    #[test]
+    fn rename_with_candidates_uses_next_available_filename() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let old_file = dir.path().join("old.md");
+        fs::write(&old_file, "# Old\n").expect("write old");
+        fs::write(dir.path().join("new.md"), "# Existing\n").expect("write existing");
+        let workspace = RenameWorkspace::new(dir.path()).expect("workspace");
+        let staged = workspace
+            .stage_note_content("# New\n")
+            .expect("stage content");
+        let operation = workspace.operation("old.md", &old_file);
+
+        let committed = operation
+            .rename_with_candidates(staged, "new.md", dir.path())
+            .expect("rename with suffix");
+
+        assert_eq!(committed.new_file(), dir.path().join("new-2.md"));
+        assert!(!old_file.exists());
+        assert_eq!(
+            fs::read_to_string(dir.path().join("new.md")).expect("read existing"),
+            "# Existing\n"
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join("new-2.md")).expect("read renamed"),
+            "# New\n"
+        );
+    }
+
+    #[test]
+    fn rename_exact_rolls_back_when_destination_exists() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let old_file = dir.path().join("old.md");
+        let existing_file = dir.path().join("existing.md");
+        fs::write(&old_file, "# Old\n").expect("write old");
+        fs::write(&existing_file, "# Existing\n").expect("write existing");
+        let workspace = RenameWorkspace::new(dir.path()).expect("workspace");
+        let staged = workspace
+            .stage_note_content("# New\n")
+            .expect("stage content");
+        let operation = workspace.operation("old.md", &old_file);
+
+        let err = match operation.rename_exact(staged, &existing_file) {
+            Ok(_) => panic!("destination should conflict"),
+            Err(err) => err,
+        };
+
+        assert_eq!(err, "A note with that name already exists");
+        assert_eq!(
+            fs::read_to_string(&old_file).expect("old restored"),
+            "# Old\n"
+        );
+        assert_eq!(
+            fs::read_to_string(&existing_file).expect("existing untouched"),
+            "# Existing\n"
+        );
+    }
+
+    #[test]
+    fn recover_pending_rename_transactions_restores_backup_when_paths_are_missing() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let txn_dir = transaction_dir(dir.path());
+        fs::create_dir_all(&txn_dir).expect("txn dir");
+        let old_path = dir.path().join("notes").join("old.md");
+        let new_path = dir.path().join("notes").join("new.md");
+        let backup_path = txn_dir.join("backup.bak");
+        let manifest_path = txn_dir.join("restore.json");
+        fs::write(&backup_path, "# Backup\n").expect("write backup");
+        write_manifest(
+            &manifest_path,
+            &RenameTransaction {
+                old_path: old_path.to_string_lossy().to_string(),
+                new_path: new_path.to_string_lossy().to_string(),
+                backup_path: backup_path.to_string_lossy().to_string(),
+            },
+        );
+
+        recover_pending_rename_transactions(dir.path()).expect("recover");
+
+        assert_eq!(
+            fs::read_to_string(&old_path).expect("restored old"),
+            "# Backup\n"
+        );
+        assert!(!backup_path.exists());
+        assert!(!manifest_path.exists());
+    }
+
+    #[test]
+    fn recover_pending_rename_transactions_cleans_invalid_or_completed_manifests() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let txn_dir = transaction_dir(dir.path());
+        fs::create_dir_all(&txn_dir).expect("txn dir");
+
+        let invalid_manifest = txn_dir.join("invalid.json");
+        fs::write(&invalid_manifest, "not json").expect("write invalid manifest");
+
+        let missing_backup_manifest = txn_dir.join("missing-backup.json");
+        let missing_backup = txn_dir.join("missing.bak");
+        write_manifest(
+            &missing_backup_manifest,
+            &RenameTransaction {
+                old_path: dir.path().join("old.md").to_string_lossy().to_string(),
+                new_path: dir.path().join("new.md").to_string_lossy().to_string(),
+                backup_path: missing_backup.to_string_lossy().to_string(),
+            },
+        );
+
+        let completed_manifest = txn_dir.join("completed.json");
+        let completed_backup = txn_dir.join("completed.bak");
+        let completed_new = dir.path().join("completed-new.md");
+        fs::write(&completed_backup, "# Backup\n").expect("write completed backup");
+        fs::write(&completed_new, "# New\n").expect("write completed new");
+        write_manifest(
+            &completed_manifest,
+            &RenameTransaction {
+                old_path: dir
+                    .path()
+                    .join("completed-old.md")
+                    .to_string_lossy()
+                    .to_string(),
+                new_path: completed_new.to_string_lossy().to_string(),
+                backup_path: completed_backup.to_string_lossy().to_string(),
+            },
+        );
+
+        recover_pending_rename_transactions(dir.path()).expect("recover");
+
+        assert!(!invalid_manifest.exists());
+        assert!(!missing_backup_manifest.exists());
+        assert!(!completed_manifest.exists());
+        assert!(!completed_backup.exists());
+        assert_eq!(
+            fs::read_to_string(&completed_new).expect("new remains"),
+            "# New\n"
+        );
+    }
+}
