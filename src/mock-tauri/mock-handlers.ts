@@ -393,6 +393,7 @@ function handleMoveNoteToWorkspace(args: {
 export const mockHandlers: Record<string, (args: any) => any> = {
   list_vault: () => MOCK_ENTRIES,
   list_vault_folders: () => [],
+  create_vault_folder: (args: { folderName?: string; folder_name?: string }) => args.folderName ?? args.folder_name ?? '',
   list_views: () => [],
   save_view_cmd: () => {},
   delete_view_cmd: () => {},

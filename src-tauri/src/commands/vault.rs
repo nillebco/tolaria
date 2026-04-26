@@ -199,6 +199,17 @@ mod tests {
     }
 
     #[test]
+    fn test_create_vault_folder_accepts_nested_path() {
+        let dir = tempfile::TempDir::new().unwrap();
+
+        let created = create_vault_folder(dir.path().into(), "Projects/Laputa".into())
+            .expect("expected nested folder path to be created");
+
+        assert_eq!(created, "Projects/Laputa");
+        assert!(dir.path().join("Projects").join("Laputa").is_dir());
+    }
+
+    #[test]
     fn test_create_vault_folder_rejects_windows_invalid_names() {
         let dir = tempfile::TempDir::new().unwrap();
 

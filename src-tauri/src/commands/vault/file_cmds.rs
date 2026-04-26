@@ -3,7 +3,7 @@ use crate::vault::filename_rules::validate_folder_name;
 use crate::vault::{self, FolderNode, VaultEntry};
 use base64::Engine;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use super::boundary::{
     with_boundary, with_existing_paths, with_requested_root, with_validated_path, ValidatedPathMode,
@@ -197,13 +197,41 @@ pub fn create_vault_folder(vault_path: PathBuf, folder_name: PathBuf) -> Result<
     let raw_vault_path = vault_path.to_string_lossy();
     with_boundary(Some(raw_vault_path.as_ref()), |boundary| {
         let folder_name = folder_name.to_string_lossy();
+        validate_relative_folder_path(folder_name.as_ref())?;
         let folder_path = boundary.child_path(folder_name.as_ref())?;
-        validate_folder_name(folder_name.as_ref())?;
         ensure_missing_folder(&folder_path, folder_name.as_ref())?;
         std::fs::create_dir_all(&folder_path)
             .map_err(|e| format!("Failed to create folder: {}", e))?;
         Ok(folder_name.into_owned())
     })
+}
+
+fn validate_relative_folder_path(folder_path: &str) -> Result<(), String> {
+    let path = Path::new(folder_path);
+    if path.is_absolute() {
+        return Err("Folder path must be relative to the vault root".to_string());
+    }
+
+    let mut has_segment = false;
+    for component in path.components() {
+        match component {
+            Component::Normal(segment) => {
+                has_segment = true;
+                validate_folder_name(segment.to_string_lossy().as_ref())?;
+            }
+            Component::CurDir => {}
+            Component::ParentDir => return Err(super::boundary::ACTIVE_VAULT_PATH_ERROR.to_string()),
+            Component::RootDir | Component::Prefix(_) => {
+                return Err("Folder path must be relative to the vault root".to_string())
+            }
+        }
+    }
+
+    if !has_segment {
+        return Err("Invalid folder name".to_string());
+    }
+
+    Ok(())
 }
 
 fn ensure_missing_folder(folder_path: &Path, folder_name: &str) -> Result<(), String> {

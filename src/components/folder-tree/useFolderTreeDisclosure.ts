@@ -35,7 +35,12 @@ function useExpandedFolders(selection: SidebarSelection, renamingFolderPath?: st
     })
   }, [])
 
+  const expandFolder = useCallback((path: string) => {
+    setManualExpanded((current) => ({ ...current, [path]: true }))
+  }, [])
+
   return {
+    expandFolder,
     expanded,
     toggleFolder,
   }
@@ -85,7 +90,7 @@ export function useFolderTreeDisclosure({
   renamingFolderPath,
   selection,
 }: UseFolderTreeDisclosureInput) {
-  const { expanded, toggleFolder } = useExpandedFolders(selection, renamingFolderPath)
+  const { expandFolder, expanded, toggleFolder } = useExpandedFolders(selection, renamingFolderPath)
   const {
     closeCreateForm,
     handleToggleSection,
@@ -96,6 +101,7 @@ export function useFolderTreeDisclosure({
 
   return {
     closeCreateForm,
+    expandFolder,
     expanded,
     handleToggleSection,
     isCreating,
