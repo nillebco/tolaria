@@ -1208,6 +1208,36 @@ function EditorInteractionControllers({
   )
 }
 
+function useToggleTodoShortcut(
+  editor: ReturnType<typeof useCreateBlockNote>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
+) {
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 'l') return
+      e.preventDefault()
+
+      const { block } = editor.getTextCursorPosition()
+      if (block.type === 'checkListItem') {
+        const checked = (block.props as { checked?: boolean }).checked
+        if (checked) {
+          editor.updateBlock(block, { type: 'paragraph' as const, props: {} })
+        } else {
+          editor.updateBlock(block, { type: 'checkListItem' as const, props: { checked: true } })
+        }
+      } else {
+        editor.updateBlock(block, { type: 'checkListItem' as const, props: { checked: false } })
+      }
+    }
+
+    container.addEventListener('keydown', handleKeyDown)
+    return () => container.removeEventListener('keydown', handleKeyDown)
+  }, [editor, containerRef])
+}
+
 /** Insert an image block after the current cursor position. */
 function useInsertImageCallback(editor: ReturnType<typeof useCreateBlockNote>) {
   const editorRef = useRef(editor)
@@ -1302,6 +1332,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   } = useCodeBlockCopyTarget(containerRef)
   useBlockNoteSideMenuHoverGuard(containerRef)
   useEditorLinkActivation(containerRef, onNavigateWikilink, vaultPath)
+  useToggleTodoShortcut(editor, containerRef)
 
   useEffect(() => {
     _wikilinkEntriesRef.current = entries
