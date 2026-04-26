@@ -7,6 +7,7 @@ const ALPHA_METADATA_ASSET_NAME: &str = "alpha-latest.json";
 const GITHUB_RELEASES_API_URL: &str =
     "https://api.github.com/repos/refactoringhq/tolaria/releases?per_page=100";
 const RELEASES_BASE_URL: &str = "https://refactoringhq.github.io/tolaria";
+const UPDATE_DISABLED_REPOSITORIES: &[&str] = &["nillebco/tolaria"];
 const UPDATER_HTTP_TIMEOUT: Duration = Duration::from_secs(5);
 const UPDATER_USER_AGENT: &str = concat!("Tolaria/", env!("CARGO_PKG_VERSION"));
 
@@ -224,6 +225,10 @@ pub async fn check_for_app_update<R: Runtime>(
     app_handle: AppHandle<R>,
     release_channel: Option<String>,
 ) -> Result<Option<AppUpdateMetadata>, String> {
+    if !updates_enabled_for_repository(option_env!("TOLARIA_BUILD_REPOSITORY")) {
+        return Ok(None);
+    }
+
     let channel = ReleaseChannel::from_settings_value(release_channel.as_deref());
     let updater = build_updater(&app_handle, updater_endpoint(channel).await?)?;
     let update = updater
@@ -240,6 +245,10 @@ pub async fn download_and_install_app_update<R: Runtime>(
     expected_version: String,
     on_event: Channel<AppUpdateDownloadEvent>,
 ) -> Result<(), String> {
+    if !updates_enabled_for_repository(option_env!("TOLARIA_BUILD_REPOSITORY")) {
+        return Err("App updates are disabled for this build.".to_string());
+    }
+
     let channel = ReleaseChannel::from_settings_value(release_channel.as_deref());
     let updater = build_updater(&app_handle, updater_endpoint(channel).await?)?;
     let update = updater
@@ -253,10 +262,43 @@ pub async fn download_and_install_app_update<R: Runtime>(
     install_update(update, on_event).await
 }
 
+fn updates_enabled_for_repository(repository: Option<&str>) -> bool {
+    let Some(repository) = repository.and_then(normalize_repository_identifier) else {
+        return true;
+    };
+
+    !UPDATE_DISABLED_REPOSITORIES.contains(&repository.as_str())
+}
+
+fn normalize_repository_identifier(repository: &str) -> Option<String> {
+    let mut value = repository.trim().to_ascii_lowercase();
+    if value.is_empty() {
+        return None;
+    }
+
+    if let Some(stripped) = value.strip_suffix(".git") {
+        value = stripped.to_string();
+    }
+
+    let path = match value.find("github.com") {
+        Some(index) => value[index + "github.com".len()..]
+            .trim_start_matches([':', '/'])
+            .to_string(),
+        None => value,
+    };
+
+    let mut segments = path.split('/').filter(|segment| !segment.is_empty());
+    let owner = segments.next()?;
+    let repo = segments.next()?;
+
+    Some(format!("{owner}/{repo}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        latest_alpha_release_metadata_url, AppUpdateDownloadEvent, AppUpdateMetadata, GitHubAsset,
+        latest_alpha_release_metadata_url, normalize_repository_identifier,
+        updates_enabled_for_repository, AppUpdateDownloadEvent, AppUpdateMetadata, GitHubAsset,
         GitHubRelease, ReleaseChannel,
     };
     use serde_json::json;
@@ -411,6 +453,37 @@ mod tests {
         for (event, expected) in events {
             assert_eq!(serde_json::to_value(event).unwrap(), expected);
         }
+    }
+
+    #[test]
+    fn update_checks_are_disabled_for_nillebco_fork_builds() {
+        assert!(!updates_enabled_for_repository(Some(
+            "https://github.com/nillebco/tolaria"
+        )));
+        assert!(!updates_enabled_for_repository(Some(
+            "git@github.com:nillebco/tolaria.git"
+        )));
+    }
+
+    #[test]
+    fn update_checks_stay_enabled_for_official_and_unknown_builds() {
+        assert!(updates_enabled_for_repository(Some(
+            "https://github.com/refactoringhq/tolaria"
+        )));
+        assert!(updates_enabled_for_repository(None));
+    }
+
+    #[test]
+    fn repository_identifier_normalizes_supported_remote_forms() {
+        assert_eq!(
+            normalize_repository_identifier("nillebco/tolaria"),
+            Some("nillebco/tolaria".to_string())
+        );
+        assert_eq!(
+            normalize_repository_identifier("ssh://git@github.com/nillebco/tolaria.git"),
+            Some("nillebco/tolaria".to_string())
+        );
+        assert_eq!(normalize_repository_identifier(""), None);
     }
 
     fn github_alpha_release(tag_name: &str, browser_download_url: &str) -> GitHubRelease {

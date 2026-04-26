@@ -64,6 +64,28 @@ ensure_node_tooling() {
   fi
 }
 
+ensure_rust_tooling() {
+  # Homebrew's rust package does not provide rustup components such as
+  # llvm-tools-preview. Prefer rustup's proxy binaries when available so
+  # cargo-llvm-cov can find llvm-cov and llvm-profdata in non-interactive hooks.
+  if [ -d "/opt/homebrew/opt/rustup/bin" ]; then
+    PATH="/opt/homebrew/opt/rustup/bin:$PATH"
+    export PATH
+  fi
+
+  if ! command -v cargo >/dev/null 2>&1; then
+    echo "❌ cargo must be available before pushing"
+    echo "   Install Rust with rustup, then run: rustup component add llvm-tools-preview clippy rustfmt"
+    exit 1
+  fi
+
+  if ! cargo llvm-cov --version >/dev/null 2>&1; then
+    echo "❌ cargo-llvm-cov must be available before pushing"
+    echo "   Install it with: cargo install cargo-llvm-cov"
+    exit 1
+  fi
+}
+
 require_main_push() {
   if ! git symbolic-ref -q HEAD >/dev/null 2>&1; then
     echo "❌ Pushes must happen from main. Detached HEAD is not allowed."
@@ -102,7 +124,7 @@ else
 fi
 require_main_push
 ensure_node_tooling
-ensure_cargo_tooling
+ensure_rust_tooling
 
 START_TIME=$(date +%s)
 

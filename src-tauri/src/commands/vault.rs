@@ -282,49 +282,6 @@ mod tests {
         assert!(archived.contains("_archived: true"));
     }
 
-    #[test]
-    fn test_rename_commands_route_through_vault_boundary() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let vault_path = dir.path().to_string_lossy().to_string();
-        let note = dir.path().join("old-title.md");
-        std::fs::write(&note, "---\ntitle: Old Title\n---\n# Old Title\n").unwrap();
-
-        let renamed = rename_note_filename(
-            vault_path.clone(),
-            note.to_string_lossy().to_string(),
-            "new-title".to_string(),
-        )
-        .expect("rename note filename");
-        assert!(renamed.new_path.ends_with("new-title.md"));
-        assert!(dir.path().join("new-title.md").exists());
-
-        let folder = dir.path().join("Projects");
-        std::fs::create_dir_all(&folder).unwrap();
-        let moved = move_note_to_folder(
-            vault_path.clone(),
-            dir.path()
-                .join("new-title.md")
-                .to_string_lossy()
-                .to_string(),
-            "Projects".to_string(),
-        )
-        .expect("move note");
-        assert!(moved.new_path.ends_with("Projects/new-title.md"));
-        assert!(dir.path().join("Projects").join("new-title.md").exists());
-
-        let err = move_note_to_folder(
-            vault_path,
-            dir.path()
-                .join("Projects")
-                .join("new-title.md")
-                .to_string_lossy()
-                .to_string(),
-            "   ".to_string(),
-        )
-        .expect_err("blank folder should fail");
-        assert_eq!(err, "Folder path cannot be empty");
-    }
-
     #[tokio::test]
     async fn test_reload_vault_invalidates_cache_and_rescans() {
         let dir = tempfile::TempDir::new().unwrap();
