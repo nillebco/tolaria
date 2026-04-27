@@ -94,3 +94,55 @@ pub struct VaultEntry {
 fn default_file_kind() -> String {
     "markdown".to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_file_kind_is_markdown() {
+        assert_eq!(default_file_kind(), "markdown");
+    }
+
+    #[test]
+    fn deserializes_missing_file_kind_as_markdown() {
+        let entry: VaultEntry = serde_json::from_value(serde_json::json!({
+            "path": "notes/example.md",
+            "filename": "example.md",
+            "title": "Example",
+            "aliases": [],
+            "belongsTo": [],
+            "relatedTo": [],
+            "archived": false,
+            "fileSize": 12,
+            "snippet": "Example note",
+            "relationships": {},
+            "organized": true,
+            "favorite": false,
+            "wordCount": 2,
+            "outgoingLinks": [],
+            "properties": {},
+            "listPropertiesDisplay": [],
+            "hasH1": true
+        }))
+        .unwrap();
+
+        assert_eq!(entry.file_kind, "markdown");
+    }
+
+    #[test]
+    fn serializes_file_kind_with_camel_case_field_name() {
+        let entry = VaultEntry {
+            path: "notes/example.txt".to_string(),
+            filename: "example.txt".to_string(),
+            title: "Example".to_string(),
+            file_kind: "text".to_string(),
+            ..VaultEntry::default()
+        };
+
+        let value = serde_json::to_value(entry).unwrap();
+
+        assert_eq!(value["fileKind"], "text");
+        assert!(value.get("file_kind").is_none());
+    }
+}
