@@ -28,7 +28,7 @@ function collectLinkifyWarnings(page: import('@playwright/test').Page) {
 }
 
 async function openNote(page: import('@playwright/test').Page, title: string) {
-  await page.getByTestId('note-list-container').getByText(title, { exact: true }).click()
+  await page.getByTestId('app-sidebar').getByRole('button', { name: title, exact: true }).click()
   await expect(page.getByRole('heading', { name: title, level: 1 })).toBeVisible({ timeout: 5_000 })
 }
 

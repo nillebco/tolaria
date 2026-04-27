@@ -684,7 +684,10 @@ export const Sidebar = memo(function Sidebar(props: SidebarProps) {
   const runtime = useSidebarRuntime(props)
 
   return (
-    <aside className="flex h-full flex-col overflow-hidden border-r border-[var(--sidebar-border)] bg-sidebar text-sidebar-foreground">
+    <aside
+      className="flex h-full flex-col overflow-hidden border-r border-[var(--sidebar-border)] bg-sidebar text-sidebar-foreground"
+      data-testid="app-sidebar"
+    >
       <SidebarTitleBar
         locale={locale}
         onCollapse={props.onCollapse}

@@ -15,8 +15,7 @@ test.afterEach(async () => {
 })
 
 async function openNote(page: Page, title: string) {
-  const noteList = page.locator('[data-testid="note-list-container"]')
-  await noteList.getByText(title, { exact: true }).click()
+  await page.locator('aside').getByText(title, { exact: true }).first().click()
 }
 
 async function openRawMode(page: Page) {
@@ -121,7 +120,7 @@ test('deleting the H1 does not resurrect the legacy title section', async ({ pag
 
 test('@smoke edited H1 titles drive note list, search, and wikilink autocomplete', async ({ page }) => {
   const updatedTitle = 'Updated Display Title'
-  const noteList = page.locator('[data-testid="note-list-container"]')
+  const noteList = page.locator('aside')
 
   await openNote(page, 'Note B')
   await openRawMode(page)
@@ -152,7 +151,7 @@ test('@smoke edited H1 titles drive note list, search, and wikilink autocomplete
 })
 
 test('@smoke rapid H1 typing stays stable while editing an existing note', async ({ page }) => {
-  const noteList = page.locator('[data-testid="note-list-container"]')
+  const noteList = page.locator('aside')
   const firstTitle = 'Alpha Project Fast Typing Check'
   const finalTitle = 'Alpha Project Fast Typing Flow'
 

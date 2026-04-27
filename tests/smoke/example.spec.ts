@@ -10,7 +10,7 @@ import {
 test.describe('Command Palette smoke tests', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
-    await expect(page.locator('[data-testid="sidebar-top-nav"]')).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('[data-testid="app-sidebar"]')).toBeVisible({ timeout: 10_000 })
   })
 
   test('Cmd+K opens the command palette @smoke', async ({ page }) => {
@@ -50,7 +50,7 @@ test.describe('Command Palette smoke tests', () => {
 test.describe('Keyboard shortcuts smoke tests', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
-    await expect(page.locator('[data-testid="sidebar-top-nav"]')).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('[data-testid="app-sidebar"]')).toBeVisible({ timeout: 10_000 })
   })
 
   test('Cmd+P opens quick open palette @smoke', async ({ page }) => {

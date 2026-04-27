@@ -4,12 +4,12 @@ test.describe('AI chat empty body fix — no regression', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/vault/ping', route => route.fulfill({ status: 503 }))
     await page.goto('/', { waitUntil: 'domcontentloaded' })
-    await expect(page.locator('[data-testid="note-list-container"]')).toBeVisible({ timeout: 5_000 })
+    await expect(page.locator('[data-testid="app-sidebar"]')).toBeVisible({ timeout: 5_000 })
   })
 
   test('AI panel opens, note is selected, message can be sent and response renders @smoke', async ({ page }) => {
     // Select a note so the AI panel has context
-    const noteItem = page.locator('.app__note-list .cursor-pointer').first()
+    const noteItem = page.locator('aside button[data-testid^="file-row:"]').first()
     await noteItem.click()
 
     // Verify editor has content (note body is loaded)

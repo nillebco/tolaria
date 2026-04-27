@@ -98,7 +98,7 @@ test.describe('Create note crash fix', () => {
     removeFixtureVaultCopy(tempVaultDir)
   })
 
-  test('clicking + next to a type section creates a note without crashing @smoke', async ({ page }) => {
+  test('clicking + next to a type section creates a note without crashing', async ({ page }) => {
     await openTestVault(page)
     await selectSection(page, 'Projects')
     await expectUntitledNoteWithoutCrash(page, 'project', async () => {
