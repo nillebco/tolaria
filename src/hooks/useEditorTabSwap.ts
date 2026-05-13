@@ -136,16 +136,14 @@ function restoreEditorPosition(
   preservedPosition: PreservedEditorPosition | null | undefined,
 ) {
   if (!preservedPosition) return
-  requestAnimationFrame(() => {
-    const newBlocks = editor.document
-    if (newBlocks.length === 0) return
-    const idx = Math.min(preservedPosition.cursorIndex, newBlocks.length - 1)
-    try {
-      editor.setTextCursorPosition(newBlocks[idx].id, 'start')
-    } catch {
-      // Ignore transient BlockNote cursor errors during async content swaps.
-    }
-  })
+  const newBlocks = editor.document
+  if (newBlocks.length === 0) return
+  const idx = Math.min(preservedPosition.cursorIndex, newBlocks.length - 1)
+  try {
+    editor.setTextCursorPosition(newBlocks[idx].id, 'start')
+  } catch {
+    // Ignore transient BlockNote cursor errors during async content swaps.
+  }
 }
 
 function findActiveTab(options: {
