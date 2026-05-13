@@ -2,6 +2,21 @@ import { useCallback } from 'react'
 import type { VaultEntry } from '../types'
 import { refreshPulledVaultState } from '../utils/pulledVaultRefresh'
 
+function normalizePath(path: string): string {
+  return path
+    .replaceAll('\\', '/')
+    .replace(/^\/private\/tmp(?=\/|$)/u, '/tmp')
+    .replace(/\/+$/u, '')
+}
+
+function isActiveTabInChangedPaths(changedPaths: string[], vaultPath: string, activeTabPath: string): boolean {
+  const normalizedActive = normalizePath(activeTabPath)
+  return changedPaths.some((p) => {
+    const resolved = p.startsWith('/') ? normalizePath(p) : normalizePath(`${vaultPath}/${p}`)
+    return resolved === normalizedActive
+  })
+}
+
 interface VaultBridgeDeps {
   entriesByPath: Map<string, VaultEntry>
   resolvedPath: string
@@ -93,13 +108,19 @@ export function useVaultBridge({
     void refreshAgentChanges([])
   }, [refreshAgentChanges])
 
-  const handleExternalVaultChanged = useCallback(() => {
-    void Promise.all([
+  const handleExternalVaultChanged = useCallback(async (changedPaths: string[]) => {
+    const [entries] = await Promise.all([
       reloadVault(),
       Promise.resolve(reloadFolders()),
       Promise.resolve(reloadViews()),
     ])
-  }, [reloadFolders, reloadVault, reloadViews])
+
+    if (!activeTabPath || hasUnsavedChanges(activeTabPath)) return
+    if (!isActiveTabInChangedPaths(changedPaths, resolvedPath, activeTabPath)) return
+
+    const refreshedEntry = entries.find((e) => normalizePath(e.path) === normalizePath(activeTabPath))
+    if (refreshedEntry) await replaceActiveTab(refreshedEntry)
+  }, [activeTabPath, hasUnsavedChanges, reloadFolders, reloadVault, reloadViews, replaceActiveTab, resolvedPath])
 
   return {
     openNoteByPath,

@@ -244,8 +244,15 @@ export function useCodeMirror(
     if (!view) return
     const current = view.state.doc.toString()
     if (current === content) return
+    const { anchor, head } = view.state.selection.main
     externalSyncRef.current = true
-    view.dispatch({ changes: { from: 0, to: current.length, insert: content } })
+    view.dispatch({
+      changes: { from: 0, to: current.length, insert: content },
+      selection: {
+        anchor: Math.min(anchor, content.length),
+        head: Math.min(head, content.length),
+      },
+    })
     externalSyncRef.current = false
   }, [content])
 

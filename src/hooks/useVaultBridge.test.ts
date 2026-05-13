@@ -168,10 +168,35 @@ describe('useVaultBridge', () => {
     expect(replaceActiveTab).not.toHaveBeenCalled()
   })
 
-  it('handleExternalVaultChanged reloads derived state without touching open tabs', async () => {
+  it('handleExternalVaultChanged reloads the active tab when its file is in changedPaths', async () => {
     const fresh = makeEntry('/vault/active.md', 'Fresh active')
     reloadVault.mockResolvedValue([fresh])
     const { result } = renderBridge([], '/vault/active.md')
+
+    await act(async () => { result.current.handleExternalVaultChanged(['active.md']) })
+
+    expectVaultDerivedStateReloaded({ reloadVault, reloadFolders, reloadViews })
+    expect(closeAllTabs).not.toHaveBeenCalled()
+    expect(replaceActiveTab).toHaveBeenCalledWith(fresh)
+  })
+
+  it('handleExternalVaultChanged skips tab reload when path not in changedPaths', async () => {
+    const fresh = makeEntry('/vault/active.md', 'Fresh active')
+    reloadVault.mockResolvedValue([fresh])
+    const { result } = renderBridge([], '/vault/active.md')
+
+    await act(async () => { result.current.handleExternalVaultChanged(['other.md']) })
+
+    expectVaultDerivedStateReloaded({ reloadVault, reloadFolders, reloadViews })
+    expect(closeAllTabs).not.toHaveBeenCalled()
+    expect(replaceActiveTab).not.toHaveBeenCalled()
+  })
+
+  it('handleExternalVaultChanged preserves unsaved active note', async () => {
+    const fresh = makeEntry('/vault/active.md', 'Fresh active')
+    reloadVault.mockResolvedValue([fresh])
+    const hasUnsaved = vi.fn((path: string) => path === '/vault/active.md')
+    const { result } = renderBridge([], '/vault/active.md', { hasUnsavedChanges: hasUnsaved })
 
     await act(async () => { result.current.handleExternalVaultChanged(['active.md']) })
 

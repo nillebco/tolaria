@@ -129,6 +129,44 @@ describe('useCodeMirror', () => {
     expect(onEscape).toHaveBeenCalledOnce()
   })
 
+  it('preserves cursor position when syncing external content changes', () => {
+    const ref = { current: container }
+    const { result, rerender } = renderHook(
+      ({ content }) => useCodeMirror(ref, content, noopCallbacks),
+      { initialProps: { content: 'line one\nline two\nline three' } },
+    )
+    const view = result.current.current!
+
+    // Place cursor at position 9 (start of "line two")
+    act(() => { view.dispatch({ selection: { anchor: 9, head: 9 } }) })
+    expect(view.state.selection.main.anchor).toBe(9)
+
+    // External content update with same-length content
+    rerender({ content: 'line one\nmodified!\nline three' })
+
+    expect(view.state.doc.toString()).toBe('line one\nmodified!\nline three')
+    expect(view.state.selection.main.anchor).toBe(9)
+  })
+
+  it('clamps cursor to new document length when external content is shorter', () => {
+    const ref = { current: container }
+    const { result, rerender } = renderHook(
+      ({ content }) => useCodeMirror(ref, content, noopCallbacks),
+      { initialProps: { content: 'hello world and more' } },
+    )
+    const view = result.current.current!
+
+    // Place cursor near the end
+    act(() => { view.dispatch({ selection: { anchor: 18, head: 18 } }) })
+    expect(view.state.selection.main.anchor).toBe(18)
+
+    // External content update with shorter content
+    rerender({ content: 'hi' })
+
+    expect(view.state.doc.toString()).toBe('hi')
+    expect(view.state.selection.main.anchor).toBe(2)
+  })
+
   it('does not sync when content matches current editor state', () => {
     const ref = { current: container }
     const { result, rerender } = renderHook(
