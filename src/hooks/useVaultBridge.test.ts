@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import { useRef } from 'react'
 import { useVaultBridge } from './useVaultBridge'
 import type { VaultEntry } from '../types'
 
@@ -42,11 +43,17 @@ describe('useVaultBridge', () => {
     activeTabPath: string | null = null,
     overrides: Partial<{
       hasUnsavedChanges: typeof hasUnsavedChanges
+      recentlySaved: Set<string>
+      lastEditTimestamp: number
     }> = {},
   ) {
     const entriesByPath = new Map(entries.map(e => [e.path, e]))
-    return renderHook(() =>
-      useVaultBridge({
+    const recentlySaved = overrides.recentlySaved ?? new Set<string>()
+    const lastEditTimestamp = overrides.lastEditTimestamp ?? 0
+    return renderHook(() => {
+      const recentlySavedRef = useRef(recentlySaved)
+      const lastEditTimestampRef = useRef(lastEditTimestamp)
+      return useVaultBridge({
         entriesByPath,
         resolvedPath: '/vault',
         reloadVault,
@@ -57,8 +64,10 @@ describe('useVaultBridge', () => {
         hasUnsavedChanges: overrides.hasUnsavedChanges ?? hasUnsavedChanges,
         onSelectNote,
         activeTabPath,
-      }),
-    )
+        recentlySavedRef,
+        lastEditTimestampRef,
+      })
+    })
   }
 
   it('opens a note by path when entry exists', () => {
@@ -202,6 +211,48 @@ describe('useVaultBridge', () => {
 
     expectVaultDerivedStateReloaded({ reloadVault, reloadFolders, reloadViews })
     expect(closeAllTabs).not.toHaveBeenCalled()
+    expect(replaceActiveTab).not.toHaveBeenCalled()
+  })
+
+  it('handleExternalVaultChanged skips reload when user edited recently (active-typing suppression)', async () => {
+    const fresh = makeEntry('/vault/active.md', 'Fresh active')
+    reloadVault.mockResolvedValue([fresh])
+    const { result } = renderBridge([], '/vault/active.md', {
+      lastEditTimestamp: Date.now() - 500, // edited 500ms ago, within 3s grace
+    })
+
+    await act(async () => { result.current.handleExternalVaultChanged(['active.md']) })
+
+    expectVaultDerivedStateReloaded({ reloadVault, reloadFolders, reloadViews })
+    expect(replaceActiveTab).not.toHaveBeenCalled()
+  })
+
+  it('handleExternalVaultChanged allows reload when user has been idle', async () => {
+    const fresh = makeEntry('/vault/active.md', 'Fresh active')
+    reloadVault.mockResolvedValue([fresh])
+    const { result } = renderBridge([], '/vault/active.md', {
+      lastEditTimestamp: Date.now() - 10000, // idle for 10s, outside grace window
+    })
+
+    await act(async () => { result.current.handleExternalVaultChanged(['active.md']) })
+
+    expectVaultDerivedStateReloaded({ reloadVault, reloadFolders, reloadViews })
+    expect(replaceActiveTab).toHaveBeenCalledWith(fresh)
+  })
+
+  it('handleExternalVaultChanged skips reload for recently saved paths (own-save suppression)', async () => {
+    const fresh = makeEntry('/vault/active.md', 'Fresh active')
+    reloadVault.mockResolvedValue([fresh])
+    const { result } = renderBridge([], '/vault/active.md', {
+      recentlySaved: new Set(['/vault/active.md']),
+    })
+
+    await act(async () => { result.current.handleExternalVaultChanged(['active.md']) })
+
+    // The entire vault scan is skipped when we recently saved the file ourselves.
+    expect(reloadVault).not.toHaveBeenCalled()
+    expect(reloadFolders).not.toHaveBeenCalled()
+    expect(reloadViews).not.toHaveBeenCalled()
     expect(replaceActiveTab).not.toHaveBeenCalled()
   })
 })

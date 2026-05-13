@@ -611,6 +611,20 @@ function App() {
     if (!noteWindowParams && resolvedPath) vault.markVaultUnavailable(resolvedPath)
   }, [noteWindowParams, resolvedPath, vault])
 
+  const recentlySavedRef = useRef(new Set<string>())
+  const lastEditTimestampRef = useRef<number>(0)
+
+  const clearUnsavedAndTrack = useCallback((path: string) => {
+    vault.clearUnsaved(path)
+    recentlySavedRef.current.add(path)
+    setTimeout(() => { recentlySavedRef.current.delete(path) }, 2000)
+  }, [vault])
+
+  const trackUnsavedAndRecord = useCallback((path: string) => {
+    lastEditTimestampRef.current = Date.now()
+    vault.trackUnsaved(path)
+  }, [vault])
+
   const notes = useNoteActions({
     addEntry: vault.addEntry,
     removeEntry: vault.removeEntry,
@@ -625,8 +639,8 @@ function App() {
     vaults: graphVaults ?? [],
     addPendingSave: handleCreatedVaultEntryPersisting,
     removePendingSave: vault.removePendingSave,
-    trackUnsaved: vault.trackUnsaved,
-    clearUnsaved: vault.clearUnsaved,
+    trackUnsaved: trackUnsavedAndRecord,
+    clearUnsaved: clearUnsavedAndTrack,
     unsavedPaths: vault.unsavedPaths,
     markContentPending: (path, content) => appSave.contentChangeRef.current(path, content),
     onNewNotePersisted: handleCreatedVaultEntryPersisted,
@@ -795,6 +809,8 @@ function App() {
     onSelectNote: notes.handleSelectNote,
     activeTabPath: notes.activeTabPath,
     getActiveTabPath: () => notes.activeTabPathRef.current,
+    recentlySavedRef,
+    lastEditTimestampRef,
   })
 
   const conflictFlow = useConflictFlow({
@@ -813,7 +829,7 @@ function App() {
   const appSave = useAppSave({
     updateEntry: vault.updateEntry, setTabs: notes.setTabs, handleSwitchTab: notes.handleSwitchTab, setToastMessage,
     loadModifiedFiles: refreshGitModifiedFiles, reloadViews: async () => { await vault.reloadViews() },
-    trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths,
+    trackUnsaved: trackUnsavedAndRecord, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths,
     tabs: notes.tabs, activeTabPath: notes.activeTabPath,
     handleRenameNote: notes.handleRenameNote, handleRenameFilename: notes.handleRenameFilename,
     replaceEntry: vault.replaceEntry, resolvedPath,

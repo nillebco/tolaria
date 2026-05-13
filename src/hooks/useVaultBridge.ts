@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import type { MutableRefObject } from 'react'
 import type { VaultEntry } from '../types'
 import { refreshPulledVaultState } from '../utils/pulledVaultRefresh'
 
@@ -17,6 +18,8 @@ function isActiveTabInChangedPaths(changedPaths: string[], vaultPath: string, ac
   })
 }
 
+const RECENT_EDIT_GRACE_MS = 3000
+
 interface VaultBridgeDeps {
   entriesByPath: Map<string, VaultEntry>
   resolvedPath: string
@@ -30,6 +33,8 @@ interface VaultBridgeDeps {
   onSelectNote: (entry: VaultEntry) => void
   activeTabPath: string | null
   getActiveTabPath?: () => string | null
+  recentlySavedRef: MutableRefObject<Set<string>>
+  lastEditTimestampRef: MutableRefObject<number>
 }
 
 function findEntry(entriesByPath: Map<string, VaultEntry>, resolvedPath: string, path: string): VaultEntry | undefined {
@@ -53,6 +58,8 @@ export function useVaultBridge({
   onSelectNote,
   activeTabPath,
   getActiveTabPath,
+  recentlySavedRef,
+  lastEditTimestampRef,
 }: VaultBridgeDeps) {
   const reloadAndOpen = useCallback((path: string) => {
     reloadVault().then(fresh => {
@@ -109,6 +116,9 @@ export function useVaultBridge({
   }, [refreshAgentChanges])
 
   const handleExternalVaultChanged = useCallback(async (changedPaths: string[]) => {
+    // Our own auto-save triggered the watcher — skip the expensive vault scan entirely.
+    if (activeTabPath && recentlySavedRef.current.has(activeTabPath)) return
+
     const [entries] = await Promise.all([
       reloadVault(),
       Promise.resolve(reloadFolders()),
@@ -116,11 +126,12 @@ export function useVaultBridge({
     ])
 
     if (!activeTabPath || hasUnsavedChanges(activeTabPath)) return
+    if (Date.now() - lastEditTimestampRef.current < RECENT_EDIT_GRACE_MS) return
     if (!isActiveTabInChangedPaths(changedPaths, resolvedPath, activeTabPath)) return
 
     const refreshedEntry = entries.find((e) => normalizePath(e.path) === normalizePath(activeTabPath))
     if (refreshedEntry) await replaceActiveTab(refreshedEntry)
-  }, [activeTabPath, hasUnsavedChanges, reloadFolders, reloadVault, reloadViews, replaceActiveTab, resolvedPath])
+  }, [activeTabPath, hasUnsavedChanges, lastEditTimestampRef, recentlySavedRef, reloadFolders, reloadVault, reloadViews, replaceActiveTab, resolvedPath])
 
   return {
     openNoteByPath,

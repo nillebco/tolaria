@@ -112,6 +112,42 @@ function readEditorScrollTop(): number {
   return scrollEl?.scrollTop ?? 0
 }
 
+interface PreservedEditorPosition {
+  scrollTop: number
+  cursorIndex: number
+}
+
+function captureEditorPosition(
+  editor: ReturnType<typeof useCreateBlockNote>,
+): PreservedEditorPosition | null {
+  try {
+    const cursorBlock = editor.getTextCursorPosition?.().block
+    if (!cursorBlock) return null
+    const cursorIndex = (editor.document as EditorBlocks).findIndex((block) => block.id === cursorBlock.id)
+    if (cursorIndex === -1) return null
+    return { scrollTop: readEditorScrollTop(), cursorIndex }
+  } catch {
+    return null
+  }
+}
+
+function restoreEditorPosition(
+  editor: ReturnType<typeof useCreateBlockNote>,
+  preservedPosition: PreservedEditorPosition | null | undefined,
+) {
+  if (!preservedPosition) return
+  requestAnimationFrame(() => {
+    const newBlocks = editor.document
+    if (newBlocks.length === 0) return
+    const idx = Math.min(preservedPosition.cursorIndex, newBlocks.length - 1)
+    try {
+      editor.setTextCursorPosition(newBlocks[idx].id, 'start')
+    } catch {
+      // Ignore transient BlockNote cursor errors during async content swaps.
+    }
+  })
+}
+
 function findActiveTab(options: {
   tabs: Tab[]
   activeTabPath: string | null
@@ -742,6 +778,7 @@ function scheduleParsedBlockSwap(options: {
   tabsRef: MutableRefObject<Tab[]>
   token: SwapToken
   vaultPath?: string
+  preservedPosition?: PreservedEditorPosition | null
 }) {
   const {
     editor,
@@ -755,12 +792,15 @@ function scheduleParsedBlockSwap(options: {
     tabsRef,
     token,
     vaultPath,
+    preservedPosition,
   } = options
 
   void resolveBlocksForTarget({ editor, cache, targetPath, content, vaultPath })
     .then(({ blocks, scrollTop }) => {
       if (shouldAbortSwap({ prevActivePathRef, suppressChangeRef, swapSeqRef, tabsRef, token })) return
-      if (!applyBlocksToEditor({ editor, blocks, scrollTop, suppressChangeRef, editorContentPathRef, targetPath })) return
+      const effectiveScrollTop = preservedPosition?.scrollTop ?? scrollTop
+      if (!applyBlocksToEditor({ editor, blocks, scrollTop: effectiveScrollTop, suppressChangeRef, editorContentPathRef, targetPath })) return
+      restoreEditorPosition(editor, preservedPosition)
       signalTabSwap({ path: targetPath })
     })
     .catch((err: unknown) => {
@@ -807,8 +847,12 @@ function scheduleTabSwap(options: {
   const doSwap = () => {
     if (shouldAbortSwap({ prevActivePathRef, suppressChangeRef, swapSeqRef, tabsRef, token })) return
     if (clearStaleSwap({ targetPath, prevActivePathRef, suppressChangeRef })) return
+    const wasRawSwap = rawSwapPendingRef.current
     rawSwapPendingRef.current = false
     if (clearDomSelection) clearEditorDomSelection()
+    const preservedPosition = (!clearDomSelection && !wasRawSwap)
+      ? captureEditorPosition(editor)
+      : null
 
     if (isBlankBodyContent({ content: activeTab.content })) {
       applyBlankTabState({
@@ -849,6 +893,7 @@ function scheduleTabSwap(options: {
       tabsRef,
       token,
       vaultPath,
+      preservedPosition,
     })
   }
 

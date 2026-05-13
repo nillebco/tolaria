@@ -502,6 +502,33 @@ describe('useEditorSave', () => {
       // Should not save after unmount
       expect(mockInvokeFn).not.toHaveBeenCalled()
     })
+
+    it('does not overwrite newer in-flight edits with stale saved content', async () => {
+      // Regression: auto-save completing while the user has already typed more
+      // must not revert the tab to the older saved content.
+      const path = '/test/note.md'
+      const { result } = renderHook(() =>
+        useEditorSave({ updateVaultContent, setTabs, setToastMessage })
+      )
+
+      // User types v1, triggering auto-save debounce
+      act(() => { result.current.handleContentChange(path, 'v1') })
+
+      // Debounce fires — save starts (async invoke)
+      // User types v2 while save is in flight
+      act(() => { result.current.handleContentChange(path, 'v2') })
+
+      // Let the save for v1 complete
+      await act(async () => { vi.advanceTimersByTimeAsync(500) })
+
+      // Tab content should reflect the LATEST edit (v2), not the saved v1
+      const lastSetTabsCall = setTabs.mock.calls.at(-1)?.[0]
+      if (typeof lastSetTabsCall === 'function') {
+        const fakeTabs = [{ entry: { path }, content: 'v2' }]
+        const result2 = lastSetTabsCall(fakeTabs)
+        expect(result2[0].content).toBe('v2')
+      }
+    })
   })
 
   it('successive edits and saves persist each version correctly', async () => {
