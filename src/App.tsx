@@ -1397,6 +1397,7 @@ function App() {
   // Diff-toggle ref: Editor registers its handleToggleDiff here so the command palette can call it
   const diffToggleRef = useRef<() => void>(() => {})
   const findInNoteRef = useRef<((options?: { replace?: boolean }) => void) | null>(null)
+  const renameCurrentFileRef = useRef<(() => void) | null>(null)
 
   const { setViewMode, sidebarVisible, noteListVisible } = useViewMode(noteWindowParams ? 'editor-only' : undefined)
   const zoom = useZoom()
@@ -1522,6 +1523,7 @@ function App() {
   const canToggleRichEditor = !!activeCommandEntry
     && activeCommandEntry.filename.toLowerCase().endsWith('.md')
     && !activeDeletedFile
+  const canRenameCurrentFile = canToggleRichEditor && !!appSave.handleFilenameRename
   const shouldBlockNeighborhoodEscape = (
     dialogs.showCreateTypeDialog
     || dialogs.showQuickOpen
@@ -1578,6 +1580,10 @@ function App() {
   const replaceInNoteCommand = useCallback(() => {
     findInNoteRef.current?.({ replace: true })
   }, [])
+  const renameCurrentFileCommand = useMemo(
+    () => canRenameCurrentFile ? () => renameCurrentFileRef.current?.() : undefined,
+    [canRenameCurrentFile],
+  )
   const pastePlainTextCommand = useCallback(() => {
     void requestPlainTextPaste().catch((error) => {
       console.warn('[paste] Failed to paste plain text:', error)
@@ -1720,6 +1726,7 @@ function App() {
     onRepairVault: handleRepairVault,
     onSetNoteIcon: handleSetNoteIconCommand,
     onRemoveNoteIcon: handleRemoveNoteIconCommand,
+    onRenameCurrentFile: renameCurrentFileCommand,
     onChangeNoteType: changeNoteTypeCommand,
     onMoveNoteToFolder: moveNoteToFolderCommand,
     canMoveNoteToFolder: noteRetargetingUi.canMoveActiveNoteToFolder,
@@ -1888,6 +1895,7 @@ function App() {
               tableOfContentsToggleRef={tableOfContentsToggleRef}
               findInNoteRef={findInNoteRef}
               diffToggleRef={diffToggleRef}
+              renameCurrentFileRef={renameCurrentFileRef}
               canGoBack={canGoBack}
               canGoForward={canGoForward}
               onGoBack={handleGoBack}

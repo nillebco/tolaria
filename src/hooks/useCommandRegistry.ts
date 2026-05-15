@@ -49,6 +49,7 @@ interface CommandRegistryConfig {
   selectedUiLanguage?: UiLanguagePreference
   onSetUiLanguage?: (language: UiLanguagePreference) => void
   onSetThemeMode?: (mode: ThemeMode) => void
+  onRenameCurrentFile?: () => void
   onChangeNoteType?: () => void
   onMoveNoteToFolder?: () => void
   canMoveNoteToFolder?: boolean
@@ -154,7 +155,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
     onReloadVault, onRepairVault,
     locale, systemLocale, selectedUiLanguage, onSetUiLanguage, onSetThemeMode,
-    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
+    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onRenameCurrentFile, onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
     onOpenInNewWindow, onRevealActiveFile, onCopyActiveFilePath, onOpenActiveFileExternal, onToggleFavorite, onToggleOrganized,
     onCustomizeNoteListColumns, canCustomizeNoteListColumns,
     onRestoreDeletedNote, canRestoreDeletedNote,
@@ -210,7 +211,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onCreateNote, onOpenDailyNote, onCreateType, onSave,
     onFindInNote, onReplaceInNote, onPastePlainText,
     onDeleteNote, onArchiveNote, onUnarchiveNote,
-    onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
+    onRenameCurrentFile, onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow,
     onRevealActiveFile, onCopyActiveFilePath, onOpenActiveFileExternal,
     onToggleFavorite, isFavorite,
@@ -219,7 +220,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   }), [
     hasActiveNote, activeTabPath, activeEntry?.fileKind, isArchived,
     onCreateNote, onOpenDailyNote, onCreateType, onSave, onFindInNote, onReplaceInNote, onPastePlainText, onDeleteNote, onArchiveNote, onUnarchiveNote,
-    onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
+    onRenameCurrentFile, onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow,
     onRevealActiveFile, onCopyActiveFilePath, onOpenActiveFileExternal,
     onToggleFavorite, isFavorite,

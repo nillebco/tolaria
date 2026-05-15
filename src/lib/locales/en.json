@@ -48,6 +48,7 @@
   "command.note.markOrganized": "Mark as Organized",
   "command.note.markUnorganized": "Mark as Unorganized",
   "command.note.restoreDeleted": "Restore Deleted Note",
+  "command.note.renameCurrentFile": "Rename Current File…",
   "command.note.setIcon": "Set Note Icon",
   "command.note.removeIcon": "Remove Note Icon",
   "command.note.changeType": "Change Note Type…",

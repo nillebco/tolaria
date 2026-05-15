@@ -105,6 +105,7 @@ interface AppCommandsConfig {
   onRepairVault?: () => void
   onSetNoteIcon?: () => void
   onRemoveNoteIcon?: () => void
+  onRenameCurrentFile?: () => void
   onChangeNoteType?: () => void
   onMoveNoteToFolder?: () => void
   canMoveNoteToFolder?: boolean
@@ -242,6 +243,7 @@ type CommandRegistryNoteActions = Pick<
   CommandRegistryConfig,
   | 'onSetNoteIcon'
   | 'onRemoveNoteIcon'
+  | 'onRenameCurrentFile'
   | 'onChangeNoteType'
   | 'onMoveNoteToFolder'
   | 'canMoveNoteToFolder'
@@ -570,6 +572,7 @@ function createCommandRegistryNoteConfig(
   return {
     onSetNoteIcon: config.onSetNoteIcon,
     onRemoveNoteIcon: config.onRemoveNoteIcon,
+    onRenameCurrentFile: config.onRenameCurrentFile,
     onChangeNoteType: config.onChangeNoteType,
     onMoveNoteToFolder: config.onMoveNoteToFolder,
     canMoveNoteToFolder: config.canMoveNoteToFolder,

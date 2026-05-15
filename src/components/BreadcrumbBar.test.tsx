@@ -443,6 +443,17 @@ describe('BreadcrumbBar — filename controls', () => {
     expect(screen.getByTestId('breadcrumb-filename-input')).toHaveValue('test')
   })
 
+  it('lets command palette actions start editing the current filename', () => {
+    const renameCurrentFileRef = { current: null as (() => void) | null }
+    renderEditableFilenameBreadcrumb({}, { renameCurrentFileRef })
+
+    act(() => {
+      renameCurrentFileRef.current?.()
+    })
+
+    expect(screen.getByTestId('breadcrumb-filename-input')).toHaveValue('test')
+  })
+
   it('double-clicking the filename enters edit mode and Enter confirms the rename', () => {
     const { entry, onRenameFilename } = renderEditableFilenameBreadcrumb()
 

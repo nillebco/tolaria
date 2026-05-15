@@ -18,6 +18,7 @@ interface NoteCommandsConfig {
   onDeleteNote: (path: string) => void
   onArchiveNote: (path: string) => void
   onUnarchiveNote: (path: string) => void
+  onRenameCurrentFile?: () => void
   onChangeNoteType?: () => void
   onMoveNoteToFolder?: () => void
   canMoveNoteToFolder?: boolean
@@ -184,6 +185,13 @@ function buildRecoveryCommands(config: NoteCommandsConfig): CommandAction[] {
 
 function buildRetargetingCommands(config: NoteCommandsConfig): CommandAction[] {
   return [
+    createNoteCommand({
+      id: 'rename-current-file',
+      label: 'Rename Current File…',
+      keywords: ['file', 'filename', 'rename', 'current'],
+      enabled: config.hasActiveNote && !!config.onRenameCurrentFile,
+      execute: () => config.onRenameCurrentFile?.(),
+    }),
     createNoteCommand({
       id: 'set-note-icon',
       label: 'Set Note Icon',

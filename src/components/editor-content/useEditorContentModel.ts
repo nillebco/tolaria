@@ -50,6 +50,7 @@ export interface EditorContentProps {
   findRequest?: RawEditorFindRequest | null
   rawLatestContentRef?: React.MutableRefObject<string | null>
   onRenameFilename?: (path: string, newFilenameStem: string) => void
+  renameCurrentFileRef?: React.MutableRefObject<(() => void) | null>
   noteWidth?: NoteWidthMode
   onToggleNoteWidth?: () => void
   isConflicted?: boolean

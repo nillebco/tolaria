@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MutableRefObject, type ReactNode } from 'react'
 import type { NoteWidthMode, VaultEntry } from '../types'
 import { cn } from '@/lib/utils'
 import { translate, type AppLocale } from '../lib/i18n'
@@ -63,6 +63,7 @@ interface BreadcrumbBarProps {
   onUnarchive?: () => void
   onEnterNeighborhood?: (entry: VaultEntry) => void
   onRenameFilename?: (path: string, newFilenameStem: string) => void
+  renameCurrentFileRef?: MutableRefObject<(() => void) | null>
   noteWidth?: NoteWidthMode
   onToggleNoteWidth?: () => void
   /** Ref for direct DOM manipulation — avoids re-render on scroll. */
@@ -741,7 +742,7 @@ function FilenameDisplay({
   )
 }
 
-function FilenameCrumb({ content, entry, locale = 'en', onRenameFilename }: Pick<BreadcrumbBarProps, 'content' | 'entry' | 'locale' | 'onRenameFilename'>) {
+function FilenameCrumb({ content, entry, locale = 'en', onRenameFilename, renameCurrentFileRef }: Pick<BreadcrumbBarProps, 'content' | 'entry' | 'locale' | 'onRenameFilename' | 'renameCurrentFileRef'>) {
   const filenameStem = useMemo(() => entry.filename.replace(/\.md$/, ''), [entry.filename])
   const syncStem = useMemo(() => deriveSyncStem(entry), [entry])
   const [isEditing, setIsEditing] = useState(false)
@@ -755,6 +756,14 @@ function FilenameCrumb({ content, entry, locale = 'en', onRenameFilename }: Pick
   const startEditing = useCallback(() => {
     beginFilenameEditing(onRenameFilename, filenameStem, setDraftStem, setIsEditing)
   }, [onRenameFilename, filenameStem])
+
+  useEffect(() => {
+    if (!renameCurrentFileRef) return
+    renameCurrentFileRef.current = startEditing
+    return () => {
+      renameCurrentFileRef.current = null
+    }
+  }, [renameCurrentFileRef, startEditing])
 
   const cancelEditing = useCallback(() => {
     setDraftStem(filenameStem)
@@ -1019,7 +1028,8 @@ function BreadcrumbTitle({
   locale,
   loadingTitle,
   onRenameFilename,
-}: Pick<BreadcrumbBarProps, 'content' | 'entry' | 'locale' | 'loadingTitle' | 'onRenameFilename'>) {
+  renameCurrentFileRef,
+}: Pick<BreadcrumbBarProps, 'content' | 'entry' | 'locale' | 'loadingTitle' | 'onRenameFilename' | 'renameCurrentFileRef'>) {
   const typeLabel = entry.isA ?? 'Note'
   return (
     <div className="breadcrumb-bar__title-content flex items-center gap-1.5 min-w-0 text-sm text-muted-foreground">
@@ -1029,7 +1039,7 @@ function BreadcrumbTitle({
       <div className="flex min-w-0 items-center gap-1 truncate">
         {loadingTitle
           ? <BreadcrumbTitleSkeleton />
-          : <FilenameCrumb content={content} entry={entry} locale={locale} onRenameFilename={onRenameFilename} />}
+          : <FilenameCrumb content={content} entry={entry} locale={locale} onRenameFilename={onRenameFilename} renameCurrentFileRef={renameCurrentFileRef} />}
       </div>
     </div>
   )
@@ -1042,6 +1052,7 @@ export const BreadcrumbBar = memo(function BreadcrumbBar({
   locale = 'en',
   loadingTitle = false,
   onRenameFilename,
+  renameCurrentFileRef,
   ...actionProps
 }: BreadcrumbBarProps) {
   const { onMouseDown } = useDragRegion()
@@ -1071,6 +1082,7 @@ export const BreadcrumbBar = memo(function BreadcrumbBar({
             locale={locale}
             loadingTitle={loadingTitle}
             onRenameFilename={onRenameFilename}
+            renameCurrentFileRef={renameCurrentFileRef}
           />
         </div>
         <div

@@ -95,6 +95,8 @@ interface EditorProps {
   onSave?: () => void
   /** Called when the user explicitly renames the filename from the breadcrumb. */
   onRenameFilename?: (path: string, newFilenameStem: string) => void
+  /** Mutable ref that Editor registers its filename rename action into, for command palette access. */
+  renameCurrentFileRef?: React.MutableRefObject<(() => void) | null>
   noteWidth?: NoteWidthMode
   onToggleNoteWidth?: () => void
   canGoBack?: boolean
@@ -363,6 +365,7 @@ function EditorLayout({
   findRequest,
   rawLatestContentRef,
   onRenameFilename,
+  renameCurrentFileRef,
   noteWidth,
   onToggleNoteWidth,
   isConflicted,
@@ -535,6 +538,7 @@ function EditorLayout({
               findRequest={findRequest}
               rawLatestContentRef={rawLatestContentRef}
               onRenameFilename={onRenameFilename}
+              renameCurrentFileRef={renameCurrentFileRef}
               noteWidth={noteWidth}
               onToggleNoteWidth={onToggleNoteWidth}
               isConflicted={isConflicted}

@@ -228,6 +228,20 @@ describe('useCommandRegistry', () => {
     expect(onChangeNoteType).toHaveBeenCalledOnce()
   })
 
+  it('includes Rename Current File when the active file can be renamed', () => {
+    const onRenameCurrentFile = vi.fn()
+    const config = makeConfig({ onRenameCurrentFile })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'rename-current-file')
+
+    expect(cmd).toBeDefined()
+    expect(cmd!.label).toBe('Rename Current File…')
+    expect(cmd!.enabled).toBe(true)
+
+    cmd!.execute()
+    expect(onRenameCurrentFile).toHaveBeenCalledOnce()
+  })
+
   it('enables Move Note to Folder only when another folder destination exists', () => {
     const onMoveNoteToFolder = vi.fn()
     const { result, rerender } = renderHook(
