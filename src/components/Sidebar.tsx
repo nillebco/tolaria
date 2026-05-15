@@ -372,10 +372,12 @@ function SidebarFoldersNavigation({
     )
   }
 
+  const folderEntries = vaultPath || vaultRootPath ? entries : []
+
   return (
     <FolderTree
       folders={folders ?? []}
-      entries={entries}
+      entries={folderEntries}
       activeNotePath={activeNotePath}
       vaultPath={vaultPath}
       selection={selection}

@@ -27,6 +27,8 @@ interface VaultContentSettingsSectionProps {
   setHideGitignoredFiles: (value: boolean) => void
   allNotesFileVisibility: AllNotesFileVisibility
   setAllNotesFileVisibility: (value: AllNotesFileVisibility) => void
+  showOriginalFilenames: boolean
+  setShowOriginalFilenames: (value: boolean) => void
 }
 
 const NOTE_WIDTH_OPTIONS: readonly NoteWidthMode[] = ['normal', 'wide']
@@ -69,6 +71,8 @@ export function VaultContentSettingsSection({
   setHideGitignoredFiles,
   allNotesFileVisibility,
   setAllNotesFileVisibility,
+  showOriginalFilenames,
+  setShowOriginalFilenames,
 }: VaultContentSettingsSectionProps) {
   const updateAllNotesFileVisibility = (patch: Partial<AllNotesFileVisibility>) => {
     setAllNotesFileVisibility({ ...allNotesFileVisibility, ...patch })
@@ -130,6 +134,14 @@ export function VaultContentSettingsSection({
           checked={hideGitignoredFiles}
           onChange={setHideGitignoredFiles}
           testId="settings-hide-gitignored-files"
+        />
+
+        <SettingsSwitchRow
+          label="Show original filenames in file tree"
+          description="Use the filename from disk instead of the note title in the folder file tree."
+          checked={showOriginalFilenames}
+          onChange={setShowOriginalFilenames}
+          testId="settings-show-original-filenames"
         />
 
         <SettingsSwitchRow

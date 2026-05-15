@@ -139,7 +139,7 @@ function seedCacheBeyondByteLimit() {
   }
 }
 
-describe('useTabManagement (single-note model)', () => {
+describe('useTabManagement', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     clearPrefetchCache()
@@ -428,11 +428,12 @@ describe('useTabManagement (single-note model)', () => {
       expect(result.current.activeTabPath).toBeNull()
     })
 
-    it('replaces the current note when selecting a different one', async () => {
+    it('opens an additional tab and activates it when selecting a different note', async () => {
       const { result } = renderHook(() => useTabManagement())
       await selectNote(result, { path: '/vault/a.md', title: 'A' })
       await selectNote(result, { path: '/vault/b.md', title: 'B' })
-      expectSingleActiveTab(result, '/vault/b.md')
+      expect(result.current.tabs.map((tab) => tab.entry.path)).toEqual(['/vault/a.md', '/vault/b.md'])
+      expect(result.current.activeTabPath).toBe('/vault/b.md')
     })
 
     it('keeps a dirty already-open note in place when selecting it again', async () => {
@@ -873,7 +874,7 @@ describe('useTabManagement (single-note model)', () => {
       expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1)
     })
 
-    it('does not paint cached content until freshness validation passes', async () => {
+    it('paints cached content while freshness validation is pending then refreshes stale content', async () => {
       const freshness = createDeferred<boolean>()
       cacheNoteContent('/vault/note/stale.md', '# Stale cached content')
       vi.mocked(mockInvoke).mockImplementation((cmd: string) => {
@@ -887,7 +888,8 @@ describe('useTabManagement (single-note model)', () => {
       })
 
       expect(result.current.activeTabPath).toBe('/vault/note/stale.md')
-      expect(result.current.tabs).toEqual([])
+      expect(result.current.tabs).toHaveLength(1)
+      expect(result.current.tabs[0].content).toBe('# Stale cached content')
 
       await act(async () => {
         freshness.resolve(false)
@@ -1055,7 +1057,8 @@ describe('useTabManagement (single-note model)', () => {
       })
 
       expect(result.current.activeTabPath).toBe('/vault/note/warm.md')
-      expect(result.current.tabs).toEqual([])
+      expect(result.current.tabs).toHaveLength(1)
+      expect(result.current.tabs[0].content).toBe('# Warm content')
       expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1)
 
       await act(async () => {
@@ -1128,7 +1131,8 @@ describe('useTabManagement (single-note model)', () => {
       })
 
       expect(result.current.activeTabPath).toBe(newestPath)
-      expect(result.current.tabs).toEqual([])
+      expect(result.current.tabs).toHaveLength(1)
+      expect(result.current.tabs[0].content).toBe(cachedContent)
 
       await act(async () => {
         deferred.resolve(true)

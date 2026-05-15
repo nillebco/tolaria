@@ -97,6 +97,8 @@ interface SettingsPanelProps {
   isGitVault?: boolean
   explicitOrganizationEnabled?: boolean
   onSaveExplicitOrganization?: (enabled: boolean) => void
+  showOriginalFilenames?: boolean
+  onSaveDisplayOriginalFilenames?: (enabled: boolean) => void
   onClose: () => void
 }
 
@@ -168,6 +170,8 @@ interface SettingsBodyProps {
   setHideGitignoredFiles: (value: boolean) => void
   allNotesFileVisibility: AllNotesFileVisibility
   setAllNotesFileVisibility: (value: AllNotesFileVisibility) => void
+  showOriginalFilenames: boolean
+  setShowOriginalFilenames: (value: boolean) => void
   multiWorkspaceEnabled: boolean
   setMultiWorkspaceEnabled: (value: boolean) => void
   vaults: VaultOption[]
@@ -299,6 +303,8 @@ export function SettingsPanel({
   isGitVault = true,
   explicitOrganizationEnabled = true,
   onSaveExplicitOrganization,
+  showOriginalFilenames = false,
+  onSaveDisplayOriginalFilenames,
   onClose,
 }: SettingsPanelProps) {
   if (!open) return null
@@ -318,6 +324,8 @@ export function SettingsPanel({
       isGitVault={isGitVault}
       explicitOrganizationEnabled={explicitOrganizationEnabled}
       onSaveExplicitOrganization={onSaveExplicitOrganization}
+      showOriginalFilenames={showOriginalFilenames}
+      onSaveDisplayOriginalFilenames={onSaveDisplayOriginalFilenames}
       onClose={onClose}
     />
   )
@@ -345,9 +353,12 @@ function SettingsPanelInner({
   isGitVault,
   explicitOrganizationEnabled,
   onSaveExplicitOrganization,
+  showOriginalFilenames = false,
+  onSaveDisplayOriginalFilenames,
   onClose,
 }: SettingsPanelInnerProps) {
   const [draft, setDraft] = useState(() => createSettingsDraft(settings, explicitOrganizationEnabled))
+  const [showOriginalFilenamesDraft, setShowOriginalFilenamesDraft] = useState(showOriginalFilenames)
   const panelRef = useRef<HTMLDivElement>(null)
   const draftLocale = resolveEffectiveLocale(draft.uiLanguage, [systemLocale])
   const t = createTranslator(draftLocale)
@@ -355,6 +366,10 @@ function SettingsPanelInner({
   useEffect(() => {
     setDraft(createSettingsDraft(settings, explicitOrganizationEnabled))
   }, [explicitOrganizationEnabled, settings])
+
+  useEffect(() => {
+    setShowOriginalFilenamesDraft(showOriginalFilenames)
+  }, [showOriginalFilenames])
 
   useSettingsPanelAutofocus(panelRef)
   useSettingsPanelFocusTrap(panelRef)
@@ -396,8 +411,11 @@ function SettingsPanelInner({
     trackSettingsPreferenceChanges(settings, draft)
     onSave(buildSettingsFromDraft(settings, draft))
     onSaveExplicitOrganization?.(draft.explicitOrganization)
+    if (showOriginalFilenamesDraft !== showOriginalFilenames) {
+      onSaveDisplayOriginalFilenames?.(showOriginalFilenamesDraft)
+    }
     onClose()
-  }, [draft, onClose, onSave, onSaveExplicitOrganization, settings])
+  }, [draft, onClose, onSave, onSaveDisplayOriginalFilenames, onSaveExplicitOrganization, settings, showOriginalFilenames, showOriginalFilenamesDraft])
 
   const handleBackdropClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) onClose()
@@ -448,6 +466,8 @@ function SettingsPanelInner({
           setThemeMode={handleThemeModeChange}
           setHideGitignoredFiles={handleGitignoredVisibilityChange}
           setAllNotesFileVisibility={handleAllNotesFileVisibilityChange}
+          showOriginalFilenames={showOriginalFilenamesDraft}
+          setShowOriginalFilenames={setShowOriginalFilenamesDraft}
         />
         <SettingsFooter onClose={onClose} onSave={handleSave} t={t} />
       </div>
@@ -490,6 +510,8 @@ interface SettingsBodyFromDraftProps {
   setThemeMode: (value: ThemeMode) => void
   setHideGitignoredFiles: (value: boolean) => void
   setAllNotesFileVisibility: (value: AllNotesFileVisibility) => void
+  showOriginalFilenames: boolean
+  setShowOriginalFilenames: (value: boolean) => void
 }
 
 function SettingsBodyFromDraft({
@@ -507,6 +529,8 @@ function SettingsBodyFromDraft({
   setThemeMode,
   setHideGitignoredFiles,
   setAllNotesFileVisibility,
+  showOriginalFilenames,
+  setShowOriginalFilenames,
 }: SettingsBodyFromDraftProps) {
   return (
     <SettingsBody
@@ -552,6 +576,8 @@ function SettingsBodyFromDraft({
       setHideGitignoredFiles={setHideGitignoredFiles}
       allNotesFileVisibility={draft.allNotesFileVisibility}
       setAllNotesFileVisibility={setAllNotesFileVisibility}
+      showOriginalFilenames={showOriginalFilenames}
+      setShowOriginalFilenames={setShowOriginalFilenames}
       multiWorkspaceEnabled={draft.multiWorkspaceEnabled}
       setMultiWorkspaceEnabled={(value) => updateDraft('multiWorkspaceEnabled', value)}
       vaults={vaults}
@@ -678,6 +704,8 @@ function SettingsContentSections({
   setHideGitignoredFiles,
   allNotesFileVisibility,
   setAllNotesFileVisibility,
+  showOriginalFilenames,
+  setShowOriginalFilenames,
 }: SettingsBodyProps) {
   return (
     <SettingsSection id={SETTINGS_SECTION_IDS.content}>
@@ -695,6 +723,8 @@ function SettingsContentSections({
         setHideGitignoredFiles={setHideGitignoredFiles}
         allNotesFileVisibility={allNotesFileVisibility}
         setAllNotesFileVisibility={setAllNotesFileVisibility}
+        showOriginalFilenames={showOriginalFilenames}
+        setShowOriginalFilenames={setShowOriginalFilenames}
       />
     </SettingsSection>
   )

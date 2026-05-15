@@ -610,11 +610,12 @@ describe('useNoteActions hook', () => {
       const desyncedEntry = { ...entry, title: 'Wrong Title Desynced' }
       await act(async () => { await result.current.handleSelectNote(desyncedEntry) })
 
-      expect(vi.mocked(invoke)).toHaveBeenCalledTimes(callCountAfterFirstOpen)
+      expect(vi.mocked(invoke)).toHaveBeenCalledTimes(callCountAfterFirstOpen + 1)
+      expect(vi.mocked(invoke).mock.calls[callCountAfterFirstOpen]?.[0]).toBe('save_tab_session')
       expect(vi.mocked(invoke).mock.calls).toContainEqual(['get_note_content', { path: '/test/vault/qa-test.md' }])
       expect(vi.mocked(invoke).mock.calls.some(([command]) => command === 'sync_note_title')).toBe(false)
       expect(vi.mocked(invoke).mock.calls.some(([command]) => command === 'reload_vault_entry')).toBe(false)
-      expect(result.current.tabs[0].entry.title).toBe('Qa Test')
+      expect(result.current.tabs[0].entry.title).toBe('Wrong Title Desynced')
     })
   })
 

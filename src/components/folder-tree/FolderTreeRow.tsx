@@ -241,6 +241,7 @@ export const FolderTreeRow = memo(function FolderTreeRow({
   const isRenaming = canMutateFolder && renamingFolderPath === node.path
   const depthIndent = getFolderDepthIndent(depth)
   const contentInset = FOLDER_ROW_CONTENT_INSET
+  const hasChildren = node.children.length > 0 || directFiles(entries, node.path, nodeRootPath ?? rootPath ?? vaultPath).length > 0
   const selectFolder = useCallback(() => {
     onSelect(nodeRootPath
       ? { kind: 'folder', path: node.path, rootPath: nodeRootPath }
@@ -251,6 +252,7 @@ export const FolderTreeRow = memo(function FolderTreeRow({
       canOpenMenu={canUseDefaultFolderActions}
       contentInset={contentInset}
       depthIndent={depthIndent}
+      hasChildren={hasChildren}
       isExpanded={isExpanded}
       isSelected={isSelected}
       icon={icons?.[node.path]}

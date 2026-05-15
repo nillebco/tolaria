@@ -265,31 +265,6 @@ function configureNeighborhoodFavoritesVault() {
   mockCommandResults.get_note_content = ({ path }: { path: string }) => neighborhoodContent[path] ?? ''
 }
 
-function getHeaderForNoteList(noteListContainer: HTMLElement) {
-  return within(noteListContainer.parentElement as HTMLElement).getByRole('heading', { level: 3 })
-}
-
-async function clickNoteListItem(noteListContainer: HTMLElement, title: string, options?: MouseEventInit) {
-  await waitFor(() => {
-    expect(within(noteListContainer).getByText(title)).toBeInTheDocument()
-  })
-  await act(async () => {
-    fireEvent.click(within(noteListContainer).getByText(title), options)
-    await Promise.resolve()
-  })
-}
-
-async function enterNeighborhood(noteListContainer: HTMLElement, title: string) {
-  await clickNoteListItem(noteListContainer, title, { metaKey: true })
-}
-
-async function pressEscape() {
-  await act(async () => {
-    fireEvent.keyDown(window, { key: 'Escape' })
-    await Promise.resolve()
-  })
-}
-
 function resetMockCommandResults() {
   Object.assign(mockCommandResults, {
     load_vault_list: mockVaultList,
@@ -546,7 +521,7 @@ describe('App', () => {
     expect(screen.getByTestId('sidebar-loading-views')).toBeInTheDocument()
     expect(screen.getByTestId('sidebar-loading-types')).toBeInTheDocument()
     expect(screen.getByTestId('sidebar-loading-folders')).toBeInTheDocument()
-    expect(screen.getByTestId('note-list-loading-skeleton')).toBeInTheDocument()
+    expect(screen.queryByTestId('note-list-loading-skeleton')).not.toBeInTheDocument()
     expect(screen.getByTestId('breadcrumb-title-skeleton')).toBeInTheDocument()
     expect(screen.getByTestId('editor-content-skeleton')).toBeInTheDocument()
     expect(screen.queryByText('Select a note to start editing')).not.toBeInTheDocument()
@@ -921,7 +896,7 @@ describe('App', () => {
 
     expect(screen.queryByTestId('vault-loading-skeleton')).not.toBeInTheDocument()
     expect(screen.getByTestId('sidebar-loading-favorites')).toBeInTheDocument()
-    expect(screen.getByTestId('note-list-loading-skeleton')).toBeInTheDocument()
+    expect(screen.queryByTestId('note-list-loading-skeleton')).not.toBeInTheDocument()
     expect(screen.getByTestId('breadcrumb-title-skeleton')).toBeInTheDocument()
     expect(screen.getByTestId('editor-content-skeleton')).toBeInTheDocument()
     expect(screen.getByTestId('status-vault-reloading')).toHaveAccessibleName('Reloading vault from disk')
@@ -1081,59 +1056,22 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => {
       expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
-      expect(screen.getByText('FILES')).toBeInTheDocument()
+      expect(screen.getByText('FOLDERS')).toBeInTheDocument()
     })
   })
 
-  it('pressing Escape in Neighborhood mode blurs the editor before unwinding note-list history', async () => {
+  it('keeps the note-list panel removed in the default app shell', async () => {
     configureNeighborhoodVault()
 
     render(<App />)
 
-    const noteListContainer = await screen.findByTestId('note-list-container', {}, { timeout: 5000 })
-    const getHeader = () => getHeaderForNoteList(noteListContainer)
-
     await waitFor(() => {
-      expect(getHeader()).toHaveTextContent('Inbox')
+      expect(screen.getByText('All Notes')).toBeInTheDocument()
+      expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
     })
+  })
 
-    await enterNeighborhood(noteListContainer, 'Alpha')
-
-    await waitFor(() => {
-      expect(getHeader()).toHaveTextContent('Alpha')
-    })
-
-    const editor = screen.getByTestId('mock-editor')
-    editor.focus()
-    expect(editor).toHaveFocus()
-
-    await pressEscape()
-
-    await waitFor(() => {
-      expect(noteListContainer).toHaveFocus()
-      expect(getHeader()).toHaveTextContent('Alpha')
-    })
-
-    await enterNeighborhood(noteListContainer, 'Beta')
-
-    await waitFor(() => {
-      expect(getHeader()).toHaveTextContent('Beta')
-    })
-
-    await pressEscape()
-
-    await waitFor(() => {
-      expect(getHeader()).toHaveTextContent('Alpha')
-    })
-
-    await pressEscape()
-
-    await waitFor(() => {
-      expect(getHeader()).toHaveTextContent('Inbox')
-    })
-  }, 10_000)
-
-  it('opens favorites directly into Neighborhood mode', async () => {
+  it('opens favorites directly in the editor while the note-list panel is removed', async () => {
     configureNeighborhoodFavoritesVault()
 
     render(<App />)
@@ -1147,13 +1085,10 @@ describe('App', () => {
     })
     fireEvent.click(within(favoritesSection!).getByText('Alpha'))
 
-    const noteListContainer = await screen.findByTestId('note-list-container')
     await waitFor(() => {
-      expect(getHeaderForNoteList(noteListContainer)).toHaveTextContent('Alpha')
+      expect(window.__laputaTest?.activeTabPath).toBe('/vault/alpha.md')
+      expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
     })
-
-    expect(screen.getByText('Related to')).toBeInTheDocument()
-    expect(screen.getByText('Beta')).toBeInTheDocument()
   })
 
   it('defaults to All Notes when explicit organization is disabled in vault config', async () => {
@@ -1182,34 +1117,19 @@ describe('App', () => {
     })
   })
 
-  it('auto-advances to the next inbox item after organizing when the setting is enabled', async () => {
+  it('keeps auto-advance inaccessible when the note-list panel is removed', async () => {
     configureNeighborhoodVault()
     mockCommandResults.get_settings = createSettings({ auto_advance_inbox_after_organize: true })
 
     render(<App />)
 
-    const noteListContainer = await screen.findByTestId('note-list-container')
     await waitFor(() => {
-      expect(getHeaderForNoteList(noteListContainer)).toHaveTextContent('Inbox')
+      expect(screen.getByText('All Notes')).toBeInTheDocument()
+      expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
     })
+  })
 
-    await clickNoteListItem(noteListContainer, 'Alpha')
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Set note as organized' })).toBeInTheDocument()
-    })
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Set note as organized' }))
-      await Promise.resolve()
-    })
-
-    await waitFor(() => {
-      expect(window.__laputaTest?.activeTabPath).toBe('/vault/beta.md')
-    })
-  }, 10_000)
-
-  it('keeps the manually selected note after organizing finishes later', async () => {
+  it('keeps the note-list panel removed while an organize save is pending', async () => {
     configureNeighborhoodVault()
     mockCommandResults.get_settings = createSettings({ auto_advance_inbox_after_organize: true })
 
@@ -1221,28 +1141,9 @@ describe('App', () => {
 
     render(<App />)
 
-    const noteListContainer = await screen.findByTestId('note-list-container')
     await waitFor(() => {
-      expect(getHeaderForNoteList(noteListContainer)).toHaveTextContent('Inbox')
-    })
-
-    await clickNoteListItem(noteListContainer, 'Alpha')
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Set note as organized' })).toBeInTheDocument()
-    })
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Set note as organized' }))
-      await Promise.resolve()
-    })
-
-    await act(async () => {
-      fireEvent.click(within(noteListContainer).getByText('Gamma'))
-      await Promise.resolve()
-    })
-    await waitFor(() => {
-      expect(window.__laputaTest?.activeTabPath).toBe('/vault/gamma.md')
+      expect(screen.getByText('All Notes')).toBeInTheDocument()
+      expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
     })
 
     await act(async () => {
@@ -1252,8 +1153,8 @@ describe('App', () => {
       await Promise.resolve()
     })
 
-    expect(window.__laputaTest?.activeTabPath).toBe('/vault/gamma.md')
-  }, 10_000)
+    expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
+  })
 
   it('renders status bar', async () => {
     render(<App />)
@@ -1326,7 +1227,7 @@ describe('App', () => {
 
     // All panels visible by default
     expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
-    expect(document.querySelector('.app__note-list')).toBeInTheDocument()
+    expect(document.querySelector('.app__note-list')).not.toBeInTheDocument()
 
     // Cmd+1 → editor-only
     fireEvent.keyDown(window, { key: '1', metaKey: true })
@@ -1336,7 +1237,7 @@ describe('App', () => {
     })
   })
 
-  it('Cmd+2 shows editor + note list (sidebar hidden)', async () => {
+  it('Cmd+2 hides the sidebar while the note-list panel stays removed', async () => {
     render(<App />)
     await waitFor(() => {
       expect(screen.getByText('All Notes')).toBeInTheDocument()
@@ -1345,11 +1246,11 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: '2', metaKey: true })
     await waitFor(() => {
       expect(document.querySelector('.app__sidebar')).not.toBeInTheDocument()
-      expect(document.querySelector('.app__note-list')).toBeInTheDocument()
+      expect(document.querySelector('.app__note-list')).not.toBeInTheDocument()
     })
   })
 
-  it('Cmd+3 restores all panels after Cmd+1', async () => {
+  it('Cmd+3 restores the sidebar after Cmd+1 while the note-list panel stays removed', async () => {
     render(<App />)
     await waitFor(() => {
       expect(screen.getByText('All Notes')).toBeInTheDocument()
@@ -1365,7 +1266,7 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: '3', metaKey: true })
     await waitFor(() => {
       expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
-      expect(document.querySelector('.app__note-list')).toBeInTheDocument()
+      expect(document.querySelector('.app__note-list')).not.toBeInTheDocument()
     })
   })
 

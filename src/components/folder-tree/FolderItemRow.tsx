@@ -12,6 +12,7 @@ import { isIconUrl } from '../../hooks/useVaultIcons'
 interface FolderItemRowProps {
   contentInset: number
   depthIndent: number
+  hasChildren: boolean
   isExpanded: boolean
   isSelected: boolean
   icon?: string
@@ -26,6 +27,7 @@ interface FolderItemRowProps {
 export function FolderItemRow({
   contentInset,
   depthIndent,
+  hasChildren,
   isExpanded,
   isSelected,
   icon,
@@ -36,7 +38,6 @@ export function FolderItemRow({
   onToggle,
   canOpenMenu = true,
 }: FolderItemRowProps) {
-  const hasChildren = node.children.length > 0
   const { handleRenameDoubleClick, handleSelectClick } = useFolderRowInteractions({
     hasChildren,
     onRenameFolder: onStartRenameFolder ? () => onStartRenameFolder(node.path) : undefined,

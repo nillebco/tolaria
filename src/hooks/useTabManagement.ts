@@ -622,7 +622,6 @@ async function navigateToEntry(options: NavigateToEntryOptions) {
 }
 
 export function useTabManagement(options: TabManagementOptions = {}) {
-  // Single-note model: tabs has 0 or 1 elements.
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeTabPath, setActiveTabPath] = useState<string | null>(null)
   const activeTabPathRef = useRef(activeTabPath)
@@ -867,7 +866,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     const activePath = activeTabPathRef.current
     if (!activePath) return
 
-    const activeTab = tabsRef.current.find((tab) => pathsMatch(tab.entry.path, activePath))
+    const activeTab = tabsRef.current.find((tab) => notePathsMatch(tab.entry.path, activePath))
     if (!activeTab) return
 
     tabsRef.current = [activeTab]
