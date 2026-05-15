@@ -874,6 +874,21 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     syncActiveTabPath(activeTabPathRef, setActiveTabPath, activeTab.entry.path)
   }, [])
 
+  const reorderTabs = useCallback((sourcePath: string, targetPath: string) => {
+    if (notePathsMatch(sourcePath, targetPath)) return
+
+    const currentTabs = tabsRef.current
+    const sourceIndex = currentTabs.findIndex(tab => notePathsMatch(tab.entry.path, sourcePath))
+    const targetIndex = currentTabs.findIndex(tab => notePathsMatch(tab.entry.path, targetPath))
+    if (sourceIndex < 0 || targetIndex < 0) return
+
+    const nextTabs = [...currentTabs]
+    const [movedTab] = nextTabs.splice(sourceIndex, 1)
+    nextTabs.splice(targetIndex, 0, movedTab)
+    tabsRef.current = nextTabs
+    setTabs(nextTabs)
+  }, [])
+
   const nextTab = useCallback(() => {
     const currentTabs = tabsRef.current
     if (currentTabs.length <= 1) return
@@ -904,6 +919,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     closeCurrentTab,
     closeAllTabs,
     closeOtherTabs,
+    reorderTabs,
     nextTab,
     prevTab,
   }

@@ -1885,6 +1885,7 @@ function App() {
               isVaultLoading={isVaultContentLoading}
               entries={noteWindowParams && activeTab ? [activeTab.entry] : visibleEntries}
               onNavigateWikilink={notes.handleNavigateWikilink}
+              onReorderTabs={notes.reorderTabs}
               onLoadDiff={loadDiffForPath}
               onLoadDiffAtCommit={loadDiffAtCommitForPath}
               pendingCommitDiffRequest={pendingDiffRequest}

@@ -134,6 +134,7 @@ interface EditorProps {
   flushPendingRawContentRef?: React.MutableRefObject<((path: string) => void) | null>
   onSwitchTab?: (path: string) => void
   onCloseTab?: (path: string) => void
+  onReorderTabs?: (sourcePath: string, targetPath: string) => void
   unsavedPaths?: Set<string>
   locale?: AppLocale
 }
@@ -404,6 +405,7 @@ function EditorLayout({
   onUnsupportedAiPaste,
   onSwitchTab,
   onCloseTab,
+  onReorderTabs,
   unsavedPaths,
   locale,
 }: {
@@ -480,6 +482,7 @@ function EditorLayout({
   onUnsupportedAiPaste?: (message: string) => void
   onSwitchTab?: (path: string) => void
   onCloseTab?: (path: string) => void
+  onReorderTabs?: (sourcePath: string, targetPath: string) => void
   unsavedPaths?: Set<string>
   locale?: AppLocale
 }) {
@@ -494,6 +497,7 @@ function EditorLayout({
           activeTabPath={activeTabPath}
           onSwitchTab={onSwitchTab}
           onCloseTab={onCloseTab}
+          onReorderTabs={onReorderTabs}
           unsavedPaths={unsavedPaths}
         />
       )}

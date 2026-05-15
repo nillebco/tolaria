@@ -844,6 +844,23 @@ describe('useTabManagement', () => {
     })
   })
 
+  describe('reorderTabs', () => {
+    it('moves an open tab before the drop target without changing the active tab', async () => {
+      const { result } = renderHook(() => useTabManagement())
+
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+      await selectNote(result, { path: '/vault/b.md', title: 'B' })
+      await selectNote(result, { path: '/vault/c.md', title: 'C' })
+
+      act(() => {
+        result.current.reorderTabs('/vault/c.md', '/vault/a.md')
+      })
+
+      expect(result.current.tabs.map((tab) => tab.entry.path)).toEqual(['/vault/c.md', '/vault/a.md', '/vault/b.md'])
+      expect(result.current.activeTabPath).toBe('/vault/c.md')
+    })
+  })
+
   describe('content prefetch cache', () => {
     it('prefetch validates cached content against disk before reuse', async () => {
       const mockInvoke = await prefetchResolvedContent('/vault/note/pre.md', '# Prefetched content')
