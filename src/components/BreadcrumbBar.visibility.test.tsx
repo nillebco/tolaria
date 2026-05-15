@@ -68,11 +68,13 @@ describe('BreadcrumbBar filename visibility', () => {
     expect(editorCss).toContain('border-radius: 0;')
   })
 
-  it('offsets the editor-only breadcrumb title past the macOS traffic lights', () => {
+  it('offsets the editor-only breadcrumb title past the macOS traffic lights and restore button', () => {
     const editorCss = readFileSync(`${process.cwd()}/src/components/Editor.css`, 'utf8')
 
     expect(editorCss).toContain('.app:not(:has(.app__sidebar)):not(:has(.app__note-list)) .breadcrumb-bar')
-    expect(editorCss).toContain('--breadcrumb-bar-left-padding: 90px;')
+    expect(editorCss).toContain('--breadcrumb-bar-left-padding: 132px;')
+    expect(editorCss).toContain('.app:not(:has(.app__sidebar)):not(:has(.app__note-list)) .tab-bar')
+    expect(editorCss).toContain('padding-left: 132px;')
   })
 
   it('keeps a permanent overflow menu while moving lower-priority actions from measured overflow state', () => {

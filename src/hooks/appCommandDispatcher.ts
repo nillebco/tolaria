@@ -35,6 +35,7 @@ export interface AppCommandHandlers {
   onQuickOpen: () => void
   onSave: () => void
   onOpenSettings: () => void
+  onToggleFileList?: () => void
   onToggleInspector: () => void
   onCommandPalette: () => void
   onZoomIn: () => void
@@ -93,6 +94,7 @@ type SimpleHandlerKey = keyof Pick<
   | 'onSearch'
   | 'onToggleRawEditor'
   | 'onToggleDiff'
+  | 'onToggleFileList'
   | 'onToggleInspector'
   | 'onToggleAIChat'
   | 'onToggleTableOfContents'
@@ -144,6 +146,7 @@ const SIMPLE_HANDLER_EXECUTORS: readonly [SimpleHandlerKey, SimpleHandlerExecuto
   ['onSearch', (handlers) => handlers.onSearch()],
   ['onToggleRawEditor', (handlers) => handlers.onToggleRawEditor?.()],
   ['onToggleDiff', (handlers) => handlers.onToggleDiff?.()],
+  ['onToggleFileList', (handlers) => handlers.onToggleFileList?.()],
   ['onToggleInspector', (handlers) => handlers.onToggleInspector()],
   ['onToggleAIChat', (handlers) => handlers.onToggleAIChat?.()],
   ['onToggleTableOfContents', (handlers) => handlers.onToggleTableOfContents?.()],

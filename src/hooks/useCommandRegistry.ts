@@ -86,6 +86,7 @@ interface CommandRegistryConfig {
   onPull?: () => void
   onResolveConflicts?: () => void
   onSetViewMode: (mode: ViewMode) => void
+  onToggleFileList?: () => void
   onToggleInspector: () => void
   onToggleDiff?: () => void
   onToggleRawEditor?: () => void
@@ -139,7 +140,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     activeTabPath, entries, modifiedCount,
     onQuickOpen, onCreateNote, onOpenDailyNote, onCreateNoteOfType, onSave, onPastePlainText, onOpenSettings, onOpenFeedback,
     onDeleteNote, onArchiveNote, onUnarchiveNote,
-    onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onFindInNote, onReplaceInNote,
+    onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleFileList, onToggleInspector, onToggleDiff, onToggleRawEditor, onFindInNote, onReplaceInNote,
     noteWidth, defaultNoteWidth, onSetNoteWidth, onSetDefaultNoteWidth, onToggleAIChat, onToggleTableOfContents, onOpenVault, onCreateEmptyVault,
     selectedViewName, onMoveSelectedViewUp, onMoveSelectedViewDown, canMoveSelectedViewUp, canMoveSelectedViewDown,
     activeNoteModified,
@@ -244,13 +245,13 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
 
   const viewCommands = useMemo(() => buildViewCommands({
     aiFeaturesEnabled,
-    hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
+    hasActiveNote, activeNoteModified, onSetViewMode, onToggleFileList, onToggleInspector,
     onToggleDiff, onToggleRawEditor, noteWidth, defaultNoteWidth, onSetNoteWidth, onSetDefaultNoteWidth, onToggleAIChat, onToggleTableOfContents, zoomLevel, onZoomIn, onZoomOut, onZoomReset,
     onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
     selectedViewName, onMoveSelectedViewUp, onMoveSelectedViewDown, canMoveSelectedViewUp, canMoveSelectedViewDown,
   }), [
     aiFeaturesEnabled,
-    hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
+    hasActiveNote, activeNoteModified, onSetViewMode, onToggleFileList, onToggleInspector,
     onToggleDiff, onToggleRawEditor, noteWidth, defaultNoteWidth, onSetNoteWidth, onSetDefaultNoteWidth, onToggleAIChat, onToggleTableOfContents,
     zoomLevel, onZoomIn, onZoomOut, onZoomReset,
     onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,

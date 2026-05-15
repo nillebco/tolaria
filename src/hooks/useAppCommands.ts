@@ -41,6 +41,7 @@ interface AppCommandsConfig {
   onPull?: () => void
   onResolveConflicts?: () => void
   onSetViewMode: (mode: ViewMode) => void
+  onToggleFileList?: () => void
   onToggleInspector: () => void
   onToggleDiff?: () => void
   onToggleRawEditor?: () => void
@@ -182,6 +183,7 @@ type CommandRegistryCoreActions = Pick<
   | 'onPull'
   | 'onResolveConflicts'
   | 'onSetViewMode'
+  | 'onToggleFileList'
   | 'onToggleInspector'
   | 'onToggleDiff'
   | 'onToggleRawEditor'
@@ -289,6 +291,7 @@ function createKeyboardActions(
     onToggleAIChat: enabledAiChatToggle(config),
     onToggleTableOfContents: config.onToggleTableOfContents,
     onToggleRawEditor: config.onToggleRawEditor,
+    onToggleFileList: config.onToggleFileList,
     onToggleInspector: config.onToggleInspector,
     onToggleFavorite: config.onToggleFavorite,
     onToggleOrganized: config.onToggleOrganized,
@@ -326,6 +329,7 @@ function createMenuEventActionHandlers(
   | 'onQuickOpen'
   | 'onSave'
   | 'onOpenSettings'
+  | 'onToggleFileList'
   | 'onToggleInspector'
   | 'onCommandPalette'
   | 'onZoomIn'
@@ -353,6 +357,7 @@ function createMenuEventActionHandlers(
     onQuickOpen: config.onQuickOpen,
     onSave: config.onSave,
     onOpenSettings: config.onOpenSettings,
+    onToggleFileList: config.onToggleFileList,
     onToggleInspector: config.onToggleInspector,
     onCommandPalette: config.onCommandPalette,
     onZoomIn: config.onZoomIn,
@@ -489,6 +494,7 @@ function createCommandRegistryCoreConfig(
     onPull: config.onPull,
     onResolveConflicts: config.onResolveConflicts,
     onSetViewMode: config.onSetViewMode,
+    onToggleFileList: config.onToggleFileList,
     onToggleInspector: config.onToggleInspector,
     onToggleDiff: config.onToggleDiff,
     onToggleRawEditor: config.onToggleRawEditor,

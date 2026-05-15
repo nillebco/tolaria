@@ -13,6 +13,7 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .app__sidebar {
@@ -58,6 +59,14 @@
 
 .app__editor > * {
   flex: 1;
+}
+
+.app__sidebar-restore {
+  position: absolute;
+  top: 10px;
+  left: 90px;
+  z-index: 30;
+  -webkit-app-region: no-drag;
 }
 
 @keyframes spin {

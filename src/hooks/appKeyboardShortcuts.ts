@@ -31,6 +31,7 @@ export type KeyboardActions = Pick<
   | 'onToggleAIChat'
   | 'onToggleTableOfContents'
   | 'onToggleRawEditor'
+  | 'onToggleFileList'
   | 'onToggleInspector'
   | 'onToggleFavorite'
   | 'onToggleOrganized'

@@ -169,6 +169,18 @@
         "accelerator": "CmdOrCtrl+3"
       }
     },
+    "viewToggleFileList": {
+      "id": "view-toggle-file-list",
+      "route": { "kind": "handler", "handler": "onToggleFileList" },
+      "menuOwned": true,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "b",
+        "code": "KeyB",
+        "display": "⌘B",
+        "accelerator": "CmdOrCtrl+B"
+      }
+    },
     "viewToggleProperties": {
       "id": "view-toggle-properties",
       "route": { "kind": "handler", "handler": "onToggleInspector" },
@@ -510,6 +522,7 @@
         { "kind": "command", "command": "viewEditorOnly", "label": "Editor Only" },
         { "kind": "command", "command": "viewEditorList", "label": "Editor + Notes" },
         { "kind": "command", "command": "viewAll", "label": "All Panels" },
+        { "kind": "command", "command": "viewToggleFileList", "label": "Toggle File List" },
         { "kind": "separator" },
         {
           "kind": "command",

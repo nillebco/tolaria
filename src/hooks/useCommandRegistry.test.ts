@@ -413,6 +413,23 @@ describe('useCommandRegistry', () => {
     expect(findCommand(result.current, 'toggle-raw-editor')?.enabled).toBe(false)
   })
 
+  it('exposes Toggle File List with the Cmd+B shortcut', () => {
+    const onToggleFileList = vi.fn()
+    const config = makeConfig({ onToggleFileList })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'toggle-file-list')
+
+    expect(cmd).toMatchObject({
+      group: 'View',
+      label: 'Toggle File List',
+      shortcut: formatShortcutDisplay({ display: '⌘B' }),
+      enabled: true,
+    })
+
+    cmd!.execute()
+    expect(onToggleFileList).toHaveBeenCalledOnce()
+  })
+
   it('exposes command palette actions for note width modes', () => {
     const onSetNoteWidth = vi.fn()
     const config = makeConfig({ noteWidth: 'normal', onSetNoteWidth })

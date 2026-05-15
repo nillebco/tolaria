@@ -31,7 +31,11 @@
 }
 
 .app:not(:has(.app__sidebar)):not(:has(.app__note-list)) .breadcrumb-bar {
-  --breadcrumb-bar-left-padding: 90px;
+  --breadcrumb-bar-left-padding: 132px;
+}
+
+.app:not(:has(.app__sidebar)):not(:has(.app__note-list)) .tab-bar {
+  padding-left: 132px;
 }
 
 .breadcrumb-bar[data-title-hidden] {

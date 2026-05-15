@@ -22,6 +22,7 @@ interface ViewCommandsConfig {
   hasActiveNote: boolean
   activeNoteModified: boolean
   onSetViewMode: (mode: ViewMode) => void
+  onToggleFileList?: () => void
   onToggleInspector: () => void
   onToggleDiff?: () => void
   onToggleRawEditor?: () => void
@@ -125,7 +126,7 @@ export function buildViewCommands(config: ViewCommandsConfig): CommandAction[] {
   const {
     aiFeaturesEnabled = true,
     hasActiveNote, activeNoteModified,
-    onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor,
+    onSetViewMode, onToggleFileList, onToggleInspector, onToggleDiff, onToggleRawEditor,
     noteWidth = DEFAULT_NOTE_WIDTH_MODE, defaultNoteWidth = DEFAULT_NOTE_WIDTH_MODE,
     onSetNoteWidth, onSetDefaultNoteWidth, onToggleAIChat, onToggleTableOfContents,
     zoomLevel, onZoomIn, onZoomOut, onZoomReset,
@@ -140,6 +141,7 @@ export function buildViewCommands(config: ViewCommandsConfig): CommandAction[] {
     { id: 'view-editor', label: 'Editor Only', group: 'View', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewEditorOnly), keywords: ['layout', 'focus'], enabled: true, execute: () => onSetViewMode('editor-only') },
     { id: 'view-editor-list', label: 'Editor + Note List', group: 'View', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewEditorList), keywords: ['layout'], enabled: true, execute: () => onSetViewMode('editor-list') },
     { id: 'view-all', label: 'Full Layout', group: 'View', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewAll), keywords: ['layout', 'sidebar'], enabled: true, execute: () => onSetViewMode('all') },
+    { id: 'toggle-file-list', label: 'Toggle File List', group: 'View', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewToggleFileList), keywords: ['file', 'tree', 'sidebar', 'list', 'folders'], enabled: !!onToggleFileList, execute: () => onToggleFileList?.() },
     { id: 'toggle-inspector', label: 'Toggle Properties Panel', group: 'View', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewToggleProperties), keywords: ['properties', 'inspector', 'panel', 'right', 'sidebar'], enabled: true, execute: onToggleInspector },
     { id: 'toggle-diff', label: 'Toggle Diff Mode', group: 'View', keywords: ['diff', 'changes', 'git', 'compare', 'version'], enabled: hasActiveNote && activeNoteModified, execute: () => onToggleDiff?.() },
     { id: 'toggle-raw-editor', label: 'Toggle Raw Editor', group: 'View', keywords: ['raw', 'source', 'markdown', 'frontmatter', 'code', 'textarea'], enabled: hasActiveNote && !!onToggleRawEditor, execute: () => onToggleRawEditor?.() },

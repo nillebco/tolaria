@@ -1235,6 +1235,38 @@ describe('App', () => {
       expect(document.querySelector('.app__sidebar')).not.toBeInTheDocument()
       expect(document.querySelector('.app__note-list')).not.toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument()
+  })
+
+  it('restores the sidebar from the persistent collapsed file-list button', async () => {
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText('All Notes')).toBeInTheDocument()
+    })
+
+    fireEvent.keyDown(window, { key: '1', metaKey: true })
+    fireEvent.click(await screen.findByRole('button', { name: 'Expand sidebar' }))
+
+    await waitFor(() => {
+      expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
+    })
+  })
+
+  it('Cmd+B toggles the file list', async () => {
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText('All Notes')).toBeInTheDocument()
+    })
+
+    fireEvent.keyDown(window, { key: 'b', code: 'KeyB', metaKey: true })
+    await waitFor(() => {
+      expect(document.querySelector('.app__sidebar')).not.toBeInTheDocument()
+    })
+
+    fireEvent.keyDown(window, { key: 'b', code: 'KeyB', metaKey: true })
+    await waitFor(() => {
+      expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
+    })
   })
 
   it('Cmd+2 hides the sidebar while the note-list panel stays removed', async () => {

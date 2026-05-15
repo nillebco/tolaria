@@ -44,6 +44,7 @@ type SimpleHandlerKey =
   | 'onSearch'
   | 'onToggleRawEditor'
   | 'onToggleDiff'
+  | 'onToggleFileList'
   | 'onToggleInspector'
   | 'onToggleAIChat'
   | 'onToggleTableOfContents'

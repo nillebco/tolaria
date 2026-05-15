@@ -47,6 +47,7 @@ const STATIC_LABEL_KEYS: Partial<Record<string, TranslationKey>> = {
   'view-editor': 'command.view.editorOnly',
   'view-editor-list': 'command.view.editorNoteList',
   'view-all': 'command.view.fullLayout',
+  'toggle-file-list': 'command.view.toggleFileList',
   'toggle-inspector': 'command.view.toggleProperties',
   'toggle-diff': 'command.view.toggleDiff',
   'toggle-raw-editor': 'command.view.toggleRaw',

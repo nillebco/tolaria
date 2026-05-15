@@ -16,6 +16,7 @@ import { SettingsPanel } from './components/SettingsPanel'
 import { CloneVaultModal } from './components/CloneVaultModal'
 import { FeedbackDialog } from './components/FeedbackDialog'
 import { McpSetupDialog } from './components/McpSetupDialog'
+import { Button } from './components/ui/button'
 import { NoteRetargetingDialogs } from './components/note-retargeting/NoteRetargetingDialogs'
 import { StartupScreen } from './components/StartupScreen'
 import { useMcpStatus } from './hooks/useMcpStatus'
@@ -67,6 +68,7 @@ import { useAppSave } from './hooks/useAppSave'
 import { useNoteRetargetingUi } from './hooks/useNoteRetargetingUi'
 import { useVaultBridge } from './hooks/useVaultBridge'
 import { useSavedViewOrdering } from './hooks/useSavedViewOrdering'
+import { APP_COMMAND_IDS, getAppCommandShortcutDisplay } from './hooks/appCommandCatalog'
 import {
   useNeighborhoodEntry,
   useNeighborhoodEscape,
@@ -138,6 +140,7 @@ import { useVaultRenameDetection } from './hooks/useVaultRenameDetection'
 import { useVaultOpenedTelemetry } from './hooks/useVaultOpenedTelemetry'
 import { useStartupScreenState } from './hooks/useStartupScreenState'
 import { useGitFileWorkflows } from './hooks/useGitFileWorkflows'
+import { SidebarSimple } from '@phosphor-icons/react'
 import './App.css'
 
 const ACTIVE_EDITOR_SURFACE_SELECTOR = '.editor__blocknote-container, .raw-editor-codemirror'
@@ -1430,6 +1433,12 @@ function App() {
   const handleCollapseSidebar = useCallback(() => {
     handleSetViewMode('editor-list')
   }, [handleSetViewMode])
+  const handleExpandSidebar = useCallback(() => {
+    handleSetViewMode('all')
+  }, [handleSetViewMode])
+  const handleToggleFileList = useCallback(() => {
+    handleSetViewMode(sidebarVisible ? 'editor-only' : 'all')
+  }, [handleSetViewMode, sidebarVisible])
 
   const handleToggleInspector = useCallback(() => {
     const nextInspectorCollapsed = !layout.inspectorCollapsed
@@ -1678,6 +1687,7 @@ function App() {
     onPull: autoSync.triggerSync,
     onResolveConflicts: conflictFlow.handleOpenConflictResolver,
     onSetViewMode: handleSetViewMode,
+    onToggleFileList: handleToggleFileList,
     onToggleInspector: handleToggleInspector,
     onToggleDiff: toggleDiffCommand,
     onToggleRawEditor: toggleRawEditorCommand,
@@ -1838,6 +1848,21 @@ function App() {
               </div>
               <ResizeHandle onResize={layout.handleNoteListResize} />
             </>
+          )}
+          {!sidebarVisible && (
+            <div className="app__sidebar-restore">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label={translate(appLocale, 'sidebar.action.expand')}
+                title={`${translate(appLocale, 'sidebar.action.expand')} (${getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewToggleFileList)})`}
+                onClick={handleExpandSidebar}
+              >
+                <SidebarSimple size={16} weight="regular" />
+              </Button>
+            </div>
           )}
           <div className={`app__editor${aiActivity.highlightElement === 'editor' || aiActivity.highlightElement === 'tab' ? ' ai-highlight' : ''}`}>
             <Editor
