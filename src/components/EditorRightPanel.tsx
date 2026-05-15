@@ -162,6 +162,47 @@ export function EditorRightPanel({
   workspaces,
   locale,
 }: EditorRightPanelProps) {
+  if (showAIChat) {
+    return <AiPanelSection
+      activeNoteContent={inspectorContent}
+      defaultAiAgent={defaultAiAgent}
+      defaultAiAgentReadiness={defaultAiAgentReadiness}
+      defaultAiAgentReady={defaultAiAgentReady}
+      defaultAiTarget={defaultAiTarget}
+      entries={entries}
+      inspectorEntry={inspectorEntry}
+      inspectorWidth={inspectorWidth}
+      locale={locale}
+      noteList={noteList}
+      noteListFilter={noteListFilter}
+      onFileCreated={onFileCreated}
+      onFileModified={onFileModified}
+      onOpenNote={onOpenNote}
+      onToggleAIChat={onToggleAIChat}
+      onUnsupportedAiPaste={onUnsupportedAiPaste}
+      onVaultChanged={onVaultChanged}
+      vaultPath={vaultPath}
+      vaultPaths={vaultPaths}
+    />
+  }
+
+  if (showTableOfContents) {
+    return (
+      <div
+        className="shrink-0 flex flex-col min-h-0"
+        style={{ width: inspectorWidth, minWidth: 240, height: '100%' }}
+      >
+        <TableOfContentsPanel
+          editor={editor}
+          entry={inspectorEntry}
+          locale={locale}
+          onClose={() => onToggleTableOfContents?.()}
+          sourceContent={inspectorContent}
+        />
+      </div>
+    )
+  }
+
   if (!inspectorCollapsed) {
     return (
       <div
@@ -191,47 +232,6 @@ export function EditorRightPanel({
         />
       </div>
     )
-  }
-
-  if (showTableOfContents) {
-    return (
-      <div
-        className="shrink-0 flex flex-col min-h-0"
-        style={{ width: inspectorWidth, minWidth: 240, height: '100%' }}
-      >
-        <TableOfContentsPanel
-          editor={editor}
-          entry={inspectorEntry}
-          locale={locale}
-          onClose={() => onToggleTableOfContents?.()}
-          sourceContent={inspectorContent}
-        />
-      </div>
-    )
-  }
-
-  if (showAIChat) {
-    return <AiPanelSection
-      activeNoteContent={inspectorContent}
-      defaultAiAgent={defaultAiAgent}
-      defaultAiAgentReadiness={defaultAiAgentReadiness}
-      defaultAiAgentReady={defaultAiAgentReady}
-      defaultAiTarget={defaultAiTarget}
-      entries={entries}
-      inspectorEntry={inspectorEntry}
-      inspectorWidth={inspectorWidth}
-      locale={locale}
-      noteList={noteList}
-      noteListFilter={noteListFilter}
-      onFileCreated={onFileCreated}
-      onFileModified={onFileModified}
-      onOpenNote={onOpenNote}
-      onToggleAIChat={onToggleAIChat}
-      onUnsupportedAiPaste={onUnsupportedAiPaste}
-      onVaultChanged={onVaultChanged}
-      vaultPath={vaultPath}
-      vaultPaths={vaultPaths}
-    />
   }
 
   return null

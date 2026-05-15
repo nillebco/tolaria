@@ -693,23 +693,45 @@ describe('BreadcrumbBar — note width toggle', () => {
 })
 
 describe('BreadcrumbBar — AI panel toggle', () => {
-  it('hides the AI panel action when no toggle callback is available', () => {
+  it('hides the side pane action when no side pane toggle callback is available', () => {
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
-    expect(screen.queryByRole('button', { name: 'Open the AI panel' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open the side pane' })).not.toBeInTheDocument()
   })
 
-  it('shows and runs the AI panel action when a toggle callback is available', () => {
-    const onToggleAIChat = vi.fn()
-    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onToggleAIChat={onToggleAIChat} />)
+  it('toggles the side pane from the side pane action', () => {
+    const onToggleSidePane = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onToggleSidePane={onToggleSidePane} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open the AI panel' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open the side pane' }))
 
-    expect(onToggleAIChat).toHaveBeenCalledOnce()
+    expect(onToggleSidePane).toHaveBeenCalledOnce()
+  })
+
+  it('shows Cmd+Shift+B on the side pane tooltip', async () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onToggleSidePane={vi.fn()} />)
+    await expectTooltip(
+      screen.getByRole('button', { name: 'Open the side pane' }),
+      'Open the side pane',
+      formatShortcutDisplay({ display: '⌘⇧B' }),
+    )
+  })
+
+  it('keeps the side pane action as a visibility toggle when another side pane is active', () => {
+    render(
+      <BreadcrumbBar
+        entry={baseEntry}
+        {...defaultProps}
+        showTableOfContents
+        onToggleSidePane={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Close the side pane' })).toBeInTheDocument()
   })
 })
 
 describe('BreadcrumbBar — table of contents toggle', () => {
-  it('shows the table of contents action and calls the toggle handler', () => {
+  it('offers the table of contents action from the overflow menu', async () => {
     const onToggleTableOfContents = vi.fn()
     render(
       <BreadcrumbBar
@@ -719,12 +741,13 @@ describe('BreadcrumbBar — table of contents toggle', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open table of contents' }))
+    const menu = await openOverflowMenu()
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Open table of contents' }))
 
     expect(onToggleTableOfContents).toHaveBeenCalledOnce()
   })
 
-  it('uses the close label while the table of contents panel is active', () => {
+  it('hides the table of contents menu item while the table of contents panel is active', async () => {
     render(
       <BreadcrumbBar
         entry={baseEntry}
@@ -734,41 +757,17 @@ describe('BreadcrumbBar — table of contents toggle', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Close table of contents' })).toBeInTheDocument()
+    const menu = await openOverflowMenu()
+    expect(within(menu).queryByRole('menuitem', { name: 'Open table of contents' })).not.toBeInTheDocument()
   })
 
-  it('shows the table of contents shortcut in the button tooltip', async () => {
-    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onToggleTableOfContents={vi.fn()} />)
-    await expectTooltip(
-      screen.getByRole('button', { name: 'Open table of contents' }),
-      'Open table of contents',
-      formatShortcutDisplay({ display: '⌘⇧T' }),
-    )
-  })
+  it('offers the properties action from the overflow menu', async () => {
+    const onToggleInspector = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onToggleInspector={onToggleInspector} />)
 
-  it('offers the table of contents action from the overflow menu', async () => {
-    const onToggleTableOfContents = vi.fn()
-    const restoreMeasurement = mockCollapsedBreadcrumbOverflow()
+    const menu = await openOverflowMenu()
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Open the properties panel' }))
 
-    try {
-      const { container } = render(
-        <BreadcrumbBar
-          entry={baseEntry}
-          {...defaultProps}
-          onToggleTableOfContents={onToggleTableOfContents}
-        />,
-      )
-
-      await waitFor(() => {
-        expect(container.querySelector('.breadcrumb-bar__actions')).toHaveAttribute('data-overflow-collapsed', 'true')
-      })
-
-      const menu = await openOverflowMenu()
-      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Open table of contents' }))
-
-      expect(onToggleTableOfContents).toHaveBeenCalledOnce()
-    } finally {
-      restoreMeasurement()
-    }
+    expect(onToggleInspector).toHaveBeenCalledOnce()
   })
 })

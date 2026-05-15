@@ -79,6 +79,7 @@ interface AppCommandsConfig {
   onCreateType?: () => void
   aiFeaturesEnabled?: boolean
   onToggleAIChat?: () => void
+  onOpenAIChat?: () => void
   onToggleTableOfContents?: () => void
   onCheckForUpdates?: () => void
   onRemoveActiveVault?: () => void
@@ -289,6 +290,7 @@ function createKeyboardActions(
     onGoBack: config.onGoBack,
     onGoForward: config.onGoForward,
     onToggleAIChat: enabledAiChatToggle(config),
+    onOpenAIChat: aiFeaturesAreEnabled(config) ? config.onOpenAIChat : undefined,
     onToggleTableOfContents: config.onToggleTableOfContents,
     onToggleRawEditor: config.onToggleRawEditor,
     onToggleFileList: config.onToggleFileList,
@@ -343,6 +345,7 @@ function createMenuEventActionHandlers(
   | 'onToggleRawEditor'
   | 'onToggleDiff'
   | 'onToggleAIChat'
+  | 'onOpenAIChat'
   | 'onToggleTableOfContents'
   | 'onToggleOrganized'
   | 'onGoBack'
@@ -371,6 +374,7 @@ function createMenuEventActionHandlers(
     onToggleRawEditor: config.onToggleRawEditor,
     onToggleDiff: config.onToggleDiff,
     onToggleAIChat: enabledAiChatToggle(config),
+    onOpenAIChat: aiFeaturesAreEnabled(config) ? config.onOpenAIChat : undefined,
     onToggleTableOfContents: config.onToggleTableOfContents,
     onToggleOrganized: config.onToggleOrganized,
     onGoBack: config.onGoBack,
@@ -511,6 +515,7 @@ function createCommandRegistryCoreConfig(
     onSetNoteWidth: config.onSetNoteWidth,
     onSetDefaultNoteWidth: config.onSetDefaultNoteWidth,
     onToggleAIChat: enabledAiChatToggle(config),
+    onOpenAIChat: aiFeaturesAreEnabled(config) ? config.onOpenAIChat : undefined,
     onToggleTableOfContents: config.onToggleTableOfContents,
   }
 }

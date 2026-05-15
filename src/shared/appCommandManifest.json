@@ -200,6 +200,19 @@
       "menuOwned": true,
       "shortcut": {
         "combo": "command-or-ctrl-shift",
+        "key": "b",
+        "code": "KeyB",
+        "display": "⌘⇧B",
+        "accelerator": "CmdOrCtrl+Shift+B",
+        "requiresManualNativeAcceleratorQa": true
+      }
+    },
+    "viewOpenAiChat": {
+      "id": "view-open-ai-chat",
+      "route": { "kind": "handler", "handler": "onOpenAIChat" },
+      "menuOwned": true,
+      "shortcut": {
+        "combo": "command-or-ctrl-shift",
         "key": "l",
         "code": "KeyL",
         "display": "⌘⇧L",
@@ -530,7 +543,8 @@
           "label": "Toggle Properties Panel",
           "accelerator": null
         },
-        { "kind": "command", "command": "viewToggleAiChat", "label": "Toggle AI Panel" },
+        { "kind": "command", "command": "viewToggleAiChat", "label": "Toggle Side Pane" },
+        { "kind": "command", "command": "viewOpenAiChat", "label": "Open AI Panel" },
         { "kind": "separator" },
         { "kind": "command", "command": "viewZoomIn", "label": "Zoom In" },
         { "kind": "command", "command": "viewZoomOut", "label": "Zoom Out" },

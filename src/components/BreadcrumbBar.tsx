@@ -46,6 +46,7 @@ interface BreadcrumbBarProps {
   forceRawMode?: boolean
   showAIChat?: boolean
   onToggleAIChat?: () => void
+  onToggleSidePane?: () => void
   showTableOfContents?: boolean
   onToggleTableOfContents?: () => void
   inspectorCollapsed?: boolean
@@ -291,39 +292,29 @@ function FavoriteAction({ favorite, locale = 'en', onToggleFavorite }: { favorit
   return <ConfiguredToggleAction active={favorite} config={TOGGLE_ACTION_CONFIGS.favorite} locale={locale} onClick={onToggleFavorite} />
 }
 
-function AIChatAction({ showAIChat, locale = 'en', onToggleAIChat }: Pick<BreadcrumbBarProps, 'showAIChat' | 'locale' | 'onToggleAIChat'>) {
-  return (
-    <ToggleIconAction
-      active={!!showAIChat}
-      activeClassName="text-primary"
-      activeLabel={translate(locale, 'editor.toolbar.closeAi')}
-      inactiveLabel={translate(locale, 'editor.toolbar.openAi')}
-      onClick={onToggleAIChat}
-      shortcut={formatShortcutDisplay({ display: '⌘⇧L' })}
-    >
-      <Sparkle size={16} weight={showAIChat ? 'fill' : 'regular'} className={BREADCRUMB_ICON_CLASS} />
-    </ToggleIconAction>
-  )
-}
-
-function TableOfContentsAction({
+function SidePaneAction({
+  inspectorCollapsed,
+  showAIChat,
   showTableOfContents,
   locale = 'en',
-  onToggleTableOfContents,
-}: Pick<BreadcrumbBarProps, 'showTableOfContents' | 'locale' | 'onToggleTableOfContents'>) {
-  if (!onToggleTableOfContents) return null
+  onToggleSidePane,
+}: Pick<BreadcrumbBarProps, 'inspectorCollapsed' | 'showAIChat' | 'showTableOfContents' | 'locale' | 'onToggleSidePane'>) {
+  if (!onToggleSidePane) return null
+  const sidePaneOpen = !!showAIChat || !!showTableOfContents || inspectorCollapsed === false
+  const labelKey = sidePaneOpen ? 'editor.toolbar.closeSidePane' : 'editor.toolbar.openSidePane'
 
   return (
-    <IconActionButton
-      copy={{
-        label: translate(locale, showTableOfContents ? 'editor.toolbar.closeTableOfContents' : 'editor.toolbar.openTableOfContents'),
-        shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewToggleTableOfContents),
-      }}
-      onClick={onToggleTableOfContents}
-      className={cn(showTableOfContents ? 'text-foreground' : 'hover:text-foreground')}
+    <ToggleIconAction
+      active={sidePaneOpen}
+      activeClassName="text-primary"
+      activeLabel={translate(locale, labelKey)}
+      inactiveLabel={translate(locale, labelKey)}
+      onClick={onToggleSidePane}
+      shortcut={getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewToggleAiChat)}
+      tooltipAlign="end"
     >
-      <ListBullets size={16} weight={showTableOfContents ? 'bold' : 'regular'} className={BREADCRUMB_ICON_CLASS} />
-    </IconActionButton>
+      <SidebarSimple size={16} weight={sidePaneOpen ? 'bold' : 'regular'} className={BREADCRUMB_ICON_CLASS} style={{ transform: 'scaleX(-1)' }} />
+    </ToggleIconAction>
   )
 }
 
@@ -356,27 +347,6 @@ function FilePathActions({
         </IconActionButton>
       )}
     </>
-  )
-}
-
-function InspectorAction({
-  inspectorCollapsed,
-  locale = 'en',
-  onToggleInspector,
-}: Pick<BreadcrumbBarProps, 'inspectorCollapsed' | 'locale' | 'onToggleInspector'>) {
-  if (!inspectorCollapsed) return null
-  return (
-    <IconActionButton
-      copy={{
-        label: translate(locale, 'editor.toolbar.openProperties'),
-        shortcut: formatShortcutDisplay({ display: '⌘⇧I' }),
-      }}
-      onClick={onToggleInspector}
-      className="hover:text-foreground"
-      tooltipAlign="end"
-    >
-      <SidebarSimple size={16} weight="regular" className={BREADCRUMB_ICON_CLASS} style={{ transform: 'scaleX(-1)' }} />
-    </IconActionButton>
   )
 }
 
@@ -782,6 +752,7 @@ function BreadcrumbActions({
   onToggleNoteWidth,
   showAIChat,
   onToggleAIChat,
+  onToggleSidePane,
   showTableOfContents,
   onToggleTableOfContents,
   inspectorCollapsed,
@@ -812,16 +783,6 @@ function BreadcrumbActions({
       <OverflowToolbarAction>
         <NoteWidthAction noteWidth={noteWidth} locale={locale} onToggleNoteWidth={onToggleNoteWidth} />
       </OverflowToolbarAction>
-      {onToggleAIChat ? (
-        <AIChatAction showAIChat={showAIChat} locale={locale} onToggleAIChat={onToggleAIChat} />
-      ) : null}
-      <OverflowToolbarAction>
-        <TableOfContentsAction
-          showTableOfContents={showTableOfContents}
-          locale={locale}
-          onToggleTableOfContents={onToggleTableOfContents}
-        />
-      </OverflowToolbarAction>
       <OverflowToolbarAction>
         <FilePathActions entry={entry} locale={locale} onRevealFile={onRevealFile} onCopyFilePath={onCopyFilePath} />
       </OverflowToolbarAction>
@@ -829,6 +790,10 @@ function BreadcrumbActions({
         entry={entry}
         showDiffToggle={showDiffToggle}
         onToggleDiff={onToggleDiff}
+        inspectorCollapsed={inspectorCollapsed}
+        onToggleInspector={onToggleInspector}
+        showAIChat={showAIChat}
+        onToggleAIChat={onToggleAIChat}
         noteWidth={noteWidth}
         onToggleNoteWidth={onToggleNoteWidth}
         showTableOfContents={showTableOfContents}
@@ -842,7 +807,13 @@ function BreadcrumbActions({
         showResponsiveActions={overflowCollapsed}
         locale={locale}
       />
-      <InspectorAction inspectorCollapsed={inspectorCollapsed} locale={locale} onToggleInspector={onToggleInspector} />
+      <SidePaneAction
+        inspectorCollapsed={inspectorCollapsed}
+        showAIChat={showAIChat}
+        showTableOfContents={showTableOfContents}
+        locale={locale}
+        onToggleSidePane={onToggleSidePane}
+      />
     </div>
   )
 }
@@ -851,6 +822,10 @@ function BreadcrumbOverflowMenu({
   entry,
   showDiffToggle,
   onToggleDiff,
+  inspectorCollapsed,
+  onToggleInspector,
+  showAIChat,
+  onToggleAIChat,
   noteWidth,
   onToggleNoteWidth,
   showTableOfContents,
@@ -868,6 +843,10 @@ function BreadcrumbOverflowMenu({
   | 'entry'
   | 'showDiffToggle'
   | 'onToggleDiff'
+  | 'inspectorCollapsed'
+  | 'onToggleInspector'
+  | 'showAIChat'
+  | 'onToggleAIChat'
   | 'noteWidth'
   | 'onToggleNoteWidth'
   | 'showTableOfContents'
@@ -890,7 +869,10 @@ function BreadcrumbOverflowMenu({
   const diffLabel = translate(locale, 'editor.toolbar.gitDiff')
   const noteWidthLabel = translate(locale, noteWidthLabelKey(noteWidth))
   const archiveLabel = translate(locale, archiveLabelKey(entry.archived))
-  const tableOfContentsLabel = translate(locale, showTableOfContents ? 'editor.toolbar.closeTableOfContents' : 'editor.toolbar.openTableOfContents')
+  const showOpenAiMenuItem = !showAIChat && !!onToggleAIChat
+  const showOpenPropertiesMenuItem = inspectorCollapsed !== false && !!onToggleInspector
+  const showOpenTableOfContentsMenuItem = !showTableOfContents && !!onToggleTableOfContents
+  const tableOfContentsLabel = translate(locale, 'editor.toolbar.openTableOfContents')
   const neighborhoodLabel = translate(locale, 'editor.toolbar.openNeighborhood')
 
   return (
@@ -914,6 +896,24 @@ function BreadcrumbOverflowMenu({
           <GitBranch size={16} />
           {diffLabel}
         </DropdownMenuItem>
+        {showOpenAiMenuItem && (
+          <DropdownMenuItem onSelect={onToggleAIChat}>
+            <Sparkle size={16} />
+            {translate(locale, 'editor.toolbar.openAi')}
+          </DropdownMenuItem>
+        )}
+        {showOpenTableOfContentsMenuItem && (
+          <DropdownMenuItem onSelect={onToggleTableOfContents}>
+            <ListBullets size={16} />
+            {tableOfContentsLabel}
+          </DropdownMenuItem>
+        )}
+        {showOpenPropertiesMenuItem && (
+          <DropdownMenuItem onSelect={onToggleInspector}>
+            <SidebarSimple size={16} style={{ transform: 'scaleX(-1)' }} />
+            {translate(locale, 'editor.toolbar.openProperties')}
+          </DropdownMenuItem>
+        )}
         {showResponsiveActions && (
           <>
             <DropdownMenuItem disabled={!runNeighborhoodAction} onSelect={runNeighborhoodAction}>
@@ -922,10 +922,6 @@ function BreadcrumbOverflowMenu({
             <DropdownMenuItem disabled={!onToggleNoteWidth} onSelect={onToggleNoteWidth}>
               <NoteWidthMenuIcon noteWidth={noteWidth} />
               {noteWidthLabel}
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!onToggleTableOfContents} onSelect={onToggleTableOfContents}>
-              <ListBullets size={16} />
-              {tableOfContentsLabel}
             </DropdownMenuItem>
             <DropdownMenuItem disabled={!runRevealAction} onSelect={runRevealAction}>
               <FolderOpen size={16} />

@@ -40,9 +40,13 @@ describe('LinuxMenuButton', () => {
     expect(invoke).toHaveBeenCalledWith('trigger_menu_command', { id: 'edit-paste-plain-text' })
 
     await openSubmenu('View')
-    expect(screen.getByText('Ctrl+Shift+L')).toBeInTheDocument()
-    fireEvent.click(await screen.findByText('Toggle AI Panel'))
+    expect(screen.getByText('Ctrl+Shift+B')).toBeInTheDocument()
+    fireEvent.click(await screen.findByText('Toggle Side Pane'))
     expect(invoke).toHaveBeenCalledWith('trigger_menu_command', { id: 'view-toggle-ai-chat' })
+    await openSubmenu('View')
+    expect(screen.getByText('Ctrl+Shift+L')).toBeInTheDocument()
+    fireEvent.click(await screen.findByText('Open AI Panel'))
+    expect(invoke).toHaveBeenCalledWith('trigger_menu_command', { id: 'view-open-ai-chat' })
   }, MENU_TEST_TIMEOUT_MS)
 
   it('invokes direct window actions from the Window submenu', async () => {

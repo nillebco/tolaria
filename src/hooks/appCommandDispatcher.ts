@@ -52,6 +52,7 @@ export interface AppCommandHandlers {
   onToggleRawEditor?: () => void
   onToggleDiff?: () => void
   onToggleAIChat?: () => void
+  onOpenAIChat?: () => void
   onToggleTableOfContents?: () => void
   onGoBack?: () => void
   onGoForward?: () => void
@@ -97,6 +98,7 @@ type SimpleHandlerKey = keyof Pick<
   | 'onToggleFileList'
   | 'onToggleInspector'
   | 'onToggleAIChat'
+  | 'onOpenAIChat'
   | 'onToggleTableOfContents'
   | 'onCommandPalette'
   | 'onZoomIn'
@@ -149,6 +151,7 @@ const SIMPLE_HANDLER_EXECUTORS: readonly [SimpleHandlerKey, SimpleHandlerExecuto
   ['onToggleFileList', (handlers) => handlers.onToggleFileList?.()],
   ['onToggleInspector', (handlers) => handlers.onToggleInspector()],
   ['onToggleAIChat', (handlers) => handlers.onToggleAIChat?.()],
+  ['onOpenAIChat', (handlers) => handlers.onOpenAIChat?.()],
   ['onToggleTableOfContents', (handlers) => handlers.onToggleTableOfContents?.()],
   ['onCommandPalette', (handlers) => handlers.onCommandPalette()],
   ['onZoomIn', (handlers) => handlers.onZoomIn()],

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { trackEvent } from '../lib/telemetry'
 
 interface RightPanelExclusionOptions {
@@ -13,6 +13,8 @@ interface RightPanelToggleOptions extends RightPanelExclusionOptions {
   openTableOfContents?: () => void
   showTableOfContents?: boolean
 }
+
+type RightPanelId = 'ai' | 'properties' | 'toc'
 
 function prepareRightPanelOpen(
   panel: 'ai' | 'properties',
@@ -58,9 +60,22 @@ export function useRightPanelExclusion({
   showAIChat,
 }: RightPanelExclusionOptions) {
   const [showTableOfContents, setShowTableOfContents] = useState(false)
+  const lastSelectedPanelRef = useRef<RightPanelId>(onToggleAIChat ? 'ai' : 'properties')
   const closeTableOfContents = useCallback(() => setShowTableOfContents(false), [])
+  const visiblePanel: RightPanelId | null = showAIChat
+    ? 'ai'
+    : showTableOfContents
+      ? 'toc'
+      : inspectorCollapsed === false
+        ? 'properties'
+        : null
+
+  useEffect(() => {
+    if (visiblePanel) lastSelectedPanelRef.current = visiblePanel
+  }, [visiblePanel])
 
   const handleToggleInspectorPanel = useCallback(() => {
+    if (inspectorCollapsed) lastSelectedPanelRef.current = 'properties'
     prepareRightPanelOpen('properties', {
       closeTableOfContents,
       inspectorCollapsed,
@@ -72,6 +87,7 @@ export function useRightPanelExclusion({
   }, [closeTableOfContents, inspectorCollapsed, onToggleAIChat, onToggleInspector, showAIChat])
 
   const handleToggleAIChatPanel = useCallback(() => {
+    if (!showAIChat) lastSelectedPanelRef.current = 'ai'
     prepareRightPanelOpen('ai', {
       closeTableOfContents,
       inspectorCollapsed,
@@ -84,6 +100,7 @@ export function useRightPanelExclusion({
 
   const handleToggleTableOfContents = useCallback(() => {
     trackEvent('table_of_contents_toggled', { open: showTableOfContents ? 0 : 1 })
+    if (!showTableOfContents) lastSelectedPanelRef.current = 'toc'
     toggleTableOfContentsPanel({
       closeTableOfContents,
       inspectorCollapsed,
@@ -95,9 +112,44 @@ export function useRightPanelExclusion({
     })
   }, [closeTableOfContents, inspectorCollapsed, onToggleAIChat, onToggleInspector, showAIChat, showTableOfContents])
 
+  const handleToggleSidePane = useCallback(() => {
+    if (visiblePanel === 'ai') {
+      onToggleAIChat?.()
+      return
+    }
+    if (visiblePanel === 'toc') {
+      closeTableOfContents()
+      return
+    }
+    if (visiblePanel === 'properties') {
+      onToggleInspector()
+      return
+    }
+
+    const panelToOpen = lastSelectedPanelRef.current
+    if (panelToOpen === 'ai' && onToggleAIChat) {
+      handleToggleAIChatPanel()
+      return
+    }
+    if (panelToOpen === 'toc') {
+      handleToggleTableOfContents()
+      return
+    }
+    handleToggleInspectorPanel()
+  }, [
+    closeTableOfContents,
+    handleToggleAIChatPanel,
+    handleToggleInspectorPanel,
+    handleToggleTableOfContents,
+    onToggleAIChat,
+    onToggleInspector,
+    visiblePanel,
+  ])
+
   return {
     handleToggleAIChatPanel,
     handleToggleInspectorPanel,
+    handleToggleSidePane,
     handleToggleTableOfContents,
     showTableOfContents,
   }

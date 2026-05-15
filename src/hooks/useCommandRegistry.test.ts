@@ -346,7 +346,8 @@ describe('useCommandRegistry', () => {
     })
     const { result } = renderHook(() => useCommandRegistry(config))
 
-    expect(findCommand(result.current, 'toggle-ai-panel')).toBeUndefined()
+    expect(findCommand(result.current, 'toggle-side-pane')).toBeUndefined()
+    expect(findCommand(result.current, 'open-ai-panel')).toBeUndefined()
     expect(findCommand(result.current, 'new-ai-chat')).toBeUndefined()
     expect(findCommand(result.current, 'open-ai-agents')).toBeUndefined()
   })
@@ -566,6 +567,23 @@ describe('useCommandRegistry', () => {
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: NEW_AI_CHAT_EVENT }))
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: OPEN_AI_CHAT_EVENT }))
     dispatchSpy.mockRestore()
+  })
+
+  it('includes an Open AI panel command', () => {
+    const onOpenAIChat = vi.fn()
+    const config = makeConfig({ onOpenAIChat })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'open-ai-panel')
+
+    expect(cmd).toBeDefined()
+    expect(cmd!.group).toBe('View')
+    expect(cmd!.label).toBe('Open AI panel')
+    expect(cmd!.shortcut).toBe('Ctrl+Shift+L')
+    expect(cmd!.enabled).toBe(true)
+
+    cmd!.execute()
+
+    expect(onOpenAIChat).toHaveBeenCalledOnce()
   })
 
   it('omits Inbox navigation when the explicit workflow is disabled', () => {

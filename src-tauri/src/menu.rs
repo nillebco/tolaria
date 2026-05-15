@@ -628,8 +628,18 @@ mod tests {
             .expect("View menu exposes the AI panel toggle");
 
         assert_eq!(item.menu_item_id(manifest()), Some("view-toggle-ai-chat"));
-        assert_eq!(item.label("macos"), Some("Toggle AI Panel"));
-        assert_eq!(item.accelerator(manifest()), Some("CmdOrCtrl+Shift+L"));
+        assert_eq!(item.label("macos"), Some("Toggle Side Pane"));
+        assert_eq!(item.accelerator(manifest()), Some("CmdOrCtrl+Shift+B"));
+
+        let open_ai_item = view_menu
+            .items
+            .iter()
+            .find(|item| item.command_id(manifest()) == Some("view-open-ai-chat"))
+            .expect("View menu exposes the AI panel opener");
+
+        assert_eq!(open_ai_item.menu_item_id(manifest()), Some("view-open-ai-chat"));
+        assert_eq!(open_ai_item.label("macos"), Some("Open AI Panel"));
+        assert_eq!(open_ai_item.accelerator(manifest()), Some("CmdOrCtrl+Shift+L"));
     }
 
     #[test]

@@ -24,6 +24,7 @@ type BreadcrumbActions = Pick<
   | 'forceRawMode'
   | 'showAIChat'
   | 'onToggleAIChat'
+  | 'onToggleSidePane'
   | 'showTableOfContents'
   | 'onToggleTableOfContents'
   | 'inspectorCollapsed'
@@ -193,6 +194,7 @@ function ActiveTabBreadcrumb({
       forceRawMode={actions.forceRawMode}
       showAIChat={actions.showAIChat}
       onToggleAIChat={actions.onToggleAIChat}
+      onToggleSidePane={actions.onToggleSidePane}
       showTableOfContents={actions.showTableOfContents}
       onToggleTableOfContents={actions.onToggleTableOfContents}
       inspectorCollapsed={actions.inspectorCollapsed}
@@ -237,6 +239,7 @@ function EditorLoadingBreadcrumb({
       forceRawMode={false}
       showAIChat={actions.showAIChat}
       onToggleAIChat={actions.onToggleAIChat}
+      onToggleSidePane={actions.onToggleSidePane}
       showTableOfContents={actions.showTableOfContents}
       onToggleTableOfContents={actions.onToggleTableOfContents}
       inspectorCollapsed={actions.inspectorCollapsed}
@@ -258,6 +261,7 @@ function buildBreadcrumbActions(model: EditorContentModel): BreadcrumbActions {
     forceRawMode: model.forceRawMode,
     showAIChat: model.showAIChat,
     onToggleAIChat: model.onToggleAIChat,
+    onToggleSidePane: model.onToggleSidePane,
     showTableOfContents: model.showTableOfContents,
     onToggleTableOfContents: model.onToggleTableOfContents,
     inspectorCollapsed: model.inspectorCollapsed,

@@ -1396,11 +1396,14 @@ function App() {
 
   // Raw-toggle ref: Editor registers its handleToggleRaw here so the command palette can call it
   const rawToggleRef = useRef<() => void>(() => {})
+  const propertiesToggleRef = useRef<() => void>(() => {})
   const tableOfContentsToggleRef = useRef<() => void>(() => {})
+  const sidePaneToggleRef = useRef<() => void>(() => {})
   // Diff-toggle ref: Editor registers its handleToggleDiff here so the command palette can call it
   const diffToggleRef = useRef<() => void>(() => {})
   const findInNoteRef = useRef<((options?: { replace?: boolean }) => void) | null>(null)
   const renameCurrentFileRef = useRef<(() => void) | null>(null)
+  const openAIChatRef = useRef<() => void>(() => {})
 
   const { setViewMode, sidebarVisible, noteListVisible } = useViewMode(noteWindowParams ? 'editor-only' : undefined)
   const zoom = useZoom()
@@ -1583,6 +1586,15 @@ function App() {
   const toggleTableOfContentsCommand = useCallback(() => {
     if (notes.activeTabPath) tableOfContentsToggleRef.current()
   }, [notes.activeTabPath])
+  const togglePropertiesCommand = useCallback(() => {
+    propertiesToggleRef.current()
+  }, [])
+  const toggleSidePaneCommand = useCallback(() => {
+    sidePaneToggleRef.current()
+  }, [])
+  const openAIChatCommand = useCallback(() => {
+    openAIChatRef.current()
+  }, [])
   const findInNoteCommand = useCallback(() => {
     findInNoteRef.current?.({ replace: false })
   }, [])
@@ -1688,7 +1700,7 @@ function App() {
     onResolveConflicts: conflictFlow.handleOpenConflictResolver,
     onSetViewMode: handleSetViewMode,
     onToggleFileList: handleToggleFileList,
-    onToggleInspector: handleToggleInspector,
+    onToggleInspector: togglePropertiesCommand,
     onToggleDiff: toggleDiffCommand,
     onToggleRawEditor: toggleRawEditorCommand,
     onToggleTableOfContents: toggleTableOfContentsCommand,
@@ -1720,6 +1732,8 @@ function App() {
     onCreateEmptyVault: vaultSwitcher.handleCreateEmptyVault,
     onCreateType: dialogs.openCreateType,
     ...commandAiActions,
+    onToggleAIChat: toggleSidePaneCommand,
+    onOpenAIChat: openAIChatCommand,
     onCheckForUpdates: handleCheckForUpdates,
     onRemoveActiveVault: removeActiveVaultCommand,
     onRestoreGettingStarted: cloneGettingStartedVault,
@@ -1917,7 +1931,10 @@ function App() {
               noteWidth={activeNoteWidth}
               onToggleNoteWidth={handleToggleNoteWidth}
               rawToggleRef={rawToggleRef}
+              propertiesToggleRef={propertiesToggleRef}
+              openAIChatRef={openAIChatRef}
               tableOfContentsToggleRef={tableOfContentsToggleRef}
+              sidePaneToggleRef={sidePaneToggleRef}
               findInNoteRef={findInNoteRef}
               diffToggleRef={diffToggleRef}
               renameCurrentFileRef={renameCurrentFileRef}

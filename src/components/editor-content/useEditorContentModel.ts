@@ -31,6 +31,7 @@ export interface EditorContentProps {
   showDiffToggle: boolean
   showAIChat?: boolean
   onToggleAIChat?: () => void
+  onToggleSidePane?: () => void
   showTableOfContents?: boolean
   onToggleTableOfContents?: () => void
   inspectorCollapsed: boolean

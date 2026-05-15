@@ -761,7 +761,7 @@ describe('App', () => {
     render(<App />)
 
     await screen.findByText('All Notes')
-    fireEvent.keyDown(window, { key: 'l', code: 'KeyL', metaKey: true, shiftKey: true })
+    fireEvent.keyDown(window, { key: 'b', code: 'KeyB', metaKey: true, shiftKey: true })
 
     const input = await screen.findByTestId('agent-input')
     await waitFor(() => {
@@ -795,7 +795,7 @@ describe('App', () => {
     render(<App />)
 
     await screen.findByText('All Notes')
-    fireEvent.keyDown(window, { key: 'l', code: 'KeyL', metaKey: true, shiftKey: true })
+    fireEvent.keyDown(window, { key: 'b', code: 'KeyB', metaKey: true, shiftKey: true })
 
     const input = await screen.findByTestId('agent-input')
     fireEvent.click(screen.getByTestId('agent-send'))

@@ -48,6 +48,7 @@ function makeHandlers(): AppCommandHandlers {
     onToggleRawEditor: vi.fn(),
     onToggleDiff: vi.fn(),
     onToggleAIChat: vi.fn(),
+    onOpenAIChat: vi.fn(),
     onToggleTableOfContents: vi.fn(),
     onPastePlainText: vi.fn(),
     onGoBack: vi.fn(),
@@ -136,7 +137,8 @@ describe('appCommandDispatcher', () => {
   it('finds raw editor, AI, and plain-text paste shortcuts from the shared catalog', () => {
     expect(findShortcutCommandId('command-or-ctrl', 'o', 'KeyO')).toBe(APP_COMMAND_IDS.fileQuickOpen)
     expect(findShortcutCommandId('command-or-ctrl', '\\')).toBe(APP_COMMAND_IDS.editToggleRawEditor)
-    expect(findShortcutCommandId('command-or-ctrl-shift', '¬', 'KeyL')).toBe(APP_COMMAND_IDS.viewToggleAiChat)
+    expect(findShortcutCommandId('command-or-ctrl-shift', '∫', 'KeyB')).toBe(APP_COMMAND_IDS.viewToggleAiChat)
+    expect(findShortcutCommandId('command-or-ctrl-shift', '¬', 'KeyL')).toBe(APP_COMMAND_IDS.viewOpenAiChat)
     expect(findShortcutCommandId('command-or-ctrl-shift', 'T', 'KeyT')).toBe(APP_COMMAND_IDS.viewToggleTableOfContents)
     expect(findShortcutCommandId('command-or-ctrl-shift', 'v', 'KeyV')).toBe(APP_COMMAND_IDS.editPastePlainText)
   })
@@ -170,17 +172,24 @@ describe('appCommandDispatcher', () => {
 
   it('builds deterministic keyboard events from the shared shortcut manifest', () => {
     expect(getShortcutEventInit(APP_COMMAND_IDS.viewToggleAiChat)).toMatchObject({
-      key: 'l',
-      code: 'KeyL',
+      key: 'b',
+      code: 'KeyB',
       metaKey: true,
       ctrlKey: false,
       shiftKey: true,
     })
     expect(getShortcutEventInit(APP_COMMAND_IDS.viewToggleAiChat, { preferControl: true })).toMatchObject({
-      key: 'l',
-      code: 'KeyL',
+      key: 'b',
+      code: 'KeyB',
       metaKey: false,
       ctrlKey: true,
+      shiftKey: true,
+    })
+    expect(getShortcutEventInit(APP_COMMAND_IDS.viewOpenAiChat)).toMatchObject({
+      key: 'l',
+      code: 'KeyL',
+      metaKey: true,
+      ctrlKey: false,
       shiftKey: true,
     })
     expect(getShortcutEventInit(APP_COMMAND_IDS.viewGoBack)).toMatchObject({
@@ -195,11 +204,12 @@ describe('appCommandDispatcher', () => {
 
   it('resolves event modifiers through the shared shortcut catalog', () => {
     expectShortcutEventCommand({ key: 'o', code: 'KeyO', metaKey: true }, APP_COMMAND_IDS.fileQuickOpen)
-    expectShortcutEventCommand({ key: '¬', code: 'KeyL', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleAiChat)
+    expectShortcutEventCommand({ key: '∫', code: 'KeyB', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleAiChat)
+    expectShortcutEventCommand({ key: '¬', code: 'KeyL', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.viewOpenAiChat)
     expectShortcutEventCommand({ key: 'I', code: 'KeyI', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleProperties)
     expectShortcutEventCommand({ key: 'ArrowLeft', code: 'ArrowLeft', metaKey: true }, APP_COMMAND_IDS.viewGoBack)
     expectShortcutEventCommand({ key: 'ArrowRight', code: 'ArrowRight', metaKey: true }, APP_COMMAND_IDS.viewGoForward)
-    expectShortcutEventCommand({ key: 'l', code: 'KeyL', ctrlKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleAiChat)
+    expectShortcutEventCommand({ key: 'b', code: 'KeyB', ctrlKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleAiChat)
     expectShortcutEventCommand({ key: 'T', code: 'KeyT', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleTableOfContents)
     expectShortcutEventCommand({ key: 'V', code: 'KeyV', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.editPastePlainText)
   })
@@ -230,6 +240,13 @@ describe('appCommandDispatcher', () => {
     const handlers = makeHandlers()
     expect(dispatchAppCommand(APP_COMMAND_IDS.viewToggleAiChat, handlers)).toBe(true)
     expect(handlers.onToggleAIChat).toHaveBeenCalled()
+  })
+
+  it('dispatches AI panel open through the shared command path', () => {
+    const handlers = makeHandlers()
+
+    expect(dispatchAppCommand(APP_COMMAND_IDS.viewOpenAiChat, handlers)).toBe(true)
+    expect(handlers.onOpenAIChat).toHaveBeenCalled()
   })
 
   it('dispatches table of contents toggle through the shared command path', () => {

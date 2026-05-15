@@ -559,6 +559,7 @@ describe('Editor', () => {
     mockEditor.document = [
       { id: 'toc-heading', type: 'heading', content: [{ type: 'text', text: 'Table Heading' }], props: { level: 2 }, children: [] },
     ]
+    const tableOfContentsToggleRef = { current: () => {} }
 
     render(
       <Editor
@@ -567,10 +568,13 @@ describe('Editor', () => {
         activeTabPath={mockEntry.path}
         inspectorEntry={mockEntry}
         inspectorContent={`${mockContent}\n\n## Table Heading`}
+        tableOfContentsToggleRef={tableOfContentsToggleRef}
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open table of contents' }))
+    act(() => {
+      tableOfContentsToggleRef.current()
+    })
 
     expect(screen.getByTestId('table-of-contents-panel')).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Table Heading' })).toBeInTheDocument()

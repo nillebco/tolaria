@@ -78,6 +78,12 @@ interface EditorProps {
   onInitializeProperties?: (path: string) => void
   showAIChat?: boolean
   onToggleAIChat?: () => void
+  /** Mutable ref that Editor registers its properties-panel toggle into, for app shortcuts and menus. */
+  propertiesToggleRef?: React.MutableRefObject<() => void>
+  /** Mutable ref that Editor registers its exclusive AI-panel toggle into, for shortcuts and command palette access. */
+  openAIChatRef?: React.MutableRefObject<() => void>
+  /** Mutable ref that Editor registers its side-pane visibility toggle into, for app shortcuts and menus. */
+  sidePaneToggleRef?: React.MutableRefObject<() => void>
   vaultPath?: string
   vaultPaths?: string[]
   noteList?: NoteListItem[]
@@ -344,6 +350,7 @@ function EditorLayout({
   showDiffToggle,
   showAIChat,
   onToggleAIChat,
+  onToggleSidePane,
   showTableOfContents,
   onToggleTableOfContents,
   inspectorCollapsed,
@@ -419,6 +426,7 @@ function EditorLayout({
   showDiffToggle: boolean
   showAIChat?: boolean
   onToggleAIChat?: () => void
+  onToggleSidePane?: () => void
   showTableOfContents?: boolean
   onToggleTableOfContents?: () => void
   inspectorCollapsed: boolean
@@ -520,6 +528,7 @@ function EditorLayout({
               showDiffToggle={showDiffToggle}
               showAIChat={showAIChat}
               onToggleAIChat={onToggleAIChat}
+              onToggleSidePane={onToggleSidePane}
               showTableOfContents={showTableOfContents}
               onToggleTableOfContents={onToggleTableOfContents}
               inspectorCollapsed={inspectorCollapsed}
@@ -642,12 +651,27 @@ export const Editor = memo(function Editor(props: EditorProps) {
     flushPendingRawContentRef: props.flushPendingRawContentRef,
   })
   const rightPanel = useRightPanelExclusion(props)
-  const { tableOfContentsToggleRef } = props
+  const { openAIChatRef, propertiesToggleRef, sidePaneToggleRef, tableOfContentsToggleRef } = props
+  useEffect(() => {
+    if (openAIChatRef) {
+      openAIChatRef.current = rightPanel.handleToggleAIChatPanel
+    }
+  }, [openAIChatRef, rightPanel.handleToggleAIChatPanel])
+  useEffect(() => {
+    if (propertiesToggleRef) {
+      propertiesToggleRef.current = rightPanel.handleToggleInspectorPanel
+    }
+  }, [propertiesToggleRef, rightPanel.handleToggleInspectorPanel])
   useEffect(() => {
     if (tableOfContentsToggleRef) {
       tableOfContentsToggleRef.current = rightPanel.handleToggleTableOfContents
     }
   }, [tableOfContentsToggleRef, rightPanel.handleToggleTableOfContents])
+  useEffect(() => {
+    if (sidePaneToggleRef) {
+      sidePaneToggleRef.current = rightPanel.handleToggleSidePane
+    }
+  }, [sidePaneToggleRef, rightPanel.handleToggleSidePane])
 
   return (
     <EditorLayout
@@ -655,6 +679,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
       onToggleInspector={rightPanel.handleToggleInspectorPanel}
       showAIChat={props.showAIChat}
       onToggleAIChat={props.onToggleAIChat ? rightPanel.handleToggleAIChatPanel : undefined}
+      onToggleSidePane={rightPanel.handleToggleSidePane}
       showTableOfContents={rightPanel.showTableOfContents}
       onToggleTableOfContents={rightPanel.handleToggleTableOfContents}
     />
