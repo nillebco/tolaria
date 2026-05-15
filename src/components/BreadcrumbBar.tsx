@@ -163,6 +163,7 @@ interface ToggleIconActionProps {
   inactiveLabel: string
   onClick?: () => void
   shortcut?: string
+  tooltipAlign?: 'start' | 'center' | 'end'
 }
 
 interface TranslatedToggleIconActionProps extends Omit<ToggleIconActionProps, 'activeLabel' | 'inactiveLabel'> {
@@ -180,6 +181,7 @@ function ToggleIconAction({
   inactiveLabel,
   onClick,
   shortcut,
+  tooltipAlign,
 }: ToggleIconActionProps) {
   return (
     <IconActionButton
@@ -189,6 +191,7 @@ function ToggleIconAction({
       }}
       onClick={onClick}
       className={cn(active ? activeClassName : inactiveClassName)}
+      tooltipAlign={tooltipAlign}
     >
       {children}
     </IconActionButton>
