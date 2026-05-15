@@ -198,6 +198,7 @@ type CommandRegistryCoreActions = Pick<
   | 'onSetNoteWidth'
   | 'onSetDefaultNoteWidth'
   | 'onToggleAIChat'
+  | 'onOpenAIChat'
   | 'onToggleTableOfContents'
 >
 type CommandRegistryVaultActions = Pick<

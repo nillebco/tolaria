@@ -162,7 +162,7 @@ interface ToggleIconActionProps {
   inactiveClassName?: string
   inactiveLabel: string
   onClick?: () => void
-  shortcut: string
+  shortcut?: string
 }
 
 interface TranslatedToggleIconActionProps extends Omit<ToggleIconActionProps, 'activeLabel' | 'inactiveLabel'> {
