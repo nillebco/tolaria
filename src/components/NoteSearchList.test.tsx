@@ -64,6 +64,23 @@ describe('NoteSearchList', () => {
     expect(screen.getByText('Experiment')).toBeInTheDocument()
   })
 
+  it('makes the selected item visually distinct in dark popovers', () => {
+    render(
+      <NoteSearchList
+        items={items}
+        selectedIndex={1}
+        getItemKey={(item) => item.id}
+        onItemClick={onItemClick}
+      />,
+    )
+
+    const selectedRow = screen.getByText('Beta Notes').closest('[data-selected="true"]')
+    expect(selectedRow).toBeInTheDocument()
+    expect(selectedRow).toHaveClass('bg-[var(--state-selected-strong)]')
+    expect(selectedRow).toHaveClass('shadow-[inset_3px_0_0_var(--accent-blue)]')
+    expect(selectedRow).toHaveClass('font-medium')
+  })
+
   it('does not show type badge when noteType is absent', () => {
     render(
       <NoteSearchList
@@ -198,7 +215,7 @@ describe('NoteSearchList', () => {
     expect(onItemHover).toHaveBeenCalledWith(2)
   })
 
-  it('highlights selected item with accent background', () => {
+  it('highlights selected item with a strong selected background', () => {
     render(
       <NoteSearchList
         items={items}
@@ -208,10 +225,10 @@ describe('NoteSearchList', () => {
       />,
     )
     const selectedItem = screen.getByText('Beta Notes').closest('div')!
-    expect(selectedItem.className).toContain('bg-accent')
+    expect(selectedItem.className).toContain('bg-[var(--state-selected-strong)]')
 
     const unselectedItem = screen.getByText('Alpha Project').closest('div')!
-    expect(unselectedItem.className).not.toContain('bg-accent')
+    expect(unselectedItem.className).not.toContain('bg-[var(--state-selected-strong)]')
   })
 
   it('calls scrollIntoView on the selected item', () => {

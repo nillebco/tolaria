@@ -74,8 +74,11 @@ function NoteSearchListItem<T extends NoteSearchResultItem>({
     <div
       className={cn(
         'flex cursor-pointer items-center justify-between gap-2 px-3 py-1.5 transition-colors',
-        selected ? 'bg-accent' : 'hover:bg-secondary',
+        selected
+          ? 'bg-[var(--state-selected-strong)] font-medium shadow-[inset_3px_0_0_var(--accent-blue)]'
+          : 'hover:bg-secondary',
       )}
+      data-selected={selected ? 'true' : undefined}
       onPointerDownCapture={activateFromPress}
       onMouseDownCapture={activateFromPress}
       onClick={handleClick}
