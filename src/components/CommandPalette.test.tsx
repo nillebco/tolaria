@@ -278,6 +278,18 @@ describe('CommandPalette', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('makes the selected command row visually distinct in dark mode', () => {
+    render(<CommandPalette open={true} commands={commands} onClose={onClose} />)
+
+    fireEvent.keyDown(window, { key: 'ArrowDown' })
+
+    const selectedRow = screen.getByText('New Note').closest('[data-selected="true"]')
+    expect(selectedRow).toBeInTheDocument()
+    expect(selectedRow).toHaveClass('bg-[var(--state-selected-strong)]')
+    expect(selectedRow).toHaveClass('shadow-[inset_3px_0_0_var(--accent-blue)]')
+    expect(selectedRow).toHaveClass('font-medium')
+  })
+
   it('keeps a short query keyboard-selectable after ArrowDown and Enter', () => {
     const changeNoteType = makeCommand({
       id: 'change-note-type',
