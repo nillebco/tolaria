@@ -354,6 +354,24 @@ describe('FolderTree', () => {
     expect(screen.getByTestId('folder-row:areas').className).toContain('text-primary')
   })
 
+  it('makes the active file row visually distinct in the file tree', () => {
+    render(
+      <FolderTree
+        folders={[]}
+        entries={[fileEntry('/vault/current.md'), fileEntry('/vault/other.md')]}
+        activeNotePath="/vault/current.md"
+        vaultPath="/vault"
+        selection={defaultSelection}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    const activeFile = screen.getByTestId('file-row:/vault/current.md')
+    expect(activeFile.className).toContain('bg-[var(--state-selected-strong)]')
+    expect(activeFile.className).toContain('shadow-[inset_3px_0_0_var(--accent-blue)]')
+    expect(activeFile.className).toContain('font-medium')
+  })
+
   it('opens the create-folder input from the header action', () => {
     render(
       <FolderTree

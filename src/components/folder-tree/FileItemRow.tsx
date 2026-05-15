@@ -69,7 +69,7 @@ export const FileItemRow = memo(function FileItemRow({
         className={cn(
           'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] transition-colors',
           isActive
-            ? 'bg-[var(--accent-blue-light)] text-primary'
+            ? 'bg-[var(--state-selected-strong)] font-medium text-foreground shadow-[inset_3px_0_0_var(--accent-blue)]'
             : 'text-foreground hover:bg-accent',
         )}
         style={{ paddingLeft: depthIndent + 8 }}
@@ -85,7 +85,7 @@ export const FileItemRow = memo(function FileItemRow({
             ? <img src={icon} className="size-[14px] shrink-0 object-contain" alt="" />
             : <span className="size-[14px] shrink-0 text-center text-sm leading-none">{icon}</span>
         ) : (
-          <FileText size={14} className="shrink-0 text-muted-foreground" />
+          <FileText size={14} className={cn('shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
         )}
         <span className="truncate">{displayName}</span>
       </button>
