@@ -637,9 +637,15 @@ mod tests {
             .find(|item| item.command_id(manifest()) == Some("view-open-ai-chat"))
             .expect("View menu exposes the AI panel opener");
 
-        assert_eq!(open_ai_item.menu_item_id(manifest()), Some("view-open-ai-chat"));
+        assert_eq!(
+            open_ai_item.menu_item_id(manifest()),
+            Some("view-open-ai-chat")
+        );
         assert_eq!(open_ai_item.label("macos"), Some("Open AI Panel"));
-        assert_eq!(open_ai_item.accelerator(manifest()), Some("CmdOrCtrl+Shift+L"));
+        assert_eq!(
+            open_ai_item.accelerator(manifest()),
+            Some("CmdOrCtrl+Shift+L")
+        );
     }
 
     #[test]
