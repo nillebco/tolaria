@@ -1056,7 +1056,7 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => {
       expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
-      expect(screen.getByText('FOLDERS')).toBeInTheDocument()
+      expect(screen.getByText('TREE')).toBeInTheDocument()
     })
   })
 

@@ -109,9 +109,9 @@ describe('FolderTree', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders FOLDERS header and top-level folders', () => {
+  it('renders TREE header and top-level folders', () => {
     render(<FolderTree folders={mockFolders} selection={defaultSelection} onSelect={vi.fn()} />)
-    expect(screen.getByText('FOLDERS')).toBeInTheDocument()
+    expect(screen.getByText('TREE')).toBeInTheDocument()
     expect(screen.getByText('projects')).toBeInTheDocument()
     expect(screen.getByText('areas')).toBeInTheDocument()
     expect(screen.getByText('journal')).toBeInTheDocument()
@@ -341,10 +341,10 @@ describe('FolderTree', () => {
     vi.useRealTimers()
   })
 
-  it('collapses section when clicking the FOLDERS header', () => {
+  it('collapses section when clicking the TREE header', () => {
     render(<FolderTree folders={mockFolders} selection={defaultSelection} onSelect={vi.fn()} />)
     expect(screen.getByText('projects')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('FOLDERS'))
+    fireEvent.click(screen.getByText('TREE'))
     expect(screen.queryByText('projects')).not.toBeInTheDocument()
   })
 

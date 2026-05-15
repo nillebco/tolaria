@@ -344,7 +344,7 @@
   "sidebar.group.favorites": "FAVORITES",
   "sidebar.group.views": "VIEWS",
   "sidebar.group.types": "TYPES",
-  "sidebar.group.folders": "FOLDERS",
+  "sidebar.group.folders": "TREE",
   "sidebar.action.createView": "Create view",
   "sidebar.action.editView": "Edit view",
   "sidebar.action.renameView": "Rename view…",
