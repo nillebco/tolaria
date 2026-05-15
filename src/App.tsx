@@ -801,9 +801,9 @@ function App() {
   })
 
   const handleOpenFavorite = useCallback(async (entry: VaultEntry) => {
-    await handleReplaceActiveTab(entry)
+    await handleSelectNote(entry)
     handleEnterNeighborhood(entry)
-  }, [handleEnterNeighborhood, handleReplaceActiveTab])
+  }, [handleEnterNeighborhood, handleSelectNote])
 
   const vaultBridge = useVaultBridge({
     entriesByPath,

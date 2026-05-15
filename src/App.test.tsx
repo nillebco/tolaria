@@ -1076,6 +1076,15 @@ describe('App', () => {
 
     render(<App />)
 
+    await waitFor(() => {
+      expect(screen.getByText('Beta')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByText('Beta'))
+
+    await waitFor(() => {
+      expect(window.__laputaTest?.activeTabPath).toBe('/vault/beta.md')
+    })
+
     let favoritesSection: HTMLElement | undefined
     await waitFor(() => {
       const sidebar = screen.getByText('FAVORITES')
@@ -1087,6 +1096,8 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(window.__laputaTest?.activeTabPath).toBe('/vault/alpha.md')
+      expect(screen.getByRole('tab', { name: /Beta/ })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /Alpha/ })).toBeInTheDocument()
       expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
     })
   })
