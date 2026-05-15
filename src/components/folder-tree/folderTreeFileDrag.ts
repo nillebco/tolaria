@@ -4,6 +4,10 @@ export interface FolderTreeFileDragData {
   path: string
 }
 
+export function hasFolderTreeFileDrag(dataTransfer: DataTransfer): boolean {
+  return Array.from(dataTransfer.types).includes(FOLDER_TREE_FILE_DRAG_TYPE)
+}
+
 export function parseFolderTreeFileDrag(dataTransfer: DataTransfer): FolderTreeFileDragData | null {
   const raw = dataTransfer.getData(FOLDER_TREE_FILE_DRAG_TYPE)
   if (!raw) return null

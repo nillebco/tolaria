@@ -72,7 +72,7 @@ function renderedFilePaths(): string[] {
 
 function createDragDataTransfer(): DataTransfer {
   const store = new Map<string, string>()
-  return {
+  const dataTransfer = {
     dropEffect: 'none',
     effectAllowed: 'all',
     files: [] as unknown as FileList,
@@ -87,6 +87,17 @@ function createDragDataTransfer(): DataTransfer {
       store.set(format, data)
     }),
     setDragImage: vi.fn(),
+  } as unknown as DataTransfer
+  Object.defineProperty(dataTransfer, 'types', {
+    get: () => Array.from(store.keys()),
+  })
+  return dataTransfer
+}
+
+function createProtectedDragOverDataTransfer(dataTransfer: DataTransfer): DataTransfer {
+  return {
+    ...dataTransfer,
+    getData: vi.fn(() => ''),
   } as unknown as DataTransfer
 }
 
@@ -545,8 +556,9 @@ describe('FolderTree', () => {
     })
 
     const dataTransfer = createDragDataTransfer()
+    const protectedDragOverDataTransfer = createProtectedDragOverDataTransfer(dataTransfer)
     fireEvent.dragStart(screen.getByTestId('file-row:/vault/inbox/project-kickoff.md'), { dataTransfer })
-    fireEvent.dragOver(screen.getByTestId('folder-row:projects/laputa').parentElement as HTMLElement, { dataTransfer })
+    fireEvent.dragOver(screen.getByTestId('folder-row:projects/laputa').parentElement as HTMLElement, { dataTransfer: protectedDragOverDataTransfer })
     fireEvent.drop(screen.getByTestId('folder-row:projects/laputa').parentElement as HTMLElement, { dataTransfer })
 
     expect(onMoveFileToFolder).toHaveBeenCalledWith('/vault/inbox/project-kickoff.md', 'projects/laputa', undefined)

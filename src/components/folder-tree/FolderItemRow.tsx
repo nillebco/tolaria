@@ -1,4 +1,4 @@
-import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react'
+import { useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import {
   Folder,
   FolderOpen,
@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import type { FolderNode } from '../../types'
 import { useFolderRowInteractions } from './useFolderRowInteractions'
 import { isIconUrl } from '../../hooks/useVaultIcons'
-import { parseFolderTreeFileDrag } from './folderTreeFileDrag'
+import { hasFolderTreeFileDrag, parseFolderTreeFileDrag } from './folderTreeFileDrag'
 
 interface FolderItemRowProps {
   contentInset: number
@@ -43,6 +43,7 @@ export function FolderItemRow({
   canOpenMenu = true,
   canDropFiles = false,
 }: FolderItemRowProps) {
+  const [isDragOver, setIsDragOver] = useState(false)
   const { handleRenameDoubleClick, handleSelectClick } = useFolderRowInteractions({
     hasChildren,
     onRenameFolder: onStartRenameFolder ? () => onStartRenameFolder(node.path) : undefined,
@@ -51,13 +52,20 @@ export function FolderItemRow({
   })
 
   const handleDragOver = (event: ReactDragEvent<HTMLDivElement>) => {
-    if (!canDropFiles || !parseFolderTreeFileDrag(event.dataTransfer)) return
+    if (!canDropFiles || !hasFolderTreeFileDrag(event.dataTransfer)) return
     event.preventDefault()
     event.dataTransfer.dropEffect = 'move'
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (event: ReactDragEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+    setIsDragOver(false)
   }
 
   const handleDrop = (event: ReactDragEvent<HTMLDivElement>) => {
     if (!canDropFiles) return
+    setIsDragOver(false)
     const draggedFile = parseFolderTreeFileDrag(event.dataTransfer)
     if (!draggedFile) return
     event.preventDefault()
@@ -69,9 +77,11 @@ export function FolderItemRow({
     <div
       className={cn(
         'group relative flex items-center gap-1 rounded transition-colors',
-        isSelected
-          ? 'bg-[var(--accent-blue-light)] text-primary'
-          : 'text-foreground hover:bg-accent',
+        isDragOver
+          ? 'bg-accent text-foreground ring-1 ring-primary/40'
+          : isSelected
+            ? 'bg-[var(--accent-blue-light)] text-primary'
+            : 'text-foreground hover:bg-accent',
       )}
       style={{ paddingLeft: depthIndent, borderRadius: 4 }}
       onContextMenu={(event) => {
@@ -83,6 +93,7 @@ export function FolderItemRow({
         onOpenMenu(node, event)
       }}
       onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       data-folder-drop-target={canDropFiles ? 'true' : undefined}
     >
