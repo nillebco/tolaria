@@ -40,6 +40,7 @@ interface SidebarProps {
   selection: SidebarSelection
   onSelect: (selection: SidebarSelection) => void
   onSelectNote?: (entry: VaultEntry) => void
+  onMoveFileToFolder?: (filePath: string, folderPath: string, rootPath?: string) => void
   onCreateType?: (type: string) => void
   onCreateNewType?: () => void
   onCustomizeType?: (typeName: string, icon: string, color: string) => void
@@ -89,6 +90,7 @@ interface SidebarNavigationProps extends Pick<
   | 'selection'
   | 'onSelect'
   | 'onSelectNote'
+  | 'onMoveFileToFolder'
   | 'onSelectFavorite'
   | 'onReorderFavorites'
   | 'views'
@@ -189,6 +191,7 @@ type SidebarFoldersNavigationProps = Pick<
   | 'selection'
   | 'onSelect'
   | 'onSelectNote'
+  | 'onMoveFileToFolder'
   | 'onCreateFolder'
   | 'onRenameFolder'
   | 'onDeleteFolder'
@@ -346,6 +349,7 @@ function SidebarFoldersNavigation({
   selection,
   onSelect,
   onSelectNote,
+  onMoveFileToFolder,
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
@@ -383,6 +387,7 @@ function SidebarFoldersNavigation({
       selection={selection}
       onSelect={onSelect}
       onSelectNote={onSelectNote}
+      onMoveFileToFolder={onMoveFileToFolder}
       onCreateFolder={onCreateFolder}
       onRenameFolder={onRenameFolder}
       onDeleteFolder={onDeleteFolder}
@@ -489,6 +494,7 @@ function SidebarNavigation(props: SidebarNavigationProps) {
         selection={props.selection}
         onSelect={props.onSelect}
         onSelectNote={props.onSelectNote}
+        onMoveFileToFolder={props.onMoveFileToFolder}
         onCreateFolder={props.onCreateFolder}
         onRenameFolder={props.onRenameFolder}
         onDeleteFolder={props.onDeleteFolder}
@@ -608,6 +614,7 @@ function SidebarRuntimeNavigation({
       selection={props.selection}
       onSelect={props.onSelect}
       onSelectNote={props.onSelectNote}
+      onMoveFileToFolder={props.onMoveFileToFolder}
       onSelectFavorite={props.onSelectFavorite}
       onReorderFavorites={props.onReorderFavorites}
       views={props.views}

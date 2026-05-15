@@ -33,6 +33,7 @@ interface FolderTreeProps {
   selection: SidebarSelection
   onSelect: (selection: SidebarSelection) => void
   onSelectNote?: (entry: VaultEntry) => void
+  onMoveFileToFolder?: (filePath: string, folderPath: string, rootPath?: string) => void
   onCreateFolder?: (name: string, parentPath?: string) => Promise<boolean> | boolean
   onRenameFolder?: (folderPath: string, nextName: string) => Promise<boolean> | boolean
   onDeleteFolder?: (folderPath: string) => void
@@ -57,6 +58,7 @@ interface FolderTreeBodyProps extends Pick<
   | 'onRenameFolder'
   | 'onSelect'
   | 'onSelectNote'
+  | 'onMoveFileToFolder'
   | 'onStartRenameFolder'
   | 'renamingFolderPath'
   | 'selection'
@@ -151,6 +153,7 @@ export const FolderTree = memo(function FolderTree({
   selection,
   onSelect,
   onSelectNote,
+  onMoveFileToFolder,
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
@@ -291,6 +294,7 @@ export const FolderTree = memo(function FolderTree({
         onRenameFolder={onRenameFolder}
         onSelect={onSelect}
         onSelectNote={onSelectNote}
+        onMoveFileToFolder={onMoveFileToFolder}
         onStartRenameFolder={onStartRenameFolder}
         renamingFolderPath={renamingFolderPath}
         rootPath={vaultRootPath}
@@ -341,6 +345,7 @@ function FolderTreeBody({
   onRenameFolder,
   onSelect,
   onSelectNote,
+  onMoveFileToFolder,
   onStartRenameFolder,
   renamingFolderPath,
   rootPath,
@@ -371,6 +376,7 @@ function FolderTreeBody({
           onRenameFolder={onRenameFolder}
           onSelect={onSelect}
           onSelectNote={onSelectNote}
+          onMoveFileToFolder={onMoveFileToFolder}
           onOpenIconPicker={onOpenIconPicker}
           onRemoveIcon={onRemoveIcon}
           creatingFolderParentPath={creatingFolderParentPath}

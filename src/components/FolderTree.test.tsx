@@ -70,6 +70,26 @@ function renderedFilePaths(): string[] {
   return screen.getAllByTestId(/file-row:/).map((row) => row.getAttribute('data-testid')?.replace('file-row:', '') ?? '')
 }
 
+function createDragDataTransfer(): DataTransfer {
+  const store = new Map<string, string>()
+  return {
+    dropEffect: 'none',
+    effectAllowed: 'all',
+    files: [] as unknown as FileList,
+    items: [] as unknown as DataTransferItemList,
+    types: [],
+    clearData: vi.fn((format?: string) => {
+      if (format) store.delete(format)
+      else store.clear()
+    }),
+    getData: vi.fn((format: string) => store.get(format) ?? ''),
+    setData: vi.fn((format: string, data: string) => {
+      store.set(format, data)
+    }),
+    setDragImage: vi.fn(),
+  } as unknown as DataTransfer
+}
+
 describe('FolderTree', () => {
   it('renders nothing when folders is empty', () => {
     const { container } = render(
@@ -503,6 +523,55 @@ describe('FolderTree', () => {
     fireEvent.contextMenu(screen.getByText('projects'))
     fireEvent.click(screen.getByTestId('copy-folder-path-menu-item'))
     expect(onCopyFolderPath).toHaveBeenCalledWith('projects')
+  })
+
+  it('moves a file when dropped on a folder row', () => {
+    vi.useFakeTimers()
+    const onMoveFileToFolder = vi.fn()
+    render(
+      <FolderTree
+        folders={mockFolders}
+        entries={[fileEntry('/vault/inbox/project-kickoff.md')]}
+        vaultPath="/vault"
+        selection={defaultSelection}
+        onSelect={vi.fn()}
+        onMoveFileToFolder={onMoveFileToFolder}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('folder-row:projects'))
+    act(() => {
+      vi.advanceTimersByTime(FOLDER_ROW_SINGLE_CLICK_DELAY_MS)
+    })
+
+    const dataTransfer = createDragDataTransfer()
+    fireEvent.dragStart(screen.getByTestId('file-row:/vault/inbox/project-kickoff.md'), { dataTransfer })
+    fireEvent.dragOver(screen.getByTestId('folder-row:projects/laputa').parentElement as HTMLElement, { dataTransfer })
+    fireEvent.drop(screen.getByTestId('folder-row:projects/laputa').parentElement as HTMLElement, { dataTransfer })
+
+    expect(onMoveFileToFolder).toHaveBeenCalledWith('/vault/inbox/project-kickoff.md', 'projects/laputa', undefined)
+    vi.useRealTimers()
+  })
+
+  it('moves a file to the vault root when dropped on the root row', () => {
+    const onMoveFileToFolder = vi.fn()
+    render(
+      <FolderTree
+        folders={mockFolders}
+        entries={[fileEntry('/vault/inbox/project-kickoff.md')]}
+        vaultPath="/vault"
+        selection={defaultSelection}
+        onSelect={vi.fn()}
+        onMoveFileToFolder={onMoveFileToFolder}
+        vaultRootPath={vaultRootPath}
+      />,
+    )
+
+    const dataTransfer = createDragDataTransfer()
+    fireEvent.dragStart(screen.getByTestId('file-row:/vault/inbox/project-kickoff.md'), { dataTransfer })
+    fireEvent.drop(screen.getByTestId('folder-row:').parentElement as HTMLElement, { dataTransfer })
+
+    expect(onMoveFileToFolder).toHaveBeenCalledWith('/vault/inbox/project-kickoff.md', '', vaultRootPath)
   })
 
   it('keeps destructive folder actions off the vault root row and menu', () => {

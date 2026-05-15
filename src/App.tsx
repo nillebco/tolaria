@@ -848,6 +848,57 @@ function App() {
     appSaveFlushBeforeActionRef.current = appSave.flushBeforeAction
   }, [appSave.flushBeforeAction])
 
+  const handleMoveFileToFolder = useCallback(async (filePath: string, folderPath: string, rootPath?: string) => {
+    const entry = visibleEntries.find((candidate) => candidate.path === filePath)
+      ?? notes.tabs.find((tab) => tab.entry.path === filePath)?.entry
+    if (!entry) {
+      setToastMessage('Could not find that note')
+      return
+    }
+
+    const moveVaultPath = rootPath ?? vaultPathForEntry(entry, resolvedPath)
+    try {
+      await flushEditorStateBeforeAction(entry.path)
+      const result = await notes.handleMoveNoteToFolder(
+        entry.path,
+        folderPath,
+        moveVaultPath,
+        (oldPath, newEntry) => {
+          appSave.trackRenamedPath(oldPath, newEntry.path)
+          vault.replaceEntry(oldPath, newEntry)
+          if (effectiveSelection.kind === 'entity' && effectiveSelection.entry.path === oldPath) {
+            handleSetSelection({
+              kind: 'entity',
+              entry: {
+                ...effectiveSelection.entry,
+                ...newEntry,
+              },
+            })
+          }
+        },
+      )
+      if (!result) return
+      markRecentVaultWrite(result.new_path)
+      await vault.reloadFolders()
+      await refreshGitModifiedFiles()
+    } catch (error) {
+      console.error('Failed to move note from folder tree:', error)
+      setToastMessage(error instanceof Error ? error.message : 'Failed to move note')
+    }
+  }, [
+    appSave,
+    effectiveSelection,
+    flushEditorStateBeforeAction,
+    handleSetSelection,
+    markRecentVaultWrite,
+    notes,
+    refreshGitModifiedFiles,
+    resolvedPath,
+    setToastMessage,
+    vault,
+    visibleEntries,
+  ])
+
   const handleChangeWorkspace = useCallback(async (entry: VaultEntry, workspace: WorkspaceIdentity) => {
     const sourceVaultPath = vaultPathForEntry(entry, resolvedPath)
     if (sourceVaultPath === workspace.path) return
@@ -1764,7 +1815,7 @@ function App() {
           {sidebarVisible && (
             <>
               <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-                <Sidebar entries={visibleEntries} activeNotePath={notes.activeTabPath ?? undefined} vaultPath={resolvedPath} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onDeleteType={handleDeleteType} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} onUpdateViewDefinition={handleSidebarUpdateViewDefinition} onReorderViews={canReorderSavedViews ? viewOrdering.onReorderViews : undefined} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} allNotesFileVisibility={allNotesFileVisibility} pluralizeTypeLabels={settings.sidebar_type_pluralization_enabled ?? true} onCollapse={handleCollapseSidebar} onGoBack={handleGoBack} onGoForward={handleGoForward} canGoBack={canGoBack} canGoForward={canGoForward} locale={appLocale} loading={isVaultContentLoading} vaultRootPath={resolvedPath} icons={{ ...obsidianIcons, ...(vaultConfig.path_icons ?? {}) }} showOriginalFilenames={vaultConfig.show_original_filenames === true} onSetPathIcon={handleSetPathIcon} />
+                <Sidebar entries={visibleEntries} activeNotePath={notes.activeTabPath ?? undefined} vaultPath={resolvedPath} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onMoveFileToFolder={handleMoveFileToFolder} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onDeleteType={handleDeleteType} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} onUpdateViewDefinition={handleSidebarUpdateViewDefinition} onReorderViews={canReorderSavedViews ? viewOrdering.onReorderViews : undefined} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} allNotesFileVisibility={allNotesFileVisibility} pluralizeTypeLabels={settings.sidebar_type_pluralization_enabled ?? true} onCollapse={handleCollapseSidebar} onGoBack={handleGoBack} onGoForward={handleGoForward} canGoBack={canGoBack} canGoForward={canGoForward} locale={appLocale} loading={isVaultContentLoading} vaultRootPath={resolvedPath} icons={{ ...obsidianIcons, ...(vaultConfig.path_icons ?? {}) }} showOriginalFilenames={vaultConfig.show_original_filenames === true} onSetPathIcon={handleSetPathIcon} />
               </div>
               <ResizeHandle onResize={layout.handleSidebarResize} />
             </>

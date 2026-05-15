@@ -1,4 +1,4 @@
-import type { MouseEvent as ReactMouseEvent } from 'react'
+import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react'
 import {
   Folder,
   FolderOpen,
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import type { FolderNode } from '../../types'
 import { useFolderRowInteractions } from './useFolderRowInteractions'
 import { isIconUrl } from '../../hooks/useVaultIcons'
+import { parseFolderTreeFileDrag } from './folderTreeFileDrag'
 
 interface FolderItemRowProps {
   contentInset: number
@@ -21,7 +22,9 @@ interface FolderItemRowProps {
   onSelect: () => void
   onStartRenameFolder?: (folderPath: string) => void
   onToggle: () => void
+  onMoveFileToFolder?: (filePath: string, folderPath: string) => void
   canOpenMenu?: boolean
+  canDropFiles?: boolean
 }
 
 export function FolderItemRow({
@@ -36,7 +39,9 @@ export function FolderItemRow({
   onSelect,
   onStartRenameFolder,
   onToggle,
+  onMoveFileToFolder,
   canOpenMenu = true,
+  canDropFiles = false,
 }: FolderItemRowProps) {
   const { handleRenameDoubleClick, handleSelectClick } = useFolderRowInteractions({
     hasChildren,
@@ -44,6 +49,21 @@ export function FolderItemRow({
     onSelect,
     onToggle,
   })
+
+  const handleDragOver = (event: ReactDragEvent<HTMLDivElement>) => {
+    if (!canDropFiles || !parseFolderTreeFileDrag(event.dataTransfer)) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    if (!canDropFiles) return
+    const draggedFile = parseFolderTreeFileDrag(event.dataTransfer)
+    if (!draggedFile) return
+    event.preventDefault()
+    event.stopPropagation()
+    onMoveFileToFolder?.(draggedFile.path, node.path)
+  }
 
   return (
     <div
@@ -62,6 +82,9 @@ export function FolderItemRow({
         onSelect()
         onOpenMenu(node, event)
       }}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      data-folder-drop-target={canDropFiles ? 'true' : undefined}
     >
       <FolderSelectButton
         contentInset={contentInset}

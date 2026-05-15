@@ -24,6 +24,7 @@ interface FolderTreeRowProps {
   onSelectNote?: (entry: VaultEntry) => void
   onOpenIconPicker?: (relativePath: string, x: number, y: number) => void
   onRemoveIcon?: (relativePath: string) => void
+  onMoveFileToFolder?: (filePath: string, folderPath: string, rootPath?: string) => void
   creatingFolderParentPath?: string | null
   isCreatingFolder?: boolean
   onCancelCreateFolder?: () => void
@@ -84,6 +85,7 @@ function FolderChildren({
   onSelectNote,
   onOpenIconPicker,
   onRemoveIcon,
+  onMoveFileToFolder,
   creatingFolderParentPath,
   isCreatingFolder,
   onCancelCreateFolder,
@@ -129,6 +131,7 @@ function FolderChildren({
           onSelectNote={onSelectNote}
           onOpenIconPicker={onOpenIconPicker}
           onRemoveIcon={onRemoveIcon}
+          onMoveFileToFolder={onMoveFileToFolder}
           creatingFolderParentPath={creatingFolderParentPath}
           isCreatingFolder={isCreatingFolder}
           onCancelCreateFolder={onCancelCreateFolder}
@@ -220,6 +223,7 @@ export const FolderTreeRow = memo(function FolderTreeRow({
   onSelectNote,
   onOpenIconPicker,
   onRemoveIcon,
+  onMoveFileToFolder,
   creatingFolderParentPath,
   isCreatingFolder,
   onCancelCreateFolder,
@@ -238,6 +242,7 @@ export const FolderTreeRow = memo(function FolderTreeRow({
   const isSelected = folderSelectionMatches(selection, { ...node, rootPath: nodeRootPath }, rootPath)
   const canUseDefaultFolderActions = !nodeRootPath || nodeRootPath === rootPath
   const canMutateFolder = node.path.length > 0 && canUseDefaultFolderActions
+  const canDropFiles = canUseDefaultFolderActions && !!onMoveFileToFolder
   const isRenaming = canMutateFolder && renamingFolderPath === node.path
   const depthIndent = getFolderDepthIndent(depth)
   const contentInset = FOLDER_ROW_CONTENT_INSET
@@ -261,6 +266,8 @@ export const FolderTreeRow = memo(function FolderTreeRow({
       onSelect={selectFolder}
       onStartRenameFolder={canMutateFolder ? onStartRenameFolder : undefined}
       onToggle={() => onToggle(nodeKey)}
+      onMoveFileToFolder={(filePath, folderPath) => onMoveFileToFolder?.(filePath, folderPath, nodeRootPath)}
+      canDropFiles={canDropFiles}
     />
   )
 
@@ -292,6 +299,7 @@ export const FolderTreeRow = memo(function FolderTreeRow({
         onSelectNote={onSelectNote}
         onOpenIconPicker={onOpenIconPicker}
         onRemoveIcon={onRemoveIcon}
+        onMoveFileToFolder={onMoveFileToFolder}
         creatingFolderParentPath={creatingFolderParentPath}
         isCreatingFolder={isCreatingFolder}
         onCancelCreateFolder={onCancelCreateFolder}

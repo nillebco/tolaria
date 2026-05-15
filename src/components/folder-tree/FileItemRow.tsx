@@ -1,9 +1,10 @@
-import { memo, useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { FileText, Smiley, X } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { isIconUrl } from '../../hooks/useVaultIcons'
 import type { VaultEntry } from '../../types'
+import { FOLDER_TREE_FILE_DRAG_TYPE } from './folderTreeFileDrag'
 
 interface FileItemRowProps {
   entry: VaultEntry
@@ -55,6 +56,12 @@ export const FileItemRow = memo(function FileItemRow({
     setContextMenu({ x: e.clientX, y: e.clientY })
   }, [onOpenIconPicker, onRemoveIcon])
 
+  const handleDragStart = useCallback((event: ReactDragEvent<HTMLButtonElement>) => {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData(FOLDER_TREE_FILE_DRAG_TYPE, JSON.stringify({ path: entry.path }))
+    event.dataTransfer.setData('text/plain', entry.path)
+  }, [entry.path])
+
   return (
     <>
       <button
@@ -69,6 +76,8 @@ export const FileItemRow = memo(function FileItemRow({
         title={entry.path}
         onClick={() => onSelect(entry)}
         onContextMenu={handleContextMenu}
+        draggable={true}
+        onDragStart={handleDragStart}
         data-testid={`file-row:${entry.path}`}
       >
         {icon ? (

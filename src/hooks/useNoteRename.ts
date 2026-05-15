@@ -315,7 +315,7 @@ export function renameToastMessage(updatedFiles: number, failedUpdates = 0): str
 }
 
 function folderLabel(params: { folderPath: string }): string {
-  return vaultRelativePathLabel(params.folderPath)
+  return params.folderPath.trim() ? vaultRelativePathLabel(params.folderPath) : 'vault root'
 }
 
 function moveToastMessage(folderPath: string, updatedFiles: number, failedUpdates = 0): string {
