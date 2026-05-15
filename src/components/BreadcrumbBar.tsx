@@ -22,13 +22,9 @@ import {
   ListBullets,
   SidebarSimple,
   Trash,
-  Archive,
-  ArrowUUpLeft,
   ClipboardText,
   FolderOpen,
-  MapTrifold,
   Star,
-  CheckCircle,
   ArrowsClockwise,
   ArrowsInLineHorizontal,
   ArrowsOutLineHorizontal,
@@ -228,13 +224,6 @@ const TOGGLE_ACTION_CONFIGS = {
     shortcut: '⌘D',
     renderIcon: (active: boolean) => <Star size={16} weight={active ? 'fill' : 'regular'} className={BREADCRUMB_ICON_CLASS} />,
   },
-  organized: {
-    activeClassName: 'text-[var(--accent-green)]',
-    activeLabelKey: 'editor.toolbar.markUnorganized',
-    inactiveLabelKey: 'editor.toolbar.markOrganized',
-    shortcut: '⌘E',
-    renderIcon: (active: boolean) => <CheckCircle size={16} weight={active ? 'fill' : 'regular'} className={BREADCRUMB_ICON_CLASS} />,
-  },
 } satisfies Record<string, {
   activeClassName: string
   activeLabelKey: Parameters<typeof translate>[1]
@@ -300,37 +289,6 @@ function NoteWidthAction({
 
 function FavoriteAction({ favorite, locale = 'en', onToggleFavorite }: { favorite: boolean; locale?: AppLocale; onToggleFavorite?: () => void }) {
   return <ConfiguredToggleAction active={favorite} config={TOGGLE_ACTION_CONFIGS.favorite} locale={locale} onClick={onToggleFavorite} />
-}
-
-function OrganizedAction({
-  organized,
-  locale = 'en',
-  onToggleOrganized,
-}: {
-  organized: boolean
-  locale?: AppLocale
-  onToggleOrganized?: () => void
-}) {
-  if (!onToggleOrganized) return null
-  return <ConfiguredToggleAction active={organized} config={TOGGLE_ACTION_CONFIGS.organized} locale={locale} onClick={onToggleOrganized} />
-}
-
-function NeighborhoodAction({
-  entry,
-  locale = 'en',
-  onEnterNeighborhood,
-}: Pick<BreadcrumbBarProps, 'entry' | 'locale' | 'onEnterNeighborhood'>) {
-  if (!onEnterNeighborhood) return null
-
-  return (
-    <IconActionButton
-      copy={{ label: translate(locale, 'editor.toolbar.openNeighborhood') }}
-      onClick={() => onEnterNeighborhood(entry)}
-      className="hover:text-foreground"
-    >
-      <MapTrifold size={16} className={BREADCRUMB_ICON_CLASS} />
-    </IconActionButton>
-  )
 }
 
 function AIChatAction({ showAIChat, locale = 'en', onToggleAIChat }: Pick<BreadcrumbBarProps, 'showAIChat' | 'locale' | 'onToggleAIChat'>) {
@@ -452,10 +410,6 @@ function archiveAction(
 
 function pathAction(action: ((path: string) => void) | undefined, path: string): (() => void) | undefined {
   return action ? () => action(path) : undefined
-}
-
-function ArchiveMenuIcon({ archived }: { archived: boolean }) {
-  return archived ? <ArrowUUpLeft size={16} /> : <Archive size={16} />
 }
 
 function neighborhoodAction(
@@ -833,7 +787,6 @@ function BreadcrumbActions({
   inspectorCollapsed,
   onToggleInspector,
   onToggleFavorite,
-  onToggleOrganized,
   onRevealFile,
   onCopyFilePath,
   onDelete,
@@ -855,10 +808,6 @@ function BreadcrumbActions({
       style={{ gap: 8 }}
     >
       <FavoriteAction favorite={entry.favorite} locale={locale} onToggleFavorite={onToggleFavorite} />
-      <OrganizedAction organized={entry.organized} locale={locale} onToggleOrganized={onToggleOrganized} />
-      <OverflowToolbarAction>
-        <NeighborhoodAction entry={entry} locale={locale} onEnterNeighborhood={onEnterNeighborhood} />
-      </OverflowToolbarAction>
       {!forceRawMode && <RawToggleButton rawMode={rawMode} locale={locale} onToggleRaw={onToggleRaw} />}
       <OverflowToolbarAction>
         <NoteWidthAction noteWidth={noteWidth} locale={locale} onToggleNoteWidth={onToggleNoteWidth} />
@@ -968,7 +917,6 @@ function BreadcrumbOverflowMenu({
         {showResponsiveActions && (
           <>
             <DropdownMenuItem disabled={!runNeighborhoodAction} onSelect={runNeighborhoodAction}>
-              <MapTrifold size={16} />
               {neighborhoodLabel}
             </DropdownMenuItem>
             <DropdownMenuItem disabled={!onToggleNoteWidth} onSelect={onToggleNoteWidth}>
@@ -990,7 +938,6 @@ function BreadcrumbOverflowMenu({
           </>
         )}
         <DropdownMenuItem disabled={!runArchiveAction} onSelect={runArchiveAction}>
-          <ArchiveMenuIcon archived={entry.archived} />
           {archiveLabel}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={!onDelete} variant="destructive" onSelect={onDelete}>

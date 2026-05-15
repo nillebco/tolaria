@@ -241,13 +241,9 @@ describe('BreadcrumbBar — file actions', () => {
 })
 
 describe('BreadcrumbBar — organized shortcut hint', () => {
-  it('shows Cmd+E on the organized toggle tooltip', async () => {
+  it('does not show the organized icon button in the breadcrumb toolbar', () => {
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onToggleOrganized={vi.fn()} />)
-    await expectTooltip(
-      screen.getByRole('button', { name: 'Set note as organized' }),
-      'Set note as organized',
-      formatShortcutDisplay({ display: '⌘E' }),
-    )
+    expect(screen.queryByRole('button', { name: 'Set note as organized' })).not.toBeInTheDocument()
   })
 
   it('hides the organized toggle when the workflow is disabled', () => {
@@ -257,19 +253,31 @@ describe('BreadcrumbBar — organized shortcut hint', () => {
 })
 
 describe('BreadcrumbBar — neighborhood action', () => {
-  it("opens the current note's neighborhood from the map button", () => {
+  it("does not show the current note's neighborhood as a toolbar icon", () => {
     const onEnterNeighborhood = vi.fn()
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onEnterNeighborhood={onEnterNeighborhood} />)
 
-    fireEvent.click(screen.getByRole('button', { name: "Open note's neighborhood" }))
-
-    expect(onEnterNeighborhood).toHaveBeenCalledWith(baseEntry)
+    expect(screen.queryByRole('button', { name: "Open note's neighborhood" })).not.toBeInTheDocument()
   })
 
-  it('uses the requested neighborhood tooltip copy', async () => {
-    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onEnterNeighborhood={vi.fn()} />)
+  it("opens the current note's neighborhood from the collapsed overflow menu", async () => {
+    const restoreMeasurement = mockCollapsedBreadcrumbOverflow()
+    const onEnterNeighborhood = vi.fn()
 
-    await expectTooltip(screen.getByRole('button', { name: "Open note's neighborhood" }), "Open note's neighborhood")
+    try {
+      const { container } = render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onEnterNeighborhood={onEnterNeighborhood} />)
+
+      await waitFor(() => {
+        expect(container.querySelector('.breadcrumb-bar__actions')).toHaveAttribute('data-overflow-collapsed', 'true')
+      })
+
+      const menu = await openOverflowMenu()
+      fireEvent.click(within(menu).getByRole('menuitem', { name: "Open note's neighborhood" }))
+
+      expect(onEnterNeighborhood).toHaveBeenCalledWith(baseEntry)
+    } finally {
+      restoreMeasurement()
+    }
   })
 })
 
