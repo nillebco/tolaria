@@ -47,14 +47,24 @@ async function getBlockByText(page: Page, text: string): Promise<Locator> {
   return page.locator('.bn-block-content').filter({ hasText: text }).first()
 }
 
+function dragTestNoteContent(): string {
+  return fs.readFileSync(path.join(tempVaultDir, 'note', DRAG_NOTE_FILENAME), 'utf8')
+}
+
 async function hoverBlockAndGetHandle(page: Page, block: Locator): Promise<Locator> {
   await block.hover()
-  const handle = page.locator('.bn-side-menu [draggable="true"]').first()
+  const handle = page.locator('.bn-side-menu button:has([data-test="dragHandle"])').first()
   await expect(handle).toBeVisible({ timeout: 5_000 })
+  await expect(handle).not.toHaveAttribute('draggable', 'true')
   return handle
 }
 
-async function dragBlockBelow(page: Page, sourceBlock: Locator, targetBlock: Locator): Promise<void> {
+async function dragBlockBelow(
+  page: Page,
+  sourceBlock: Locator,
+  targetBlock: Locator,
+  options: { keepHandleX?: boolean } = {},
+): Promise<void> {
   const handle = await hoverBlockAndGetHandle(page, sourceBlock)
 
   const handleBox = await handle.boundingBox()
@@ -62,15 +72,24 @@ async function dragBlockBelow(page: Page, sourceBlock: Locator, targetBlock: Loc
   expect(handleBox).not.toBeNull()
   expect(targetBox).not.toBeNull()
 
-  const dropX = targetBox!.x + targetBox!.width / 2
+  const handleCenterX = handleBox!.x + handleBox!.width / 2
+  const handleCenterY = handleBox!.y + handleBox!.height / 2
+  const dropX = options.keepHandleX ? handleCenterX : targetBox!.x + targetBox!.width / 2
 
-  await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2)
+  await page.mouse.move(handleCenterX, handleCenterY)
   await page.mouse.down()
-  await page.waitForTimeout(100)
+  await page.mouse.move(handleCenterX + 4, handleCenterY + 4, { steps: 4 })
+  await page.mouse.move(handleCenterX + 16, handleCenterY + 16, { steps: 8 })
   await page.mouse.move(dropX, targetBox!.y + targetBox!.height + 5, { steps: 20 })
-  await page.waitForTimeout(200)
+
+  const dragPreview = page.getByTestId('editor-block-drag-preview')
+  const dropIndicator = page.getByTestId('editor-block-drop-indicator')
+  await expect(dragPreview).toBeVisible()
+  await expect(dropIndicator).toBeVisible()
+
   await page.mouse.up()
-  await page.waitForTimeout(300)
+  await expect(dragPreview).toHaveCount(0)
+  await expect(dropIndicator).toHaveCount(0)
 }
 
 test.describe('block drag regression', () => {
@@ -133,6 +152,24 @@ test.describe('block drag regression', () => {
     const gammaAfter = await todoGamma.boundingBox()
     const alphaAfter = await todoAlpha.boundingBox()
     expect(alphaAfter!.y).toBeGreaterThan(gammaAfter!.y)
+    await expect.poll(dragTestNoteContent).toMatch(/Todo Beta[\s\S]*Todo Gamma[\s\S]*Todo Alpha/)
+  })
+
+  test('can drag checkListItem block from the handle gutter to reorder', async ({ page }) => {
+    await openFixtureVault(page, tempVaultDir)
+    await openNote(page, 'Drag Test')
+
+    const todoAlpha = await getBlockByText(page, 'Todo Alpha')
+    const todoGamma = await getBlockByText(page, 'Todo Gamma')
+    await expect(todoAlpha).toBeVisible({ timeout: 5_000 })
+    await expect(todoGamma).toBeVisible()
+
+    await dragBlockBelow(page, todoAlpha, todoGamma, { keepHandleX: true })
+
+    const gammaAfter = await todoGamma.boundingBox()
+    const alphaAfter = await todoAlpha.boundingBox()
+    expect(alphaAfter!.y).toBeGreaterThan(gammaAfter!.y)
+    await expect.poll(dragTestNoteContent).toMatch(/Todo Beta[\s\S]*Todo Gamma[\s\S]*Todo Alpha/)
   })
 
   test('can drag paragraph block to reorder', async ({ page }) => {

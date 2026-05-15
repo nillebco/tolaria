@@ -1,4 +1,3 @@
-import { DotsSixVertical as GripVertical, Plus } from '@phosphor-icons/react'
 import { SideMenuExtension, SuggestionMenu } from '@blocknote/core/extensions'
 import type {
   BlockNoteEditor,
@@ -16,6 +15,7 @@ import {
   useExtensionState,
   type SideMenuProps,
 } from '@blocknote/react'
+import { GripVertical, Plus } from 'lucide-react'
 import {
   useCallback,
   useLayoutEffect,
@@ -155,7 +155,26 @@ function blockElementFromPoint({
     }
   }
 
-  return null
+  return nearestBlockElementByY(editorElement, hitY)
+}
+
+function nearestBlockElementByY(editorElement: HTMLElement, y: number): HTMLElement | null {
+  let nearest: { distance: number; element: HTMLElement } | null = null
+
+  for (const element of editorElement.querySelectorAll(BLOCK_CONTAINER_SELECTOR)) {
+    if (!(element instanceof HTMLElement)) continue
+
+    const rect = element.getBoundingClientRect()
+    if (rect.height <= 0) continue
+    if (y >= rect.top && y <= rect.bottom) return element
+
+    const distance = Math.min(Math.abs(y - rect.top), Math.abs(y - rect.bottom))
+    if (!nearest || distance < nearest.distance) {
+      nearest = { distance, element }
+    }
+  }
+
+  return nearest?.element ?? null
 }
 
 function dropPlacementForPoint(blockElement: HTMLElement, y: number): DropPlacement {
