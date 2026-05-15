@@ -286,8 +286,8 @@ export interface FrontmatterRunRequest {
 
 /** Apply a properties patch by merging into the existing properties map. */
 export function applyPropertiesPatch(
-  existing: Record<FrontmatterKey, ScalarPropertyValue>, propPatch: PropertiesPatch,
-): Record<FrontmatterKey, ScalarPropertyValue> {
+  existing: Record<FrontmatterKey, PropertyPatchValue>, propPatch: PropertiesPatch,
+): Record<FrontmatterKey, PropertyPatchValue> {
   return applyRecordPatch(existing, propPatch)
 }
 

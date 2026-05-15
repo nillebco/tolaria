@@ -19,6 +19,11 @@ const RELATIONSHIP_SCHEMA_KEYS = new Set(['belongs_to', 'related_to', 'has'])
 
 type PropertyEntry = [string, FrontmatterValue]
 
+function toFrontmatterValue(value: VaultEntry['properties'][string]): FrontmatterValue {
+  if (!Array.isArray(value)) return value
+  return value.filter((item): item is string => typeof item === 'string')
+}
+
 function coerceValue(raw: string): FrontmatterValue {
   if (raw.toLowerCase() === 'true') return true
   if (raw.toLowerCase() === 'false') return false
@@ -139,9 +144,10 @@ function buildTypeDerivedPropertyEntries({
   for (const [key, value] of Object.entries(typeEntry.properties ?? {})) {
     const canonicalKey = canonicalFrontmatterKey(key)
     if (existingKeys.has(canonicalKey) || seen.has(canonicalKey) || isRelationshipSchemaKey(key)) continue
-    if (!isVisibleProperty([key, value])) continue
+    const frontmatterValue = toFrontmatterValue(value)
+    if (!isVisibleProperty([key, frontmatterValue])) continue
     seen.add(canonicalKey)
-    result.push([key, value])
+    result.push([key, frontmatterValue])
   }
 
   return result

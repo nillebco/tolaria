@@ -24,7 +24,7 @@ function conditionList(value: unknown): string[] | null {
 class WikilinkValue {
   private readonly trimmed: string
 
-  constructor(private readonly raw: string) {
+  constructor(raw: string) {
     this.trimmed = raw.trim()
   }
 
@@ -110,7 +110,8 @@ function evaluateRelationshipArrayCondition(cond: FilterCondition, values: strin
   const { op } = cond
   const field = new RelationshipArrayField(values)
   if (regex) return textMatchResult(op, field.matchesRegex(regex))
-  return RELATIONSHIP_ARRAY_OPERATORS[op]?.(field, condVal, cond) ?? false
+  const operator = RELATIONSHIP_ARRAY_OPERATORS[op as keyof typeof RELATIONSHIP_ARRAY_OPERATORS]
+  return operator?.(field, condVal, cond) ?? false
 }
 
 export function evaluateArrayFieldCondition({ cond, values, arrayKind, condVal, regex }: ArrayFieldCondition): boolean {

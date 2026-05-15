@@ -117,13 +117,15 @@ interface PreservedEditorPosition {
   cursorIndex: number
 }
 
+type EditorBlockWithId = { id?: string }
+
 function captureEditorPosition(
   editor: ReturnType<typeof useCreateBlockNote>,
 ): PreservedEditorPosition | null {
   try {
     const cursorBlock = editor.getTextCursorPosition?.().block
     if (!cursorBlock) return null
-    const cursorIndex = (editor.document as EditorBlocks).findIndex((block) => block.id === cursorBlock.id)
+    const cursorIndex = (editor.document as EditorBlockWithId[]).findIndex((block) => block.id === cursorBlock.id)
     if (cursorIndex === -1) return null
     return { scrollTop: readEditorScrollTop(), cursorIndex }
   } catch {

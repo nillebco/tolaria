@@ -391,6 +391,7 @@ function createMenuEventVaultHandlers(
   | 'onRepairVault'
   | 'onOpenInNewWindow'
   | 'onRestoreDeletedNote'
+  | 'onCloseCurrentTab'
   | 'onCloseAllTabs'
   | 'onCloseOtherTabs'
 > {

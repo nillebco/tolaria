@@ -6,6 +6,7 @@ interface NavigationCommandsConfig {
   onQuickOpen: () => void
   onSelect: (sel: SidebarSelection) => void
   selection?: SidebarSelection
+  onCreateFolder?: () => void
   onRenameFolder?: () => void
   onDeleteFolder?: () => void
   onRevealSelectedFolder?: () => void

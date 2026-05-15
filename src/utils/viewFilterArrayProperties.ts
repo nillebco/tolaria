@@ -17,9 +17,11 @@ function textMatchResult(op: FilterCondition['op'], matched: boolean): boolean {
 }
 
 class PropertyArrayField {
+  private readonly values: string[]
   private readonly normalizedValues: Set<string>
 
-  constructor(private readonly values: string[]) {
+  constructor(values: string[]) {
+    this.values = values
     this.normalizedValues = new Set(values.map((value) => value.toLowerCase()))
   }
 
@@ -57,5 +59,6 @@ export function evaluatePropertyArrayCondition(
 ): boolean {
   const field = new PropertyArrayField(values)
   if (regex) return textMatchResult(cond.op, field.matchesRegex(regex))
-  return PROPERTY_ARRAY_OPERATORS[cond.op]?.(field, condVal, cond) ?? false
+  const operator = PROPERTY_ARRAY_OPERATORS[cond.op as keyof typeof PROPERTY_ARRAY_OPERATORS]
+  return operator?.(field, condVal, cond) ?? false
 }
