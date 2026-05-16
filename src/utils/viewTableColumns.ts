@@ -80,7 +80,7 @@ export function resolveViewTableColumns(
   if (propertyKeys.length === 0) return DEFAULT_COLUMNS
 
   const seen = new Set<string>()
-  const columns = [{ id: 'title', label: 'Title', kind: 'title' } satisfies ViewTableColumn]
+  const columns: ViewTableColumn[] = [{ id: 'title', label: 'Title', kind: 'title' }]
   for (const key of propertyKeys) {
     const normalized = key.toLowerCase()
     if (seen.has(normalized)) continue

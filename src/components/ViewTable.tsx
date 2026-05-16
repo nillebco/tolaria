@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { memo, useCallback, useMemo, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { ArrowLeft, ArrowRight, Copy } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import type { AppLocale } from '../lib/i18n'
@@ -94,17 +94,17 @@ export const ViewTable = memo(function ViewTable({
     return draftColumnSize[column.id] ?? tableConfig?.columnSize?.[column.id] ?? (column.id === 'title' ? TITLE_COLUMN_WIDTH : DEFAULT_COLUMN_WIDTH)
   }, [draftColumnSize, tableConfig?.columnSize])
 
-  const startResize = useCallback((event: PointerEvent, column: ViewTableColumn) => {
+  const startResize = useCallback((event: ReactPointerEvent, column: ViewTableColumn) => {
     event.preventDefault()
     const startX = event.clientX
     const startWidth = columnWidth(column)
 
-    const handlePointerMove = (moveEvent: PointerEvent) => {
+    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
       const nextWidth = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, startWidth + moveEvent.clientX - startX))
       setDraftColumnSize((current) => ({ ...current, [column.id]: nextWidth }))
     }
 
-    const handlePointerUp = (upEvent: PointerEvent) => {
+    const handlePointerUp = (upEvent: globalThis.PointerEvent) => {
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerup', handlePointerUp)
       const nextWidth = Math.round(Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, startWidth + upEvent.clientX - startX)))
