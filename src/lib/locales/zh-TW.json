@@ -680,5 +680,7 @@
   "viewTable.computedAliasPlaceholder": "Alias, e.g. hours",
   "viewTable.addComputedColumn": "Add column",
   "viewTable.removeComputedColumn": "Remove computed column",
-  "viewTable.computedColumnsEmpty": "No computed columns."
+  "viewTable.computedColumnsEmpty": "No computed columns.",
+  "viewTable.copyCsv": "Copy CSV",
+  "viewTable.exportCsv": "Export CSV"
 }

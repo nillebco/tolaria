@@ -668,6 +668,8 @@
   "viewTable.comfortableDensity": "Comfortable",
   "viewTable.copyRow": "Copy row",
   "viewTable.copyCell": "Copy cell",
+  "viewTable.copyCsv": "Copy CSV",
+  "viewTable.exportCsv": "Export CSV",
   "viewTable.moveColumnLeft": "Move column left",
   "viewTable.moveColumnRight": "Move column right",
   "viewTable.resizeColumn": "Resize column",

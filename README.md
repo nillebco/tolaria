@@ -167,6 +167,9 @@ Quote map keys that contain `:` in YAML, such as `"property:Date"`.
 the displayed alias and each value is the source field or frontmatter property,
 such as `hours: Hours`.
 Supported table summaries are `count`, `empty`, `unique`, and `sum`.
+When a saved view is open as a table, the toolbar can copy the current table as
+CSV or export it to a `.csv` file. The exported CSV uses the currently rendered
+columns and rows.
 
 ## Open source and local setup
 

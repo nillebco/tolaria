@@ -101,6 +101,10 @@ export function trackViewTableCopied(source: 'cell' | 'row'): void {
   trackEvent('view_table_copied', { source })
 }
 
+export function trackViewTableCsvExported(action: 'copy' | 'download'): void {
+  trackEvent('view_table_csv_exported', { action })
+}
+
 export function trackAiAgentMessageBlocked(agent: AiAgentId, reason: AgentBlockedReason): void {
   trackEvent('ai_agent_message_blocked', { agent, reason })
 }

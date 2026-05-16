@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { VaultEntry, ViewFile } from '../types'
+import { viewTableCsvText } from '../utils/viewTableCsv'
+import { resolveViewTableColumns } from '../utils/viewTableColumns'
 import { ViewTable } from './ViewTable'
 
 function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
@@ -150,6 +152,34 @@ describe('ViewTable', () => {
 
     expect(writeText).toHaveBeenNthCalledWith(1, 'Alpha\tIvo')
     expect(writeText).toHaveBeenNthCalledWith(2, 'Ivo')
+  })
+
+  it('copies the rendered table as CSV', () => {
+    const writeText = vi.fn()
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    render(
+      <ViewTable
+        view={makeView()}
+        entries={[makeEntry({ title: 'Alpha', isA: 'Project', properties: { Owner: 'Ivo, Ada' } })]}
+        onSelectNote={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy CSV' }))
+
+    expect(writeText).toHaveBeenCalledWith('Title,Owner\nAlpha,"Ivo, Ada"')
+  })
+
+  it('escapes CSV values with quotes and line breaks', () => {
+    const columns = resolveViewTableColumns(['Owner'])
+
+    expect(viewTableCsvText(columns, [{
+      cells: {
+        title: 'Alpha "Q1"',
+        'property:Owner': 'Ada\nIvo',
+      },
+    }])).toBe('Title,Owner\n"Alpha ""Q1""","Ada\nIvo"')
   })
 
   it('shows an empty state when no notes match', () => {

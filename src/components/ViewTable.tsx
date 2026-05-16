@@ -1,12 +1,13 @@
 import { memo, useCallback, useMemo, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { ArrowLeft, ArrowRight, Copy, GearSix } from '@phosphor-icons/react'
+import { ArrowLeft, ArrowRight, Copy, DownloadSimple, GearSix } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import type { AppLocale } from '../lib/i18n'
 import { translate } from '../lib/i18n'
-import { trackViewTableCopied, trackViewTableConfigured } from '../lib/productAnalytics'
+import { trackViewTableCopied, trackViewTableConfigured, trackViewTableCsvExported } from '../lib/productAnalytics'
 import type { VaultEntry, ViewDefinition, ViewFile, ViewTableConfig, ViewTableDensity } from '../types'
 import { applySavedViewSort } from '../utils/noteListHelpers'
 import { evaluateView } from '../utils/viewFilters'
+import { viewTableCsvText } from '../utils/viewTableCsv'
 import { buildViewTableRows, buildViewTableSummaries, resolveViewTableColumns, type ViewTableColumn } from '../utils/viewTableColumns'
 import { ViewTableConfigDialog } from './ViewTableConfigDialog'
 
@@ -29,6 +30,11 @@ function nextDensity(density: ViewTableDensity | undefined): ViewTableDensity {
 
 function rowClipboardText(row: { cells: Record<string, string> }, columns: ViewTableColumn[]): string {
   return columns.map((column) => row.cells[column.id] ?? '').join('\t')
+}
+
+function csvFilename(name: string): string {
+  const stem = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return `${stem || 'saved-view'}.csv`
 }
 
 function columnIds(columns: ViewTableColumn[]): string[] {
@@ -170,6 +176,23 @@ export const ViewTable = memo(function ViewTable({
     trackViewTableCopied(source)
   }, [])
 
+  const copyCsv = useCallback(() => {
+    if (!navigator.clipboard) return
+    void navigator.clipboard.writeText(viewTableCsvText(columns, rows))
+    trackViewTableCsvExported('copy')
+  }, [columns, rows])
+
+  const downloadCsv = useCallback(() => {
+    const blob = new Blob([viewTableCsvText(columns, rows)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = csvFilename(view.definition.name)
+    link.click()
+    URL.revokeObjectURL(url)
+    trackViewTableCsvExported('download')
+  }, [columns, rows, view.definition.name])
+
   const saveViewConfig = useCallback((patch: Partial<ViewDefinition>) => {
     onUpdateViewDefinition?.(view.filename, patch, view.rootPath)
     if (patch.filters) trackViewTableConfigured('filters')
@@ -186,6 +209,24 @@ export const ViewTable = memo(function ViewTable({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={copyCsv}
+          >
+            <Copy size={14} className="mr-1" />
+            {translate(locale, 'viewTable.copyCsv')}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={downloadCsv}
+          >
+            <DownloadSimple size={14} className="mr-1" />
+            {translate(locale, 'viewTable.exportCsv')}
+          </Button>
           <Button
             type="button"
             variant="outline"
