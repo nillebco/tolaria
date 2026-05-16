@@ -1,4 +1,5 @@
-import type { VaultEntry, VaultPropertyValue, ViewTableSummary } from '../types'
+import type { VaultEntry, VaultPropertyValue, ViewTableColumnFilter, ViewTableSummary } from '../types'
+import { evaluateViewTableFormula } from './viewTableFormula'
 
 export type ViewTableColumnKind =
   | 'title'
@@ -15,12 +16,17 @@ export interface ViewTableColumn {
   label: string
   kind: ViewTableColumnKind
   propertyKey?: string
-  sourceField?: string
+  formula?: string
 }
 
 export interface ViewTableRow {
   entry: VaultEntry
   cells: Record<string, string>
+}
+
+export interface ViewTableRowsResult {
+  rows: ViewTableRow[]
+  formulaErrors: string[]
 }
 
 export interface ViewTableSummaryValue {
@@ -45,12 +51,12 @@ function propertyColumn(key: string): ViewTableColumn {
   }
 }
 
-function computedColumn(alias: string, sourceField: string): ViewTableColumn {
+function computedColumn(alias: string, formula: string): ViewTableColumn {
   return {
     id: `computed:${alias}`,
     label: alias,
     kind: 'computed',
-    sourceField,
+    formula,
   }
 }
 
@@ -124,7 +130,7 @@ function formatPropertyValue(value: VaultPropertyValue | undefined): string {
   return String(value)
 }
 
-function propertyValue(entry: VaultEntry, key: string): VaultPropertyValue | undefined {
+export function viewTablePropertyValue(entry: VaultEntry, key: string): VaultPropertyValue | undefined {
   const direct = Reflect.get(entry.properties, key) as VaultPropertyValue | undefined
   if (direct !== undefined) return direct
   const normalized = key.toLowerCase()
@@ -132,7 +138,7 @@ function propertyValue(entry: VaultEntry, key: string): VaultPropertyValue | und
   return matchingKey ? Reflect.get(entry.properties, matchingKey) as VaultPropertyValue | undefined : undefined
 }
 
-function fieldValue(entry: VaultEntry, field: string): string {
+function rawFieldValue(entry: VaultEntry, field: string): VaultPropertyValue | undefined {
   switch (field.toLowerCase()) {
     case 'title':
       return entry.title
@@ -143,12 +149,16 @@ function fieldValue(entry: VaultEntry, field: string): string {
     case 'status':
       return entry.status ?? ''
     case 'modified':
-      return formatTimestamp(entry.modifiedAt)
+      return entry.modifiedAt ?? undefined
     case 'created':
-      return formatTimestamp(entry.createdAt)
+      return entry.createdAt ?? undefined
     default:
-      return formatPropertyValue(propertyValue(entry, field))
+      return viewTablePropertyValue(entry, field)
   }
+}
+
+function evaluateFormula(entry: VaultEntry, formula: string): string {
+  return evaluateViewTableFormula(formula, (field) => rawFieldValue(entry, field))
 }
 
 function cellValue(entry: VaultEntry, column: ViewTableColumn): string {
@@ -166,17 +176,44 @@ function cellValue(entry: VaultEntry, column: ViewTableColumn): string {
     case 'created':
       return formatTimestamp(entry.createdAt)
     case 'computed':
-      return column.sourceField ? fieldValue(entry, column.sourceField) : ''
+      return column.formula ? evaluateFormula(entry, column.formula) : ''
     case 'property':
-      return formatPropertyValue(column.propertyKey ? propertyValue(entry, column.propertyKey) : undefined)
+      return formatPropertyValue(column.propertyKey ? viewTablePropertyValue(entry, column.propertyKey) : undefined)
   }
 }
 
 export function buildViewTableRows(entries: VaultEntry[], columns: ViewTableColumn[]): ViewTableRow[] {
-  return entries.map((entry) => ({
+  return buildViewTableRowsResult(entries, columns).rows
+}
+
+export function buildViewTableRowsResult(
+  entries: VaultEntry[],
+  columns: ViewTableColumn[],
+  columnFilters?: Record<string, ViewTableColumnFilter>,
+): ViewTableRowsResult {
+  const formulaErrors = new Set<string>()
+  const rows = entries.map((entry) => ({
     entry,
-    cells: Object.fromEntries(columns.map((column) => [column.id, cellValue(entry, column)])),
-  }))
+    cells: Object.fromEntries(columns.map((column) => {
+      try {
+        return [column.id, cellValue(entry, column)]
+      } catch {
+        formulaErrors.add(column.label)
+        return [column.id, '']
+      }
+    })),
+  })).filter((row) => rowMatchesColumnFilters(row, columnFilters))
+  return { rows, formulaErrors: Array.from(formulaErrors) }
+}
+
+function rowMatchesColumnFilters(row: ViewTableRow, columnFilters: Record<string, ViewTableColumnFilter> | undefined): boolean {
+  return Object.entries(columnFilters ?? {}).every(([columnId, filter]) => {
+    const expected = filter.value.trim()
+    if (!expected) return true
+    const actual = (row.cells[columnId] ?? '').trim()
+    if (filter.op === 'equals') return actual.toLowerCase() === expected.toLowerCase()
+    return actual.toLowerCase().includes(expected.toLowerCase())
+  })
 }
 
 function formatSummaryValue(type: ViewTableSummary, values: string[]): string {

@@ -44,7 +44,7 @@ function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
 
 function makeView(overrides: Partial<ViewFile['definition']> = {}): ViewFile {
   return {
-    filename: 'active-projects.yml',
+    filename: 'active-items.yml',
     definition: {
       name: 'Active Projects',
       icon: null,
@@ -113,13 +113,13 @@ describe('ViewTable', () => {
     render(<ViewTable view={makeView()} entries={[makeEntry({ isA: 'Project' })]} onSelectNote={vi.fn()} onUpdateViewDefinition={onUpdateViewDefinition} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Compact' }))
-    expect(onUpdateViewDefinition).toHaveBeenCalledWith('active-projects.yml', { table: { density: 'compact' } }, undefined)
+    expect(onUpdateViewDefinition).toHaveBeenCalledWith('active-items.yml', { table: { density: 'compact' } }, undefined)
 
     const dataTransfer = createDataTransfer()
     fireEvent.dragStart(screen.getAllByRole('button', { name: 'Drag column' })[0], { dataTransfer })
     fireEvent.drop(screen.getByRole('columnheader', { name: /Owner/ }), { dataTransfer })
 
-    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-projects.yml', { table: { columns: ['property:Owner', 'title'] } }, undefined)
+    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-items.yml', { table: { columns: ['property:Owner', 'title'] } }, undefined)
   })
 
   it('cycles header sort persistence through ascending, descending, and default order', () => {
@@ -135,7 +135,7 @@ describe('ViewTable', () => {
 
     const ownerHeader = screen.getByRole('columnheader', { name: /Owner/ })
     fireEvent.click(within(ownerHeader).getByRole('button', { name: 'Sort column' }))
-    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-projects.yml', { sort: 'property:Owner:asc' }, undefined)
+    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-items.yml', { sort: 'property:Owner:asc' }, undefined)
 
     rerender(
       <ViewTable
@@ -146,7 +146,7 @@ describe('ViewTable', () => {
       />,
     )
     fireEvent.click(within(screen.getByRole('columnheader', { name: /Owner/ })).getByRole('button', { name: 'Sort column' }))
-    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-projects.yml', { sort: 'property:Owner:desc' }, undefined)
+    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-items.yml', { sort: 'property:Owner:desc' }, undefined)
 
     rerender(
       <ViewTable
@@ -157,7 +157,7 @@ describe('ViewTable', () => {
       />,
     )
     fireEvent.click(within(screen.getByRole('columnheader', { name: /Owner/ })).getByRole('button', { name: 'Sort column' }))
-    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-projects.yml', { sort: null }, undefined)
+    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-items.yml', { sort: null }, undefined)
   })
 
   it('sorts date-like frontmatter values by date value', () => {
@@ -189,11 +189,11 @@ describe('ViewTable', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Configure' }))
-    fireEvent.change(screen.getByPlaceholderText('Alias, e.g. hours'), { target: { value: 'display' } })
+    fireEvent.change(screen.getByPlaceholderText('Alias, e.g. quantity'), { target: { value: 'display' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add column' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(onUpdateViewDefinition).toHaveBeenCalledWith('active-projects.yml', {
+    expect(onUpdateViewDefinition).toHaveBeenCalledWith('active-items.yml', {
       filters: { all: [{ field: 'type', op: 'equals', value: 'Project' }] },
       table: {
         computedColumns: { display: 'title' },
@@ -236,6 +236,93 @@ describe('ViewTable', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy CSV' }))
 
     expect(writeText).toHaveBeenCalledWith('Title,Owner\nAlpha,"Ivo, Ada"')
+  })
+
+  it('applies column filters to rendered rows and copied CSV', () => {
+    const writeText = vi.fn()
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    render(
+      <ViewTable
+        view={makeView({
+          listPropertiesDisplay: ['item'],
+          table: {
+            columnFilters: {
+              'property:item': { op: 'equals', value: 'carrot' },
+            },
+          },
+        })}
+        entries={[
+          makeEntry({ path: '/vault/carrot.md', title: 'Included', isA: 'Project', properties: { item: 'carrot' } }),
+          makeEntry({ path: '/vault/other.md', title: 'Excluded', isA: 'Project', properties: { item: 'other' } }),
+        ]}
+        onSelectNote={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Included' })).toBeInTheDocument()
+    expect(screen.queryByText('Excluded')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy CSV' }))
+    expect(writeText).toHaveBeenCalledWith('Title,item\nIncluded,carrot')
+  })
+
+  it('persists an exact column filter from the header input', () => {
+    const onUpdateViewDefinition = vi.fn()
+
+    render(
+      <ViewTable
+        view={makeView({ listPropertiesDisplay: ['item'] })}
+        entries={[makeEntry({ title: 'Included', isA: 'Project', properties: { item: 'carrot' } })]}
+        onSelectNote={vi.fn()}
+        onUpdateViewDefinition={onUpdateViewDefinition}
+      />,
+    )
+
+    const itemHeader = screen.getByRole('columnheader', { name: /item/ })
+    fireEvent.change(within(itemHeader).getByPlaceholderText('Filter, =exact'), { target: { value: '=carrot' } })
+    fireEvent.blur(within(itemHeader).getByPlaceholderText('Filter, =exact'))
+
+    expect(onUpdateViewDefinition).toHaveBeenCalledWith('active-items.yml', {
+      table: {
+        columnFilters: {
+          'property:item': { op: 'equals', value: 'carrot' },
+        },
+      },
+    }, undefined)
+  })
+
+  it('renders formula computed columns and filtered totals', () => {
+    render(
+      <ViewTable
+        view={makeView({
+          listPropertiesDisplay: ['item', 'quantity'],
+          table: {
+            columns: ['title', 'property:item', 'property:quantity', 'computed:amount'],
+            columnFilters: {
+              'property:item': { op: 'equals', value: 'carrot' },
+            },
+            computedColumns: {
+              amount: 'if(item == "carrot", quantity * 2, quantity * 3)',
+            },
+            summaries: {
+              'property:quantity': 'sum',
+              'computed:amount': 'sum',
+            },
+          },
+        })}
+        entries={[
+          makeEntry({ path: '/vault/a.md', title: 'Alpha', isA: 'Project', properties: { item: 'carrot', quantity: 2 } }),
+          makeEntry({ path: '/vault/b.md', title: 'Beta', isA: 'Project', properties: { item: 'other', quantity: 4 } }),
+        ]}
+        onSelectNote={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getAllByText('Summary: 2')).toHaveLength(1)
+    expect(screen.getAllByText('Summary: 4')).toHaveLength(1)
+    expect(screen.queryByText('12')).not.toBeInTheDocument()
   })
 
   it('escapes CSV values with quotes and line breaks', () => {

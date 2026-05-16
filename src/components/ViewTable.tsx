@@ -1,14 +1,15 @@
 import { memo, useCallback, useMemo, useState, type DragEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { CaretDown, CaretUp, CaretUpDown, Copy, DotsSixVertical, DownloadSimple, GearSix } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { AppLocale } from '../lib/i18n'
 import { translate } from '../lib/i18n'
 import { trackViewTableCopied, trackViewTableConfigured, trackViewTableCsvExported } from '../lib/productAnalytics'
-import type { VaultEntry, ViewDefinition, ViewFile, ViewTableConfig, ViewTableDensity } from '../types'
+import type { VaultEntry, ViewDefinition, ViewFile, ViewTableColumnFilter, ViewTableConfig, ViewTableDensity } from '../types'
 import { applySavedViewSort, parseSortConfig, serializeSortConfig, type SortDirection, type SortOption } from '../utils/noteListHelpers'
 import { evaluateView } from '../utils/viewFilters'
 import { viewTableCsvText } from '../utils/viewTableCsv'
-import { buildViewTableRows, buildViewTableSummaries, resolveViewTableColumns, type ViewTableColumn } from '../utils/viewTableColumns'
+import { buildViewTableRowsResult, buildViewTableSummaries, resolveViewTableColumns, type ViewTableColumn } from '../utils/viewTableColumns'
 import { ViewTableConfigDialog } from './ViewTableConfigDialog'
 
 interface ViewTableProps {
@@ -65,11 +66,12 @@ function sortOptionForColumn(column: ViewTableColumn): SortOption | null {
     case 'property':
       return column.propertyKey ? `property:${column.propertyKey}` : null
     case 'computed':
-      return column.sourceField ? sortOptionForComputedSource(column.sourceField) : null
+      return column.formula ? sortOptionForComputedSource(column.formula) : null
   }
 }
 
-function sortOptionForComputedSource(sourceField: string): SortOption {
+function sortOptionForComputedSource(sourceField: string): SortOption | null {
+  if (!/^[A-Za-z_][A-Za-z0-9_ -]*$/.test(sourceField.trim())) return null
   const normalized = sourceField.trim().toLowerCase()
   if (normalized === 'title') return 'title'
   if (normalized === 'filename') return 'filename'
@@ -109,6 +111,7 @@ export const ViewTable = memo(function ViewTable({
 }: ViewTableProps) {
   const tableConfig = view.definition.table ?? undefined
   const [draftColumnSize, setDraftColumnSize] = useState<Record<string, number>>({})
+  const [draftColumnFilters, setDraftColumnFilters] = useState<Record<string, string>>({})
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null)
   const [configOpen, setConfigOpen] = useState(false)
   const filteredEntries = useMemo(
@@ -127,10 +130,12 @@ export const ViewTable = memo(function ViewTable({
     () => availableViewFields(entries, view.definition.listPropertiesDisplay),
     [entries, view.definition.listPropertiesDisplay],
   )
-  const rows = useMemo(
-    () => buildViewTableRows(sortedEntries, columns),
-    [sortedEntries, columns],
+  const rowModel = useMemo(
+    () => buildViewTableRowsResult(sortedEntries, columns, tableConfig?.columnFilters),
+    [sortedEntries, columns, tableConfig?.columnFilters],
   )
+  const rows = rowModel.rows
+  const formulaErrors = rowModel.formulaErrors
   const summaries = useMemo(
     () => buildViewTableSummaries(rows, columns, tableConfig?.summaries),
     [rows, columns, tableConfig?.summaries],
@@ -141,7 +146,7 @@ export const ViewTable = memo(function ViewTable({
   const canPersistTable = Boolean(onUpdateViewDefinition)
   const currentSort = useMemo(() => parseSortConfig(view.definition.sort), [view.definition.sort])
 
-  const saveTableConfig = useCallback((patch: Partial<ViewTableConfig>, action: 'density' | 'columns' | 'column_size' | 'computed_columns') => {
+  const saveTableConfig = useCallback((patch: Partial<ViewTableConfig>, action: 'density' | 'columns' | 'column_size' | 'computed_columns' | 'column_filters') => {
     const nextTable = {
       ...(view.definition.table ?? {}),
       ...patch,
@@ -193,6 +198,33 @@ export const ViewTable = memo(function ViewTable({
   const columnWidth = useCallback((column: ViewTableColumn): number => {
     return draftColumnSize[column.id] ?? tableConfig?.columnSize?.[column.id] ?? (column.id === 'title' ? TITLE_COLUMN_WIDTH : DEFAULT_COLUMN_WIDTH)
   }, [draftColumnSize, tableConfig?.columnSize])
+
+  const columnFilterText = useCallback((column: ViewTableColumn): string => {
+    const draft = draftColumnFilters[column.id]
+    if (draft !== undefined) return draft
+    const filter = tableConfig?.columnFilters?.[column.id]
+    if (!filter) return ''
+    return filter.op === 'equals' ? `=${filter.value}` : filter.value
+  }, [draftColumnFilters, tableConfig?.columnFilters])
+
+  const saveColumnFilter = useCallback((column: ViewTableColumn, rawValue: string) => {
+    const trimmed = rawValue.trim()
+    const currentFilters = tableConfig?.columnFilters ?? {}
+    const nextFilters: Record<string, ViewTableColumnFilter> = { ...currentFilters }
+    if (!trimmed) {
+      delete nextFilters[column.id]
+    } else if (trimmed.startsWith('=')) {
+      nextFilters[column.id] = { op: 'equals', value: trimmed.slice(1).trim() }
+    } else {
+      nextFilters[column.id] = { op: 'contains', value: trimmed }
+    }
+    setDraftColumnFilters((current) => {
+      const next = { ...current }
+      delete next[column.id]
+      return next
+    })
+    saveTableConfig({ columnFilters: nextFilters }, 'column_filters')
+  }, [saveTableConfig, tableConfig?.columnFilters])
 
   const startResize = useCallback((event: ReactPointerEvent, column: ViewTableColumn) => {
     event.preventDefault()
@@ -331,7 +363,12 @@ export const ViewTable = memo(function ViewTable({
         onClose={() => setConfigOpen(false)}
         onSave={saveViewConfig}
       />
-      {rows.length === 0 ? (
+      {formulaErrors.length > 0 ? (
+        <div className="border-b border-border bg-destructive/10 px-5 py-2 text-xs text-destructive">
+          {translate(locale, 'viewTable.formulaError')}: {formulaErrors.join(', ')}
+        </div>
+      ) : null}
+      {sortedEntries.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
           {translate(locale, 'viewTable.emptyState')}
         </div>
@@ -385,6 +422,21 @@ export const ViewTable = memo(function ViewTable({
                         {sortDirectionForColumn(column) === null ? <CaretUpDown size={13} /> : null}
                       </Button>
                     </span>
+                    <Input
+                      value={columnFilterText(column)}
+                      placeholder={translate(locale, 'viewTable.columnFilterPlaceholder')}
+                      className="mt-1 h-7 text-xs normal-case"
+                      disabled={!canPersistTable}
+                      onChange={(event) => setDraftColumnFilters((current) => ({ ...current, [column.id]: event.target.value }))}
+                      onBlur={(event) => saveColumnFilter(column, event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault()
+                          saveColumnFilter(column, event.currentTarget.value)
+                          event.currentTarget.blur()
+                        }
+                      }}
+                    />
                     <span
                       className="absolute right-0 top-1/2 h-5 w-2 -translate-y-1/2 cursor-col-resize border-r border-border"
                       aria-hidden="true"
@@ -396,6 +448,13 @@ export const ViewTable = memo(function ViewTable({
               </tr>
             </thead>
             <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="h-16 px-3 text-center text-sm text-muted-foreground">
+                    {translate(locale, 'viewTable.emptyState')}
+                  </td>
+                </tr>
+              ) : null}
               {rows.map((row) => (
                 <tr
                   key={row.entry.path}

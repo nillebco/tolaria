@@ -52,6 +52,12 @@ pub struct ViewTableConfig {
     pub column_size: HashMap<String, u32>,
     #[serde(
         default,
+        rename = "columnFilters",
+        skip_serializing_if = "HashMap::is_empty"
+    )]
+    pub column_filters: HashMap<String, ViewTableColumnFilter>,
+    #[serde(
+        default,
         rename = "computedColumns",
         skip_serializing_if = "HashMap::is_empty"
     )]
@@ -60,6 +66,12 @@ pub struct ViewTableConfig {
     pub density: Option<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub summaries: HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ViewTableColumnFilter {
+    pub op: String,
+    pub value: String,
 }
 
 #[derive(Debug, Clone)]

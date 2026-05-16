@@ -252,10 +252,17 @@ export type FilterNode = FilterCondition | FilterGroup
 
 export type ViewTableDensity = 'compact' | 'comfortable'
 export type ViewTableSummary = 'count' | 'empty' | 'unique' | 'sum'
+export type ViewTableColumnFilterOp = 'equals' | 'contains'
+
+export interface ViewTableColumnFilter {
+  op: ViewTableColumnFilterOp
+  value: string
+}
 
 export interface ViewTableConfig {
   columns?: string[]
   columnSize?: Record<string, number>
+  columnFilters?: Record<string, ViewTableColumnFilter>
   computedColumns?: Record<string, string>
   density?: ViewTableDensity
   summaries?: Record<string, ViewTableSummary>

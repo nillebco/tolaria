@@ -7,12 +7,11 @@ import type { AppLocale } from '../lib/i18n'
 import { translate } from '../lib/i18n'
 import type { FilterGroup, ViewDefinition } from '../types'
 import { FilterBuilder } from './FilterBuilder'
-import { FilterFieldCombobox } from './FilterFieldCombobox'
 
 interface ComputedColumnDraft {
   id: string
   alias: string
-  sourceField: string
+  formula: string
 }
 
 interface ViewTableConfigDialogProps {
@@ -34,18 +33,18 @@ function cloneFilters(filters: FilterGroup): FilterGroup {
 }
 
 function computedColumnsToDrafts(computedColumns: Record<string, string> | undefined): ComputedColumnDraft[] {
-  return Object.entries(computedColumns ?? {}).map(([alias, sourceField]) => ({
-    id: `${alias}:${sourceField}`,
+  return Object.entries(computedColumns ?? {}).map(([alias, formula]) => ({
+    id: `${alias}:${formula}`,
     alias,
-    sourceField,
+    formula,
   }))
 }
 
 function draftsToComputedColumns(drafts: ComputedColumnDraft[]): Record<string, string> {
   return Object.fromEntries(
     drafts
-      .map((draft) => [draft.alias.trim(), draft.sourceField.trim()] as const)
-      .filter(([alias, sourceField]) => alias.length > 0 && sourceField.length > 0),
+      .map((draft) => [draft.alias.trim(), draft.formula.trim()] as const)
+      .filter(([alias, formula]) => alias.length > 0 && formula.length > 0),
   )
 }
 
@@ -70,15 +69,15 @@ function ViewTableConfigDialogForm({
   const [filters, setFilters] = useState<FilterGroup>(() => cloneFilters(view.filters))
   const [computedDrafts, setComputedDrafts] = useState<ComputedColumnDraft[]>(() => computedColumnsToDrafts(view.table?.computedColumns))
   const [alias, setAlias] = useState('')
-  const [sourceField, setSourceField] = useState(fields[0] ?? 'type')
+  const [formula, setFormula] = useState(fields[0] ?? 'type')
 
   const addComputedColumn = () => {
     const trimmedAlias = alias.trim()
-    const trimmedSource = sourceField.trim()
-    if (!trimmedAlias || !trimmedSource) return
+    const trimmedFormula = formula.trim()
+    if (!trimmedAlias || !trimmedFormula) return
     setComputedDrafts((current) => [
       ...current.filter((draft) => draft.alias.toLowerCase() !== trimmedAlias.toLowerCase()),
-      { id: `${trimmedAlias}:${trimmedSource}`, alias: trimmedAlias, sourceField: trimmedSource },
+      { id: `${trimmedAlias}:${trimmedFormula}`, alias: trimmedAlias, formula: trimmedFormula },
     ])
     setAlias('')
   }
@@ -115,8 +114,12 @@ function ViewTableConfigDialogForm({
               placeholder={translate(locale, 'viewTable.computedAliasPlaceholder')}
               onChange={(event) => setAlias(event.target.value)}
             />
-            <FilterFieldCombobox value={sourceField} fields={fields} onChange={setSourceField} />
-            <Button type="button" variant="outline" onClick={addComputedColumn} disabled={!alias.trim() || !sourceField.trim()}>
+            <Input
+              value={formula}
+              placeholder={translate(locale, 'viewTable.computedFormulaPlaceholder')}
+              onChange={(event) => setFormula(event.target.value)}
+            />
+            <Button type="button" variant="outline" onClick={addComputedColumn} disabled={!alias.trim() || !formula.trim()}>
               <Plus size={14} className="mr-1" />
               {translate(locale, 'viewTable.addComputedColumn')}
             </Button>
@@ -126,7 +129,7 @@ function ViewTableConfigDialogForm({
               {computedDrafts.map((draft) => (
                 <div key={draft.id} className="grid items-center gap-2 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                   <span className="truncate font-medium text-foreground">{draft.alias}</span>
-                  <span className="truncate text-muted-foreground">{draft.sourceField}</span>
+                  <span className="truncate text-muted-foreground">{draft.formula}</span>
                   <Button
                     type="button"
                     variant="ghost"

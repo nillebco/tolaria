@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { VaultEntry } from '../types'
-import { buildViewTableRows, buildViewTableSummaries, resolveViewTableColumns } from './viewTableColumns'
+import { buildViewTableRows, buildViewTableRowsResult, buildViewTableSummaries, resolveViewTableColumns } from './viewTableColumns'
 
 function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
   return {
@@ -96,15 +96,60 @@ describe('resolveViewTableColumns', () => {
   })
 
   it('resolves computed alias columns from source properties', () => {
-    const columns = resolveViewTableColumns(['Owner'], ['title', 'computed:hours'], { hours: 'Hours' })
+    const columns = resolveViewTableColumns(['Owner'], ['title', 'computed:quantity'], { quantity: 'Hours' })
     const [row] = buildViewTableRows([
       makeEntry({ title: 'Alpha', properties: { Hours: 2.5 } }),
     ], columns)
 
-    expect(columns.map((column) => column.label)).toEqual(['Title', 'hours'])
+    expect(columns.map((column) => column.label)).toEqual(['Title', 'quantity'])
     expect(row.cells).toMatchObject({
       title: 'Alpha',
-      'computed:hours': '2.5',
+      'computed:quantity': '2.5',
     })
+  })
+
+  it('computes formula columns with arithmetic and conditionals', () => {
+    const columns = resolveViewTableColumns([], ['title', 'computed:amount'], {
+      amount: 'if(item == "carrot", quantity * 2, quantity * 3)',
+    })
+    const rows = buildViewTableRows([
+      makeEntry({ title: 'Carrot', properties: { item: 'carrot', quantity: 2 } }),
+      makeEntry({ title: 'Other', properties: { item: 'other', quantity: 3 } }),
+    ], columns)
+
+    expect(rows.map((row) => row.cells['computed:amount'])).toEqual(['4', '9'])
+  })
+
+  it('filters rows by table column filters before summaries are computed', () => {
+    const columns = resolveViewTableColumns([], ['title', 'property:item', 'property:quantity', 'computed:amount'], {
+      amount: 'quantity * 2',
+    })
+    const { rows } = buildViewTableRowsResult([
+      makeEntry({ title: 'Included', properties: { item: 'carrot', quantity: 2 } }),
+      makeEntry({ title: 'Excluded', properties: { item: 'other', quantity: 3 } }),
+    ], columns, {
+      'property:item': { op: 'equals', value: 'carrot' },
+    })
+
+    expect(rows.map((row) => row.entry.title)).toEqual(['Included'])
+    expect(buildViewTableSummaries(rows, columns, {
+      'property:quantity': 'sum',
+      'computed:amount': 'sum',
+    })).toEqual([
+      { columnId: 'property:quantity', label: 'quantity', value: '2' },
+      { columnId: 'computed:amount', label: 'amount', value: '4' },
+    ])
+  })
+
+  it('fails closed for invalid formula cells', () => {
+    const columns = resolveViewTableColumns([], ['title', 'computed:amount'], {
+      amount: 'quantity *',
+    })
+    const { rows, formulaErrors } = buildViewTableRowsResult([
+      makeEntry({ title: 'Broken', properties: { quantity: 2 } }),
+    ], columns)
+
+    expect(rows[0].cells['computed:amount']).toBe('')
+    expect(formulaErrors).toEqual(['amount'])
   })
 })
