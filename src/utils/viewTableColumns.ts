@@ -1,4 +1,4 @@
-import type { VaultEntry, VaultPropertyValue, ViewTableColumnFilter, ViewTableSummary } from '../types'
+import type { VaultEntry, VaultPropertyValue, ViewTableColumnFilter, ViewTableSummary, ViewTableSummaryKind } from '../types'
 import { evaluateViewTableFormula } from './viewTableFormula'
 
 export type ViewTableColumnKind =
@@ -216,7 +216,7 @@ function rowMatchesColumnFilters(row: ViewTableRow, columnFilters: Record<string
   })
 }
 
-function formatSummaryValue(type: ViewTableSummary, values: string[]): string {
+function formatSummaryValue(type: ViewTableSummaryKind, values: string[]): string {
   switch (type) {
     case 'count':
       return String(values.filter((value) => value.trim().length > 0).length)
@@ -234,6 +234,30 @@ function formatSummaryValue(type: ViewTableSummary, values: string[]): string {
   }
 }
 
+function summaryKind(summary: ViewTableSummary): ViewTableSummaryKind | null {
+  if (typeof summary === 'string') return summary
+  return summary.type === 'formula' ? null : summary.type
+}
+
+function summaryFormula(summary: ViewTableSummary): string | null {
+  return typeof summary === 'object' && summary.type === 'formula' ? summary.value : null
+}
+
+function sumColumnValues(rows: ViewTableRow[], columnId: string): number {
+  return rows.reduce((sum, row) => {
+    const parsed = Number((row.cells[columnId] ?? '').trim())
+    return Number.isFinite(parsed) ? sum + parsed : sum
+  }, 0)
+}
+
+function evaluateSummaryFormula(rows: ViewTableRow[], formula: string): string {
+  return evaluateViewTableFormula(formula, () => undefined, (name, args) => {
+    if (name.toLowerCase() !== 'sum') return undefined
+    if (args.length !== 1) throw new Error('Expected 1 argument')
+    return sumColumnValues(rows, String(args[0] ?? '').trim())
+  })
+}
+
 export function buildViewTableSummaries(
   rows: ViewTableRow[],
   columns: ViewTableColumn[],
@@ -243,10 +267,24 @@ export function buildViewTableSummaries(
   return columns.flatMap((column) => {
     const summary = summaries[column.id]
     if (!summary) return []
+    const formula = summaryFormula(summary)
+    if (formula) {
+      try {
+        return [{
+          columnId: column.id,
+          label: column.label,
+          value: evaluateSummaryFormula(rows, formula),
+        }]
+      } catch {
+        return []
+      }
+    }
+    const kind = summaryKind(summary)
+    if (!kind) return []
     return [{
       columnId: column.id,
       label: column.label,
-      value: formatSummaryValue(summary, rows.map((row) => row.cells[column.id] ?? '')),
+      value: formatSummaryValue(kind, rows.map((row) => row.cells[column.id] ?? '')),
     }]
   })
 }

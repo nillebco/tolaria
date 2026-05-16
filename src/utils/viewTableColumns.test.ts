@@ -95,6 +95,39 @@ describe('resolveViewTableColumns', () => {
     ])
   })
 
+  it('builds configured summaries from object shorthand', () => {
+    const columns = resolveViewTableColumns(['Score'])
+    const rows = buildViewTableRows([
+      makeEntry({ properties: { Score: 2 } }),
+      makeEntry({ properties: { Score: 3 } }),
+    ], columns)
+
+    expect(buildViewTableSummaries(rows, columns, {
+      'property:Score': { type: 'sum' },
+    })).toEqual([
+      { columnId: 'property:Score', label: 'Score', value: '5' },
+    ])
+  })
+
+  it('builds formula summaries from visible rows', () => {
+    const columns = resolveViewTableColumns([], ['title', 'property:quantity', 'computed:crateSize'], {
+      crateSize: 'quantity * 2',
+    })
+    const rows = buildViewTableRows([
+      makeEntry({ properties: { quantity: 60 } }),
+      makeEntry({ properties: { quantity: 15 } }),
+    ], columns)
+
+    expect(buildViewTableSummaries(rows, columns, {
+      'computed:crateSize': {
+        type: 'formula',
+        value: 'if(sum("property:quantity") <= 70, 5, 5 + (sum("property:quantity") - 70) * 2)',
+      },
+    })).toEqual([
+      { columnId: 'computed:crateSize', label: 'crateSize', value: '15' },
+    ])
+  })
+
   it('resolves computed alias columns from source properties', () => {
     const columns = resolveViewTableColumns(['Owner'], ['title', 'computed:quantity'], { quantity: 'Hours' })
     const [row] = buildViewTableRows([
@@ -118,6 +151,18 @@ describe('resolveViewTableColumns', () => {
     ], columns)
 
     expect(rows.map((row) => row.cells['computed:amount'])).toEqual(['4', '9'])
+  })
+
+  it('computes formula columns with min and max functions', () => {
+    const columns = resolveViewTableColumns([], ['title', 'computed:amount'], {
+      amount: '5 + (max(quantity, 70) - 70) * 2',
+    })
+    const rows = buildViewTableRows([
+      makeEntry({ title: 'Base', properties: { quantity: 60 } }),
+      makeEntry({ title: 'Extra', properties: { quantity: 75 } }),
+    ], columns)
+
+    expect(rows.map((row) => row.cells['computed:amount'])).toEqual(['5', '15'])
   })
 
   it('filters rows by table column filters before summaries are computed', () => {

@@ -251,7 +251,11 @@ export type FilterGroup = { all: FilterNode[] } | { any: FilterNode[] }
 export type FilterNode = FilterCondition | FilterGroup
 
 export type ViewTableDensity = 'compact' | 'comfortable'
-export type ViewTableSummary = 'count' | 'empty' | 'unique' | 'sum'
+export type ViewTableSummaryKind = 'count' | 'empty' | 'unique' | 'sum'
+export type ViewTableSummary =
+  | ViewTableSummaryKind
+  | { type: ViewTableSummaryKind }
+  | { type: 'formula'; value: string }
 export type ViewTableColumnFilterOp = 'equals' | 'contains'
 
 export interface ViewTableColumnFilter {

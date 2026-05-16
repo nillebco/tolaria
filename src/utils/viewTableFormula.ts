@@ -2,6 +2,7 @@ import type { VaultPropertyValue } from '../types'
 
 type FormulaValue = string | number | boolean | null
 type FormulaFieldResolver = (field: string) => VaultPropertyValue | undefined
+type FormulaFunctionResolver = (name: string, args: FormulaValue[]) => FormulaValue | undefined
 type Token =
   | { type: 'identifier'; value: string }
   | { type: 'number'; value: number }
@@ -72,10 +73,12 @@ class FormulaParser {
   private index = 0
   private readonly tokens: Token[]
   private readonly resolveField: FormulaFieldResolver
+  private readonly resolveFunction: FormulaFunctionResolver | undefined
 
-  constructor(tokens: Token[], resolveField: FormulaFieldResolver) {
+  constructor(tokens: Token[], resolveField: FormulaFieldResolver, resolveFunction?: FormulaFunctionResolver) {
     this.tokens = tokens
     this.resolveField = resolveField
+    this.resolveFunction = resolveFunction
   }
 
   parse(): FormulaValue {
@@ -128,7 +131,7 @@ class FormulaParser {
     if (!token) throw new Error('Expected value')
     if (token.type === 'number' || token.type === 'string') return token.value
     if (token.type === 'identifier') {
-      if (token.value.toLowerCase() === 'if' && this.matchParen('(')) return this.parseIfFunction()
+      if (this.matchParen('(')) return this.parseFunction(token.value)
       if (token.value.toLowerCase() === 'true') return true
       if (token.value.toLowerCase() === 'false') return false
       const rawValue = this.resolveField(token.value)
@@ -142,14 +145,37 @@ class FormulaParser {
     throw new Error('Expected value')
   }
 
-  private parseIfFunction(): FormulaValue {
-    const condition = this.parseComparison()
-    if (!this.matchComma()) throw new Error('Expected comma')
-    const whenTrue = this.parseComparison()
-    if (!this.matchComma()) throw new Error('Expected comma')
-    const whenFalse = this.parseComparison()
+  private parseFunction(name: string): FormulaValue {
+    const args = this.parseFunctionArgs()
+    const lowerName = name.toLowerCase()
+    if (lowerName === 'if') {
+      if (args.length !== 3) throw new Error('Expected 3 arguments')
+      return truthyFormulaValue(args[0]) ? args[1] : args[2]
+    }
+    if (lowerName === 'max' || lowerName === 'min') return this.evaluateNumberListFunction(lowerName, args)
+    const resolved = this.resolveFunction?.(name, args)
+    if (resolved !== undefined) return resolved
+    throw new Error('Unknown function')
+  }
+
+  private parseFunctionArgs(): FormulaValue[] {
+    if (this.matchParen(')')) return []
+    const args: FormulaValue[] = []
+    do {
+      args.push(this.parseComparison())
+    } while (this.matchComma())
     if (!this.matchParen(')')) throw new Error('Expected )')
-    return truthyFormulaValue(condition) ? whenTrue : whenFalse
+    return args
+  }
+
+  private evaluateNumberListFunction(name: 'max' | 'min', args: FormulaValue[]): number {
+    if (args.length === 0) throw new Error('Expected number')
+    const numbers = args.map((value) => {
+      const numericValue = formulaNumber(value)
+      if (numericValue === null) throw new Error('Expected number')
+      return numericValue
+    })
+    return name === 'max' ? Math.max(...numbers) : Math.min(...numbers)
   }
 
   private matchOperator(value: string): boolean {
@@ -256,6 +282,10 @@ function tokenizeFormula(formula: string): Token[] {
   return tokens
 }
 
-export function evaluateViewTableFormula(formula: string, resolveField: FormulaFieldResolver): string {
-  return formatFormulaResult(new FormulaParser(tokenizeFormula(formula), resolveField).parse())
+export function evaluateViewTableFormula(
+  formula: string,
+  resolveField: FormulaFieldResolver,
+  resolveFunction?: FormulaFunctionResolver,
+): string {
+  return formatFormulaResult(new FormulaParser(tokenizeFormula(formula), resolveField, resolveFunction).parse())
 }

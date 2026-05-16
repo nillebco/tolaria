@@ -137,7 +137,7 @@ table:
     - property:OnBehalfOf
     - property:Status
   computedColumns:
-    quantity: Hours
+    quantity: Quantity
     amount: 'if(item == "carrot", quantity * 2, quantity * 3)'
   columnFilters:
     "property:item":
@@ -150,8 +150,11 @@ table:
     "property:OnBehalfOf": 180
   density: compact
   summaries:
-    "property:Hours": sum
+    "computed:quantity": sum
     "computed:amount": sum
+    "computed:crateSize":
+      type: formula
+      value: 'if(sum("computed:quantity") <= 70, 5, 5 + (sum("computed:quantity") - 70) * 2)'
     "property:OnBehalfOf": unique
 ```
 
@@ -169,7 +172,7 @@ Table column IDs:
 | `computed:<alias>` | A computed alias declared in `table.computedColumns`, for example `computed:quantity`. |
 
 Quote map keys that contain `:` in YAML, such as `"property:Date"`.
-`table.computedColumns` supports simple aliases such as `quantity: Hours`, plus
+`table.computedColumns` supports simple aliases such as `quantity: Quantity`, plus
 small formulas with field references, strings, numbers, arithmetic,
 comparisons, and `if(condition, when_true, when_false)`.
 Formula syntax:
@@ -182,11 +185,16 @@ Formula syntax:
 | Arithmetic | `quantity * 2`, `(quantity + 1) / 2` |
 | Comparison | `item == "carrot"`, `quantity >= 10` |
 | Conditional | `if(item == "carrot", quantity * 2, quantity * 3)` |
+| Number functions | `max(quantity, 70)`, `min(quantity, 70)` |
 
 Formula cells fail closed as empty cells when the formula is invalid.
 `table.columnFilters` narrows table rows after the saved view's normal filters.
 Use `op: equals` for exact matches or `op: contains` for substring matches.
 Supported table summaries are `count`, `empty`, `unique`, and `sum`.
+Summaries also accept object form, either `{ type: sum }` or
+`{ type: formula, value: '...' }`. Summary formulas can use
+`sum("column:id")` to total a visible table column after filters, for example
+`sum("property:quantity")` or `sum("computed:amount")`.
 When a saved view is open as a table, the toolbar can copy the current table as
 CSV or export it to a `.csv` file. The exported CSV uses the currently rendered
 columns and rows after table column filters.

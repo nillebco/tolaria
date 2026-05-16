@@ -60,6 +60,46 @@ filters:
     }
 
     #[test]
+    fn test_parse_table_summary_shorthand_and_formula() {
+        let yaml = r#"
+name: Active Items
+table:
+  columns:
+    - property:quantity
+    - computed:crateSize
+  summaries:
+    property:quantity: sum
+    computed:crateSize:
+      type: formula
+      value: 'if(sum("property:quantity") <= 70, 5, 5 + (sum("property:quantity") - 70) * 2)'
+filters:
+  all:
+    - field: type
+      op: equals
+      value: Item
+"#;
+        let def: ViewDefinition = serde_yaml::from_str(yaml).unwrap();
+        let table = def.table.expect("table config");
+
+        match table.summaries.get("property:quantity").unwrap() {
+            ViewTableSummaryConfig::Shorthand(value) => assert_eq!(value, "sum"),
+            ViewTableSummaryConfig::Detailed(_) => panic!("expected shorthand summary"),
+        }
+        match table.summaries.get("computed:crateSize").unwrap() {
+            ViewTableSummaryConfig::Detailed(details) => {
+                assert_eq!(details.summary_type, "formula");
+                assert_eq!(
+                    details.value.as_deref(),
+                    Some(
+                        r#"if(sum("property:quantity") <= 70, 5, 5 + (sum("property:quantity") - 70) * 2)"#
+                    )
+                );
+            }
+            ViewTableSummaryConfig::Shorthand(_) => panic!("expected formula summary"),
+        }
+    }
+
+    #[test]
     fn test_evaluate_equals() {
         let yaml = r#"
 name: Projects

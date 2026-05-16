@@ -65,13 +65,28 @@ pub struct ViewTableConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub density: Option<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub summaries: HashMap<String, String>,
+    pub summaries: HashMap<String, ViewTableSummaryConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ViewTableColumnFilter {
     pub op: String,
     pub value: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum ViewTableSummaryConfig {
+    Shorthand(String),
+    Detailed(ViewTableSummaryDetails),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ViewTableSummaryDetails {
+    #[serde(rename = "type")]
+    pub summary_type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
 }
 
 #[derive(Debug, Clone)]
