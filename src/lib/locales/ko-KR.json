@@ -660,5 +660,7 @@
   "locale.jaJP": "日本語",
   "locale.koKR": "한국어",
   "locale.vi": "베트남어",
-  "locale.plPL": "폴란드어"
+  "locale.plPL": "폴란드어",
+  "command.view.openViewAsTable": "보기를 표로 열기",
+  "viewTable.emptyState": "이 보기의 필터와 일치하는 노트가 없습니다."
 }

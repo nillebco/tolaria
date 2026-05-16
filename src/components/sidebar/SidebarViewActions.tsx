@@ -2,7 +2,7 @@ import {
   type ReactNode, type RefObject,
 } from 'react'
 import {
-  Palette, PencilSimple, Trash,
+  Palette, PencilSimple, Table, Trash,
 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -83,23 +83,27 @@ export function ViewContextMenu({
   canCustomize,
   canDelete,
   canEdit,
+  canOpenAsTable,
   locale,
   innerRef,
   onCustomize,
   onDelete,
   onEdit,
+  onOpenAsTable,
 }: {
   pos: MenuPosition | null
   canCustomize: boolean
   canDelete: boolean
   canEdit: boolean
+  canOpenAsTable: boolean
   locale: AppLocale
   innerRef: RefObject<HTMLDivElement | null>
   onCustomize: () => void
   onDelete: () => void
   onEdit: () => void
+  onOpenAsTable: () => void
 }) {
-  if (!pos || (!canEdit && !canCustomize && !canDelete)) return null
+  if (!pos || (!canEdit && !canCustomize && !canDelete && !canOpenAsTable)) return null
 
   return (
     <div
@@ -111,6 +115,12 @@ export function ViewContextMenu({
         <ViewMenuButton onClick={onEdit}>
           <PencilSimple size={14} />
           {translate(locale, 'sidebar.action.editView')}
+        </ViewMenuButton>
+      )}
+      {canOpenAsTable && (
+        <ViewMenuButton onClick={onOpenAsTable}>
+          <Table size={14} />
+          {translate(locale, 'command.view.openViewAsTable')}
         </ViewMenuButton>
       )}
       {canCustomize && (

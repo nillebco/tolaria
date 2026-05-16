@@ -660,5 +660,7 @@
   "locale.jaJP": "Japoński",
   "locale.koKR": "Koreański",
   "locale.vi": "Wietnamski",
-  "locale.plPL": "Polski"
+  "locale.plPL": "Polski",
+  "command.view.openViewAsTable": "Otwórz widok jako tabelę",
+  "viewTable.emptyState": "Żadne notatki nie pasują do filtrów tego widoku."
 }

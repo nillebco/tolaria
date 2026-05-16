@@ -60,6 +60,7 @@ const STATIC_LABEL_KEYS: Partial<Record<string, TranslationKey>> = {
   'open-ai-panel': 'command.view.openAiPanel',
   'new-ai-chat': 'command.view.newAiChat',
   'toggle-backlinks': 'command.view.toggleBacklinks',
+  'open-view-as-table': 'command.view.openViewAsTable',
   'zoom-reset': 'command.view.resetZoom',
   'create-empty-vault': 'command.settings.createEmptyVault',
   'open-vault': 'command.settings.openVault',

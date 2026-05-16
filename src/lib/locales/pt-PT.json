@@ -660,5 +660,7 @@
   "locale.jaJP": "Japonês",
   "locale.koKR": "Coreano",
   "locale.vi": "Vietnamita",
-  "locale.plPL": "Polaco"
+  "locale.plPL": "Polaco",
+  "command.view.openViewAsTable": "Abrir vista como tabela",
+  "viewTable.emptyState": "Nenhuma nota corresponde aos filtros desta vista."
 }

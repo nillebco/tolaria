@@ -89,6 +89,10 @@ export function trackDatePropertyDirectEntrySaved(): void {
   trackEvent('date_property_direct_entry_saved', { source: 'properties_panel' })
 }
 
+export function trackViewOpenedAsTable(rowCount: number): void {
+  trackEvent('view_opened_as_table', { row_count: rowCount })
+}
+
 export function trackAiAgentMessageBlocked(agent: AiAgentId, reason: AgentBlockedReason): void {
   trackEvent('ai_agent_message_blocked', { agent, reason })
 }

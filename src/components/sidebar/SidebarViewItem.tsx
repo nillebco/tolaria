@@ -22,6 +22,7 @@ interface SidebarViewItemProps {
   onEditView?: (filename: string, rootPath?: string) => void
   onDeleteView?: (filename: string, rootPath?: string) => void
   onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
+  onOpenViewAsTable?: (view: ViewFile) => void
   dragHandleProps?: HTMLAttributes<HTMLDivElement>
   entries: VaultEntry[]
   locale?: AppLocale
@@ -86,6 +87,7 @@ export function SidebarViewItem({
   onEditView,
   onDeleteView,
   onUpdateViewDefinition,
+  onOpenViewAsTable,
   dragHandleProps,
   entries,
   locale = 'en',
@@ -99,6 +101,7 @@ export function SidebarViewItem({
     onEditView,
     onDeleteView,
     onUpdateViewDefinition,
+    onOpenViewAsTable,
   })
   const {
     closeCustomize,
@@ -110,6 +113,7 @@ export function SidebarViewItem({
     handleCustomize,
     handleDelete,
     handleEdit,
+    handleOpenAsTable,
     handleRenameSubmit,
     handleRowKeyDown,
     isRenaming,
@@ -151,11 +155,13 @@ export function SidebarViewItem({
         canCustomize={!!onUpdateViewDefinition}
         canDelete={!!onDeleteView}
         canEdit={!!onEditView}
+        canOpenAsTable={!!onOpenViewAsTable}
         innerRef={contextMenuRef}
         locale={locale}
         onCustomize={handleCustomize}
         onDelete={handleDelete}
         onEdit={handleEdit}
+        onOpenAsTable={handleOpenAsTable}
       />
       <ViewCustomizePanel
         pos={customizePos}

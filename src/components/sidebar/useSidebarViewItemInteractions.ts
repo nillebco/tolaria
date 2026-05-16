@@ -12,6 +12,7 @@ interface SidebarViewItemInteractionInput {
   onEditView?: (filename: string, rootPath?: string) => void
   onDeleteView?: (filename: string, rootPath?: string) => void
   onUpdateViewDefinition?: ViewDefinitionPatchHandler
+  onOpenViewAsTable?: (view: ViewFile) => void
 }
 
 type ViewFilenameAction = (filename: string, rootPath?: string) => void
@@ -107,6 +108,7 @@ function useViewMenuActions({
   onEditView,
   onDeleteView,
   onUpdateViewDefinition,
+  onOpenViewAsTable,
   closeContextMenu,
   contextMenuPos,
   openContextMenuAt,
@@ -121,7 +123,7 @@ function useViewMenuActions({
   rowRef: RefObject<HTMLDivElement | null>
   setCustomizePos: Dispatch<SetStateAction<MenuPosition | null>>
 }) {
-  const hasMenuActions = !!(onEditView || onDeleteView || onUpdateViewDefinition)
+  const hasMenuActions = !!(onEditView || onDeleteView || onUpdateViewDefinition || onOpenViewAsTable)
 
   const handleContextMenu = useCallback((event: MouseEvent) => {
     if (!hasMenuActions) return
@@ -149,11 +151,17 @@ function useViewMenuActions({
     closeContextMenu()
   }, [closeContextMenu, contextMenuPos, setCustomizePos])
 
+  const handleOpenAsTable = useCallback(() => {
+    closeContextMenu()
+    onOpenViewAsTable?.(view)
+  }, [closeContextMenu, onOpenViewAsTable, view])
+
   return {
     handleContextMenu,
     handleCustomize,
     handleDelete,
     handleEdit,
+    handleOpenAsTable,
     openKeyboardContextMenu,
   }
 }
@@ -197,6 +205,7 @@ export function useSidebarViewItemInteractions({
   onEditView,
   onDeleteView,
   onUpdateViewDefinition,
+  onOpenViewAsTable,
 }: SidebarViewItemInteractionInput) {
   const state = useViewInteractionState()
   const rename = useViewRenameActions({
@@ -212,6 +221,7 @@ export function useSidebarViewItemInteractions({
     onEditView,
     onDeleteView,
     onUpdateViewDefinition,
+    onOpenViewAsTable,
     closeContextMenu: state.closeContextMenu,
     contextMenuPos: state.contextMenuPos,
     openContextMenuAt: state.openContextMenuAt,
@@ -236,6 +246,7 @@ export function useSidebarViewItemInteractions({
     handleCustomize: menu.handleCustomize,
     handleDelete: menu.handleDelete,
     handleEdit: menu.handleEdit,
+    handleOpenAsTable: menu.handleOpenAsTable,
     handleRenameSubmit: rename.handleRenameSubmit,
     handleRowKeyDown,
     isRenaming: state.isRenaming,

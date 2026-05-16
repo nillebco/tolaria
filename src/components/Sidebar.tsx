@@ -56,6 +56,7 @@ interface SidebarProps {
   onEditView?: (filename: string, rootPath?: string) => void
   onDeleteView?: (filename: string, rootPath?: string) => void
   onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
+  onOpenViewAsTable?: (view: ViewFile) => void
   onReorderViews?: (orderedFilenames: string[]) => void
   folders?: FolderNode[]
   onCreateFolder?: (name: string, parentPath?: string) => Promise<boolean> | boolean
@@ -98,6 +99,7 @@ interface SidebarNavigationProps extends Pick<
   | 'onEditView'
   | 'onDeleteView'
   | 'onUpdateViewDefinition'
+  | 'onOpenViewAsTable'
   | 'onReorderViews'
   | 'folders'
   | 'onCreateFolder'
@@ -155,6 +157,7 @@ type SidebarViewsNavigationProps = Pick<
   | 'onEditView'
   | 'onDeleteView'
   | 'onUpdateViewDefinition'
+  | 'onOpenViewAsTable'
   | 'onReorderViews'
   | 'groupCollapsed'
   | 'toggleGroup'
@@ -254,6 +257,7 @@ function SidebarViewsNavigation({
   onEditView,
   onDeleteView,
   onUpdateViewDefinition,
+  onOpenViewAsTable,
   onReorderViews,
   groupCollapsed,
   toggleGroup,
@@ -284,6 +288,7 @@ function SidebarViewsNavigation({
       onEditView={onEditView}
       onDeleteView={onDeleteView}
       onUpdateViewDefinition={onUpdateViewDefinition}
+      onOpenViewAsTable={onOpenViewAsTable}
       onReorderViews={onReorderViews}
       sensors={sensors}
       entries={entries}
@@ -452,6 +457,7 @@ function SidebarViewAndTypeNavigation(props: SidebarNavigationProps) {
           onEditView={props.onEditView}
           onDeleteView={props.onDeleteView}
           onUpdateViewDefinition={props.onUpdateViewDefinition}
+          onOpenViewAsTable={props.onOpenViewAsTable}
           onReorderViews={props.onReorderViews}
           groupCollapsed={props.groupCollapsed}
           toggleGroup={props.toggleGroup}

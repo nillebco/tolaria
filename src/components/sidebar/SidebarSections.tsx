@@ -64,6 +64,7 @@ export function ViewsSection({
   onEditView,
   onDeleteView,
   onUpdateViewDefinition,
+  onOpenViewAsTable,
   onReorderViews,
   sensors,
   entries,
@@ -78,6 +79,7 @@ export function ViewsSection({
   onEditView?: (filename: string, rootPath?: string) => void
   onDeleteView?: (filename: string, rootPath?: string) => void
   onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
+  onOpenViewAsTable?: (view: ViewFile) => void
   onReorderViews?: (orderedFilenames: string[]) => void
   sensors: ReturnType<typeof useSensors>
   entries: VaultEntry[]
@@ -99,6 +101,7 @@ export function ViewsSection({
       onEditView={onEditView}
       onDeleteView={onDeleteView}
       onUpdateViewDefinition={onUpdateViewDefinition}
+      onOpenViewAsTable={onOpenViewAsTable}
       entries={entries}
       locale={locale}
     />
@@ -135,6 +138,7 @@ export function ViewsSection({
                     onEditView={onEditView}
                     onDeleteView={onDeleteView}
                     onUpdateViewDefinition={onUpdateViewDefinition}
+                    onOpenViewAsTable={onOpenViewAsTable}
                     entries={entries}
                     locale={locale}
                   />
@@ -155,6 +159,7 @@ function SortableViewItem({
   onEditView,
   onDeleteView,
   onUpdateViewDefinition,
+  onOpenViewAsTable,
   entries,
   locale,
 }: {
@@ -164,6 +169,7 @@ function SortableViewItem({
   onEditView?: (filename: string, rootPath?: string) => void
   onDeleteView?: (filename: string, rootPath?: string) => void
   onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
+  onOpenViewAsTable?: (view: ViewFile) => void
   entries: VaultEntry[]
   locale?: AppLocale
 }) {
@@ -187,6 +193,7 @@ function SortableViewItem({
         onEditView={onEditView}
         onDeleteView={onDeleteView}
         onUpdateViewDefinition={onUpdateViewDefinition}
+        onOpenViewAsTable={onOpenViewAsTable}
         dragHandleProps={listeners}
         entries={entries}
         locale={locale}

@@ -87,7 +87,7 @@ import { isTauri, mockInvoke } from './mock-tauri'
 import type { SidebarSelection, InboxPeriod, ModifiedFile, VaultEntry, ViewDefinition, ViewFile, WorkspaceIdentity } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { initializeNoteProperties } from './utils/initializeNoteProperties'
-import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
+import { filterEntries, filterEntriesForViewFile, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { isWindows } from './utils/platform'
 import { getPulledVaultUpdateOptions, refreshPulledVaultState } from './utils/pulledVaultRefresh'
@@ -98,6 +98,7 @@ import { openNoteListPropertiesPicker } from './components/note-list/noteListPro
 import type { NoteListMultiSelectionCommands } from './components/note-list/multiSelectionCommands'
 import { focusNoteIconPropertyEditor } from './components/noteIconPropertyEvents'
 import { trackEvent } from './lib/telemetry'
+import { trackViewOpenedAsTable } from './lib/productAnalytics'
 import { areAiFeaturesEnabled } from './lib/aiFeatures'
 import { useAppCommandAiActions } from './hooks/useAppCommandAiActions'
 import { TOLARIA_DOCS_URL } from './constants/feedback'
@@ -258,6 +259,7 @@ async function createVaultText(path: string, vaultPath: string, content: string)
 function App() {
   const noteWindowParams = useMemo(() => isNoteWindow() ? getNoteWindowParams() : null, [])
   const [selection, setSelection] = useState<SidebarSelection>(DEFAULT_SELECTION)
+  const [tableViewRef, setTableViewRef] = useState<{ filename: string; rootPath?: string } | null>(null)
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>('open')
   const selectionRef = useRef<SidebarSelection>(DEFAULT_SELECTION)
   const neighborhoodHistoryRef = useRef<SidebarSelection[]>([])
@@ -270,6 +272,7 @@ function App() {
     setSelection(sel)
     setNoteListFilter('open')
   }, [])
+  const clearTableView = useCallback(() => setTableViewRef(null), [])
   const handleEnterNeighborhood = useNeighborhoodEntry({
     neighborhoodHistoryRef,
     selectionRef,
@@ -429,6 +432,15 @@ function App() {
     multiWorkspaceEnabled,
     visibleWorkspacePathList,
   })
+  const tableView = useMemo(
+    () => tableViewRef
+      ? vault.views.find((view) => viewMatchesSelection(view, { kind: 'view', ...tableViewRef })) ?? null
+      : null,
+    [tableViewRef, vault.views],
+  )
+  useEffect(() => {
+    if (tableViewRef && !tableView) setTableViewRef(null)
+  }, [tableViewRef, tableView])
   const runtimeMissingVaultPath = !noteWindowParams ? vault.unavailableVaultPath : null
   const {
     markInternalWrite: markRecentVaultWrite,
@@ -660,6 +672,32 @@ function App() {
     closeAllTabs,
     openTabWithContent,
   } = notes
+  const handleSelectNoteAndClearTable = useCallback(async (entry: VaultEntry) => {
+    clearTableView()
+    await handleSelectNote(entry)
+  }, [clearTableView, handleSelectNote])
+  const handleNavigateWikilinkAndClearTable = useCallback((target: string) => {
+    clearTableView()
+    notes.handleNavigateWikilink(target)
+  }, [clearTableView, notes])
+  const handleSwitchTabAndClearTable = useCallback((path: string) => {
+    clearTableView()
+    notes.handleSwitchTab(path)
+  }, [clearTableView, notes])
+  const handleOpenViewAsTable = useCallback((view: ViewFile) => {
+    const rowCount = filterEntriesForViewFile(visibleEntries, view).length
+    trackViewOpenedAsTable(rowCount)
+    setTableViewRef(view.rootPath ? { filename: view.filename, rootPath: view.rootPath } : { filename: view.filename })
+  }, [visibleEntries])
+  const handleOpenSelectedViewAsTable = useCallback(() => {
+    if (effectiveSelection.kind !== 'view') return
+    const selectedView = vault.views.find((view) => viewMatchesSelection(view, effectiveSelection))
+    if (selectedView) handleOpenViewAsTable(selectedView)
+  }, [effectiveSelection, handleOpenViewAsTable, vault.views])
+  const handleSelectTableNote = useCallback(async (entry: VaultEntry) => {
+    clearTableView()
+    await handleSelectNote(entry)
+  }, [clearTableView, handleSelectNote])
   const handleOpenDailyNote = useCallback(async () => {
     if (!resolvedPath) return
     const today = new Date()
@@ -670,7 +708,7 @@ function App() {
     const existingEntry = findDailyNoteEntry(visibleEntries, targetPath)
 
     if (existingEntry) {
-      await notes.handleSelectNote(existingEntry)
+      await handleSelectNoteAndClearTable(existingEntry)
       return
     }
 
@@ -682,8 +720,8 @@ function App() {
     if (!findDailyNoteEntry(freshEntries, targetPath)) {
       vault.addEntry(createdEntry)
     }
-    await notes.handleSelectNote(createdEntry)
-  }, [markRecentVaultWrite, notes, resolvedPath, vault, visibleEntries])
+    await handleSelectNoteAndClearTable(createdEntry)
+  }, [handleSelectNoteAndClearTable, markRecentVaultWrite, resolvedPath, vault, visibleEntries])
 
   const handleSetPathIcon = useCallback((relativePath: string, emoji: string | null) => {
     const current = vaultConfig.path_icons ?? {}
@@ -797,13 +835,13 @@ function App() {
   const { handleGoBack, handleGoForward, canGoBack, canGoForward, entriesByPath } = useAppNavigation({
     entries: visibleEntries,
     activeTabPath: notes.activeTabPath,
-    onSelectNote: notes.handleSelectNote,
+    onSelectNote: handleSelectNoteAndClearTable,
   })
 
   const handleOpenFavorite = useCallback(async (entry: VaultEntry) => {
-    await handleSelectNote(entry)
+    await handleSelectNoteAndClearTable(entry)
     handleEnterNeighborhood(entry)
-  }, [handleEnterNeighborhood, handleSelectNote])
+  }, [handleEnterNeighborhood, handleSelectNoteAndClearTable])
 
   const vaultBridge = useVaultBridge({
     entriesByPath,
@@ -815,7 +853,7 @@ function App() {
     replaceActiveTab: handleReplaceActiveTab,
     hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
     shouldKeepActiveEditorMounted: isActiveElementInsideEditorSurface,
-    onSelectNote: notes.handleSelectNote,
+    onSelectNote: handleSelectNoteAndClearTable,
     activeTabPath: notes.activeTabPath,
     getActiveTabPath: () => notes.activeTabPathRef.current,
     recentlySavedRef,
@@ -830,7 +868,7 @@ function App() {
     initConflictFiles: conflictResolver.initFiles,
     openConflictResolver: dialogs.openConflictResolver,
     closeConflictResolver: dialogs.closeConflictResolver,
-    onSelectNote: notes.handleSelectNote,
+    onSelectNote: handleSelectNoteAndClearTable,
     activeTabPath: notes.activeTabPath,
     setToastMessage,
   })
@@ -1093,7 +1131,7 @@ function App() {
     onCloseAllTabs: notes.closeAllTabs,
     onOpenTabWithContent: notes.openTabWithContent,
     onReplaceActiveTab: notes.handleReplaceActiveTab,
-    onSelectNote: notes.handleSelectNote,
+    onSelectNote: handleSelectNoteAndClearTable,
     reloadVault: vault.reloadVault,
     resolvedPath,
     selectedChangesModifiedFiles,
@@ -1636,7 +1674,7 @@ function App() {
     activeTabPathRef: notes.activeTabPathRef,
     autoAdvanceEnabled: settings.auto_advance_inbox_after_organize === true,
     entries: visibleEntries,
-    onSelectNote: notes.handleSelectNote,
+    onSelectNote: handleSelectNoteAndClearTable,
     onToggleOrganized: entryActions.handleToggleOrganized,
     requestedActiveTabPathRef: notes.requestedActiveTabPathRef,
     selection: effectiveSelection,
@@ -1712,6 +1750,7 @@ function App() {
     onSetNoteWidth: handleSetActiveNoteWidth,
     onSetDefaultNoteWidth: handleSetDefaultNoteWidth,
     selectedViewName: viewOrdering.selectedViewName,
+    onOpenSelectedViewAsTable: effectiveSelection.kind === 'view' ? handleOpenSelectedViewAsTable : undefined,
     onMoveSelectedViewUp: viewOrdering.onMoveSelectedViewUp,
     onMoveSelectedViewDown: viewOrdering.onMoveSelectedViewDown,
     canMoveSelectedViewUp: viewOrdering.canMoveSelectedViewUp,
@@ -1728,7 +1767,7 @@ function App() {
     onCopySelectedFolderPath: fileActions.copySelectedFolderPath,
     showInbox: explicitOrganizationEnabled,
     onReplaceActiveTab: notes.handleReplaceActiveTab,
-    onSelectNote: notes.handleSelectNote,
+    onSelectNote: handleSelectNoteAndClearTable,
     onGoBack: handleGoBack, onGoForward: handleGoForward,
     canGoBack: canGoBack, canGoForward: canGoForward,
     onOpenVault: vaultSwitcher.handleOpenLocalFolder,
@@ -1849,7 +1888,7 @@ function App() {
           {sidebarVisible && (
             <>
               <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-                <Sidebar entries={visibleEntries} activeNotePath={notes.activeTabPath ?? undefined} vaultPath={resolvedPath} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onMoveFileToFolder={handleMoveFileToFolder} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onDeleteType={handleDeleteType} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} onUpdateViewDefinition={handleSidebarUpdateViewDefinition} onReorderViews={canReorderSavedViews ? viewOrdering.onReorderViews : undefined} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} allNotesFileVisibility={allNotesFileVisibility} pluralizeTypeLabels={settings.sidebar_type_pluralization_enabled ?? true} onCollapse={handleCollapseSidebar} onGoBack={handleGoBack} onGoForward={handleGoForward} canGoBack={canGoBack} canGoForward={canGoForward} locale={appLocale} loading={isVaultContentLoading} vaultRootPath={resolvedPath} icons={{ ...obsidianIcons, ...(vaultConfig.path_icons ?? {}) }} showOriginalFilenames={vaultConfig.show_original_filenames === true} onSetPathIcon={handleSetPathIcon} />
+                <Sidebar entries={visibleEntries} activeNotePath={notes.activeTabPath ?? undefined} vaultPath={resolvedPath} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={handleSelectNoteAndClearTable} onMoveFileToFolder={handleMoveFileToFolder} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onDeleteType={handleDeleteType} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} onUpdateViewDefinition={handleSidebarUpdateViewDefinition} onOpenViewAsTable={handleOpenViewAsTable} onReorderViews={canReorderSavedViews ? viewOrdering.onReorderViews : undefined} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} allNotesFileVisibility={allNotesFileVisibility} pluralizeTypeLabels={settings.sidebar_type_pluralization_enabled ?? true} onCollapse={handleCollapseSidebar} onGoBack={handleGoBack} onGoForward={handleGoForward} canGoBack={canGoBack} canGoForward={canGoForward} locale={appLocale} loading={isVaultContentLoading} vaultRootPath={resolvedPath} icons={{ ...obsidianIcons, ...(vaultConfig.path_icons ?? {}) }} showOriginalFilenames={vaultConfig.show_original_filenames === true} onSetPathIcon={handleSetPathIcon} />
               </div>
               <ResizeHandle onResize={layout.handleSidebarResize} />
             </>
@@ -1860,7 +1899,7 @@ function App() {
                 {effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'pulse' ? (
                   <PulseView vaultPath={gitSurfaces.historyRepositoryPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => handleSetViewMode('all')} repositories={gitRepositories} selectedRepositoryPath={gitSurfaces.historyRepositoryPath} onRepositoryChange={gitSurfaces.setHistoryRepositoryPath} locale={appLocale} />
                 ) : (
-                  <NoteList entries={visibleEntries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} loading={isVaultContentLoading} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={noteListModifiedFiles} modifiedFilesError={noteListModifiedFilesError} gitRepositories={gitRepositories} selectedGitRepositoryPath={gitSurfaces.changesRepositoryPath} onGitRepositoryChange={gitSurfaces.setChangesRepositoryPath} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={handleReplaceActiveTabWithQueuedDiff} onEnterNeighborhood={handleEnterNeighborhood} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} onUpdateViewDefinition={handleUpdateViewDefinition} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onOpenDeletedNote={handleOpenDeletedNote} allNotesNoteListProperties={vaultConfig.allNotes?.noteListProperties ?? null} onUpdateAllNotesNoteListProperties={handleUpdateAllNotesNoteListProperties} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} allNotesFileVisibility={allNotesFileVisibility} multiSelectionCommandRef={multiSelectionCommandRef} locale={appLocale} />
+                  <NoteList entries={visibleEntries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} loading={isVaultContentLoading} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={noteListModifiedFiles} modifiedFilesError={noteListModifiedFilesError} gitRepositories={gitRepositories} selectedGitRepositoryPath={gitSurfaces.changesRepositoryPath} onGitRepositoryChange={gitSurfaces.setChangesRepositoryPath} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={handleSelectNoteAndClearTable} onReplaceActiveTab={handleReplaceActiveTabWithQueuedDiff} onEnterNeighborhood={handleEnterNeighborhood} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} onUpdateViewDefinition={handleUpdateViewDefinition} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onOpenDeletedNote={handleOpenDeletedNote} allNotesNoteListProperties={vaultConfig.allNotes?.noteListProperties ?? null} onUpdateAllNotesNoteListProperties={handleUpdateAllNotesNoteListProperties} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} allNotesFileVisibility={allNotesFileVisibility} multiSelectionCommandRef={multiSelectionCommandRef} locale={appLocale} />
                 )}
               </div>
               <ResizeHandle onResize={layout.handleNoteListResize} />
@@ -1887,7 +1926,7 @@ function App() {
               activeTabPath={notes.activeTabPath}
               isVaultLoading={isVaultContentLoading}
               entries={noteWindowParams && activeTab ? [activeTab.entry] : visibleEntries}
-              onNavigateWikilink={notes.handleNavigateWikilink}
+              onNavigateWikilink={handleNavigateWikilinkAndClearTable}
               onReorderTabs={notes.reorderTabs}
               onLoadDiff={loadDiffForPath}
               onLoadDiffAtCommit={loadDiffAtCommitForPath}
@@ -1895,6 +1934,8 @@ function App() {
               onPendingCommitDiffHandled={handlePendingDiffHandled}
               getNoteStatus={vault.getNoteStatus}
               onCreateNote={notes.handleCreateNoteImmediate}
+              tableView={tableView}
+              onSelectTableNote={handleSelectTableNote}
               inspectorCollapsed={layout.inspectorCollapsed}
               onToggleInspector={handleToggleInspector}
               inspectorWidth={layout.inspectorWidth}
@@ -1956,7 +1997,7 @@ function App() {
               onKeepTheirs={conflictFlow.handleKeepTheirs}
               flushPendingEditorContentRef={flushPendingEditorContentRef}
               flushPendingRawContentRef={flushPendingRawContentRef}
-              onSwitchTab={notes.handleSwitchTab}
+              onSwitchTab={handleSwitchTabAndClearTable}
               onCloseTab={notes.closeTab}
               unsavedPaths={vault.unsavedPaths}
               locale={appLocale}
@@ -1969,7 +2010,7 @@ function App() {
         <GitSetupDialog open={shouldShowGitSetupDialog} onInitGit={handleInitGitRepo} onDismiss={dismissGitSetupDialog} />
         <DeleteProgressNotice count={deleteActions.pendingDeleteCount} />
         <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
-        <QuickOpenPalette open={dialogs.showQuickOpen} entries={visibleEntries} isLoading={vault.isLoading} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} locale={appLocale} />
+        <QuickOpenPalette open={dialogs.showQuickOpen} entries={visibleEntries} isLoading={vault.isLoading} onSelect={handleSelectNoteAndClearTable} onClose={dialogs.closeQuickOpen} locale={appLocale} />
         <CommandPalette
           open={dialogs.showCommandPalette}
           commands={commands}
@@ -1980,7 +2021,7 @@ function App() {
           locale={appLocale}
           onClose={dialogs.closeCommandPalette}
         />
-        <SearchPanel open={dialogs.showSearch} vaultPath={resolvedPath} entries={visibleEntries} onSelectNote={notes.handleSelectNote} onClose={dialogs.closeSearch} />
+        <SearchPanel open={dialogs.showSearch} vaultPath={resolvedPath} entries={visibleEntries} onSelectNote={handleSelectNoteAndClearTable} onClose={dialogs.closeSearch} />
         <CreateTypeDialog open={dialogs.showCreateTypeDialog} onClose={dialogs.closeCreateType} onCreate={handleCreateType} />
         <NoteRetargetingDialogs
           dialogState={noteRetargetingUi.dialogState}

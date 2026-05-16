@@ -8,7 +8,7 @@ import { DEFAULT_AI_AGENT, type AiAgentId, type AiAgentReadiness } from '../lib/
 import type { AiTarget } from '../lib/aiTargets'
 import { translate, type AppLocale } from '../lib/i18n'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
-import type { VaultEntry, GitCommit, NoteWidthMode, NoteStatus, WorkspaceIdentity } from '../types'
+import type { VaultEntry, GitCommit, NoteWidthMode, NoteStatus, WorkspaceIdentity, ViewFile } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { FrontmatterValue } from './Inspector'
 import type { FrontmatterOpOptions } from '../hooks/frontmatterOps'
@@ -37,6 +37,7 @@ import { createMathInputExtension } from './mathInputExtension'
 import { createRichEditorTransformErrorRecoveryExtension } from './richEditorTransformErrorRecoveryExtension'
 import { useFilenameAutolinkGuard } from './useFilenameAutolinkGuard'
 import { TabBar } from './TabBar'
+import { ViewTable } from './ViewTable'
 import './Editor.css'
 import './EditorTheme.css'
 
@@ -137,6 +138,8 @@ interface EditorProps {
   onReorderTabs?: (sourcePath: string, targetPath: string) => void
   unsavedPaths?: Set<string>
   locale?: AppLocale
+  tableView?: ViewFile | null
+  onSelectTableNote?: (entry: VaultEntry) => void
 }
 
 function useEditorModeExclusion({
@@ -408,6 +411,8 @@ function EditorLayout({
   onReorderTabs,
   unsavedPaths,
   locale,
+  tableView,
+  onSelectTableNote,
 }: {
   tabs: Tab[]
   activeTabPath: string | null
@@ -485,9 +490,11 @@ function EditorLayout({
   onReorderTabs?: (sourcePath: string, targetPath: string) => void
   unsavedPaths?: Set<string>
   locale?: AppLocale
+  tableView?: ViewFile | null
+  onSelectTableNote?: (entry: VaultEntry) => void
 }) {
   const activeBinaryTab = activeTab?.entry.fileKind === 'binary' ? activeTab : null
-  const showEmptyState = tabs.length === 0 && activeTabPath === null && !isVaultLoading
+  const showEmptyState = tabs.length === 0 && activeTabPath === null && !tableView && !isVaultLoading
 
   return (
     <div className="editor flex flex-col min-h-0 overflow-hidden bg-background text-foreground">
@@ -504,8 +511,8 @@ function EditorLayout({
       <div className="flex flex-1 min-h-0">
         {showEmptyState
           ? <EditorEmptyState locale={locale} />
-          : activeBinaryTab
-            ? (
+            : activeBinaryTab
+              ? (
                 <FilePreview
                   entry={activeBinaryTab.entry}
                   onCopyFilePath={onCopyFilePath}
@@ -513,6 +520,8 @@ function EditorLayout({
                   onRevealFile={onRevealFile}
                 />
               )
+              : tableView && onSelectTableNote
+                ? <ViewTable view={tableView} entries={entries} locale={locale} onSelectNote={onSelectTableNote} />
             : <EditorContent
               activeTab={activeTab}
               activeTabPath={activeTabPath}

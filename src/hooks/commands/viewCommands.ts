@@ -41,6 +41,7 @@ interface ViewCommandsConfig {
   canCustomizeNoteListColumns?: boolean
   noteListColumnsLabel: string
   selectedViewName?: string
+  onOpenSelectedViewAsTable?: () => void
   onMoveSelectedViewUp?: () => void
   onMoveSelectedViewDown?: () => void
   canMoveSelectedViewUp?: boolean
@@ -135,6 +136,7 @@ export function buildViewCommands(config: ViewCommandsConfig): CommandAction[] {
     zoomLevel, onZoomIn, onZoomOut, onZoomReset,
     onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
     selectedViewName, onMoveSelectedViewUp, onMoveSelectedViewDown,
+    onOpenSelectedViewAsTable,
     canMoveSelectedViewUp, canMoveSelectedViewDown,
   } = config
 
@@ -156,6 +158,7 @@ export function buildViewCommands(config: ViewCommandsConfig): CommandAction[] {
     ...aiCommands,
     buildToggleTableOfContentsCommand(hasActiveNote, onToggleTableOfContents),
     { id: 'toggle-backlinks', label: 'Toggle Backlinks', group: 'View', keywords: ['backlinks', 'references', 'links', 'mentions', 'incoming'], enabled: hasActiveNote, execute: onToggleInspector },
+    { id: 'open-view-as-table', label: 'Open View as Table', group: 'View', keywords: ['view', 'table', 'data', 'columns', 'properties'], enabled: !!onOpenSelectedViewAsTable, execute: () => onOpenSelectedViewAsTable?.() },
     buildMoveSavedViewCommand('Up', selectedViewName, onMoveSelectedViewUp, canMoveSelectedViewUp),
     buildMoveSavedViewCommand('Down', selectedViewName, onMoveSelectedViewDown, canMoveSelectedViewDown),
     { id: 'customize-note-list-columns', label: noteListColumnsLabel, group: 'View', keywords: ['all notes', 'inbox', 'columns', 'chips', 'properties', 'note list'], enabled: !!(canCustomizeNoteListColumns && onCustomizeNoteListColumns), execute: () => onCustomizeNoteListColumns?.() },

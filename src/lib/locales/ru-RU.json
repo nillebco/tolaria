@@ -660,5 +660,7 @@
   "locale.jaJP": "日本語",
   "locale.koKR": "Coreano",
   "locale.vi": "Вьетнамский",
-  "locale.plPL": "Польский"
+  "locale.plPL": "Польский",
+  "command.view.openViewAsTable": "Открыть представление как таблицу",
+  "viewTable.emptyState": "Нет заметок, соответствующих фильтрам этого представления."
 }

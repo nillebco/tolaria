@@ -218,6 +218,11 @@ export function getSortComparator(option: SortOption, direction?: SortDirection)
   return makeBuiltinComparator(option, flip)
 }
 
+export function applySavedViewSort(entries: VaultEntry[], rawSort: string | null | undefined): VaultEntry[] {
+  const config = parseSortConfig(rawSort)
+  return config ? [...entries].sort(getSortComparator(config.option, config.direction)) : [...entries].sort(sortByModified)
+}
+
 /** Serialize a SortConfig to the string format stored in type frontmatter: "option:direction". */
 export function serializeSortConfig(config: SortConfig): string {
   return `${config.option}:${config.direction}`

@@ -660,5 +660,7 @@
   "locale.jaJP": "日本語",
   "locale.koKR": "韩国語",
   "locale.vi": "ベトナム語",
-  "locale.plPL": "ポーランド語"
+  "locale.plPL": "ポーランド語",
+  "command.view.openViewAsTable": "ビューを表として開く",
+  "viewTable.emptyState": "このビューのフィルターに一致するノートはありません。"
 }

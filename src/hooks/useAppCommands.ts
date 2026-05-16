@@ -46,6 +46,7 @@ interface AppCommandsConfig {
   onToggleDiff?: () => void
   onToggleRawEditor?: () => void
   selectedViewName?: string
+  onOpenSelectedViewAsTable?: () => void
   onMoveSelectedViewUp?: () => void
   onMoveSelectedViewDown?: () => void
   canMoveSelectedViewUp?: boolean
@@ -189,6 +190,7 @@ type CommandRegistryCoreActions = Pick<
   | 'onToggleDiff'
   | 'onToggleRawEditor'
   | 'selectedViewName'
+  | 'onOpenSelectedViewAsTable'
   | 'onMoveSelectedViewUp'
   | 'onMoveSelectedViewDown'
   | 'canMoveSelectedViewUp'
@@ -504,6 +506,7 @@ function createCommandRegistryCoreConfig(
     onToggleDiff: config.onToggleDiff,
     onToggleRawEditor: config.onToggleRawEditor,
     selectedViewName: config.selectedViewName,
+    onOpenSelectedViewAsTable: config.onOpenSelectedViewAsTable,
     onMoveSelectedViewUp: config.onMoveSelectedViewUp,
     onMoveSelectedViewDown: config.onMoveSelectedViewDown,
     canMoveSelectedViewUp: config.canMoveSelectedViewUp,

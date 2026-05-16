@@ -660,5 +660,7 @@
   "locale.jaJP": "日語",
   "locale.koKR": "韓語",
   "locale.vi": "越南文",
-  "locale.plPL": "波蘭語"
+  "locale.plPL": "波蘭語",
+  "command.view.openViewAsTable": "以表格形式開啟檢視",
+  "viewTable.emptyState": "沒有筆記符合此檢視的篩選條件。"
 }

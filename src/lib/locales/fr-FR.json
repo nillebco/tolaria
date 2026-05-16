@@ -660,5 +660,7 @@
   "locale.jaJP": "Japonais",
   "locale.koKR": "Coréen",
   "locale.vi": "Vietnamien",
-  "locale.plPL": "Polonais"
+  "locale.plPL": "Polonais",
+  "command.view.openViewAsTable": "Ouvrir la vue sous forme de tableau",
+  "viewTable.emptyState": "Aucune note ne correspond aux filtres de cette vue."
 }
