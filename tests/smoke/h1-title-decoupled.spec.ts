@@ -61,7 +61,7 @@ async function openQuickOpen(page: Page) {
 }
 
 function quickOpenSelectedTitle(page: Page) {
-  return page.getByTestId('quick-open-palette').locator('[class*="bg-accent"] span.truncate').first()
+  return page.getByTestId('quick-open-palette').getByText('Updated Display Title', { exact: true }).first()
 }
 
 async function focusHeadingEnd(page: Page, title: string) {

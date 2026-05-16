@@ -16,8 +16,8 @@ test.describe('AI chat empty body fix — no regression', () => {
     const editor = page.locator('.bn-editor')
     await expect(editor).toBeVisible({ timeout: 3000 })
 
-    // Open the AI panel from the editor toolbar
-    await page.getByRole('button', { name: 'Open the AI panel' }).click()
+    // Open the side pane. The AI panel is the default side-pane view.
+    await page.getByRole('button', { name: 'Open the side pane' }).click()
     await expect(page.getByTestId('ai-panel')).toBeVisible({ timeout: 3000 })
 
     // Send a message

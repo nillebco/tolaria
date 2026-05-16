@@ -1,3 +1,5 @@
+import fs from 'fs'
+import path from 'path'
 import { test, expect, type Page } from '@playwright/test'
 import { APP_COMMAND_IDS } from '../../src/hooks/appCommandCatalog'
 import { RUNTIME_STYLE_NONCE } from '../../src/lib/runtimeStyleNonce'
@@ -48,14 +50,14 @@ async function expectRuntimeStyleNonce(page: Page): Promise<void> {
 }
 
 async function expectPropertiesPanelToggle(page: Page, toggle: () => Promise<void>) {
-  const propertiesButton = page.getByRole('button', { name: 'Open the properties panel' })
-  await expect(propertiesButton).toBeVisible({ timeout: 5_000 })
+  const propertyRows = page.getByTestId('editable-property')
+  await expect(propertyRows).toHaveCount(0)
 
   await toggle()
-  await expect(propertiesButton).toHaveCount(0)
+  await expect(propertyRows.first()).toBeVisible({ timeout: 5_000 })
 
   await toggle()
-  await expect(page.getByRole('button', { name: 'Open the properties panel' })).toBeVisible({ timeout: 5_000 })
+  await expect(propertyRows).toHaveCount(0, { timeout: 5_000 })
 }
 
 test.describe('keyboard command routing', () => {
@@ -127,14 +129,15 @@ test.describe('keyboard command routing', () => {
 
   test('desktop menu-command bridge toggles organized state through the shared command path @smoke', async ({ page }) => {
     await openAlphaProjectInEditor(page)
+    const alphaPath = path.join(tempVaultDir, 'project', 'alpha-project.md')
 
-    await expect(page.getByRole('button', { name: 'Set note as organized' })).toBeVisible({ timeout: 5_000 })
-
-    await triggerMenuCommand(page, APP_COMMAND_IDS.noteToggleOrganized)
-    await expect(page.getByRole('button', { name: 'Set note as not organized' })).toBeVisible({ timeout: 5_000 })
+    expect(fs.readFileSync(alphaPath, 'utf8')).not.toContain('_organized: true')
 
     await triggerMenuCommand(page, APP_COMMAND_IDS.noteToggleOrganized)
-    await expect(page.getByRole('button', { name: 'Set note as organized' })).toBeVisible({ timeout: 5_000 })
+    await expect.poll(() => fs.readFileSync(alphaPath, 'utf8'), { timeout: 5_000 }).toContain('_organized: true')
+
+    await triggerMenuCommand(page, APP_COMMAND_IDS.noteToggleOrganized)
+    await expect.poll(() => fs.readFileSync(alphaPath, 'utf8'), { timeout: 5_000 }).not.toContain('_organized: true')
   })
 
   test('renderer shortcut bridge toggles the raw editor through the shared keyboard handler @smoke', async ({ page }) => {

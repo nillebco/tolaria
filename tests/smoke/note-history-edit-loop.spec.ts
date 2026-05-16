@@ -35,8 +35,7 @@ async function openNote(page: Page, title: string) {
 }
 
 async function openPropertiesPanel(page: Page) {
-  const openProperties = page.getByRole('button', { name: 'Open the properties panel' })
-  if (await openProperties.count()) await openProperties.click()
+  await sendShortcut(page, 'i', ['Control', 'Shift'])
   await expect(page.getByText('History')).toBeVisible({ timeout: 5_000 })
 }
 

@@ -6,7 +6,7 @@ import {
   openFixtureVaultDesktopHarness,
   removeFixtureVaultCopy,
 } from '../helpers/fixtureVault'
-import { executeCommand, openCommandPalette } from './helpers'
+import { executeCommand, openCommandPalette, sendShortcut } from './helpers'
 
 let tempVaultDir: string
 
@@ -22,10 +22,8 @@ async function openRawMode(page: Page) {
 }
 
 async function openPropertiesPanel(page: Page) {
-  const openPanelButton = page.getByRole('button', { name: 'Open the properties panel' })
-  if (await openPanelButton.count()) {
-    await openPanelButton.click()
-  }
+  await sendShortcut(page, 'i', ['Control', 'Shift'])
+  await expect(page.getByTestId('editable-property').first()).toBeVisible({ timeout: 5_000 })
 }
 
 async function getRawEditorContent(page: Page): Promise<string> {

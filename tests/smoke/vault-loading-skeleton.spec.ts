@@ -132,7 +132,7 @@ async function expectLoadedVaultSearch(page: Page): Promise<void> {
   await expect(page.getByTestId('vault-loading-skeleton')).not.toBeVisible()
   await expect(page.getByTestId('status-vault-reloading')).not.toBeVisible()
   await expect(page.getByTestId('note-list-container')).toBeVisible()
-  await expect(page.getByText('Large Vault Note')).toBeVisible()
+  await expect(page.getByTestId('note-list-container').getByText('Large Vault Note')).toBeVisible()
 
   await sendShortcut(page, 'p', ['Control'])
   await expect(page.getByTestId('quick-open-palette')).toBeVisible({ timeout: 5_000 })

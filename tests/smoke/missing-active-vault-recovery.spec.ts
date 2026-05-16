@@ -99,7 +99,7 @@ test('missing active vault reload shows recovery state and clears stale notes @s
   await installMissingVaultMock(page)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
 
-  await expect(page.getByText('Runtime Vault Note')).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByTestId('note-list-container').getByText('Runtime Vault Note')).toBeVisible({ timeout: 5_000 })
 
   await page.evaluate(() => {
     (window as MockWindow).__markVaultMissing?.()
@@ -109,5 +109,5 @@ test('missing active vault reload shows recovery state and clears stale notes @s
 
   await expect(page.getByText('Vault not found')).toBeVisible({ timeout: 5_000 })
   await expect(page.getByTestId('welcome-open-folder')).toContainText('Choose a different folder')
-  await expect(page.getByText('Runtime Vault Note')).not.toBeVisible()
+  await expect(page.getByText('Runtime Vault Note')).toHaveCount(0)
 })
