@@ -662,5 +662,14 @@
   "locale.vi": "Vietnamita",
   "locale.plPL": "Polaco",
   "command.view.openViewAsTable": "Abrir vista como tabela",
-  "viewTable.emptyState": "Nenhuma nota corresponde aos filtros desta vista."
+  "viewTable.emptyState": "Nenhuma nota corresponde aos filtros desta vista.",
+  "viewTable.rows": "linhas",
+  "viewTable.compactDensity": "Compacta",
+  "viewTable.comfortableDensity": "Confortável",
+  "viewTable.copyRow": "Copiar linha",
+  "viewTable.copyCell": "Copiar célula",
+  "viewTable.moveColumnLeft": "Mover coluna para a esquerda",
+  "viewTable.moveColumnRight": "Mover coluna para a direita",
+  "viewTable.resizeColumn": "Redimensionar coluna",
+  "viewTable.summary": "Resumo"
 }

@@ -662,5 +662,14 @@
   "locale.vi": "Vietnamien",
   "locale.plPL": "Polonais",
   "command.view.openViewAsTable": "Ouvrir la vue sous forme de tableau",
-  "viewTable.emptyState": "Aucune note ne correspond aux filtres de cette vue."
+  "viewTable.emptyState": "Aucune note ne correspond aux filtres de cette vue.",
+  "viewTable.rows": "lignes",
+  "viewTable.compactDensity": "Compact",
+  "viewTable.comfortableDensity": "Confortable",
+  "viewTable.copyRow": "Copier la ligne",
+  "viewTable.copyCell": "Copier la cellule",
+  "viewTable.moveColumnLeft": "Déplacer la colonne à gauche",
+  "viewTable.moveColumnRight": "Déplacer la colonne à droite",
+  "viewTable.resizeColumn": "Redimensionner la colonne",
+  "viewTable.summary": "Résumé"
 }

@@ -662,5 +662,14 @@
   "locale.vi": "Vietnamesisch",
   "locale.plPL": "Polnisch",
   "command.view.openViewAsTable": "Ansicht als Tabelle öffnen",
-  "viewTable.emptyState": "Keine Notizen entsprechen den Filtern dieser Ansicht."
+  "viewTable.emptyState": "Keine Notizen entsprechen den Filtern dieser Ansicht.",
+  "viewTable.rows": "Zeilen",
+  "viewTable.compactDensity": "Kompakt",
+  "viewTable.comfortableDensity": "Komfortabel",
+  "viewTable.copyRow": "Zeile kopieren",
+  "viewTable.copyCell": "Zelle kopieren",
+  "viewTable.moveColumnLeft": "Spalte nach links verschieben",
+  "viewTable.moveColumnRight": "Spalte nach rechts verschieben",
+  "viewTable.resizeColumn": "Spalte skalieren",
+  "viewTable.summary": "Zusammenfassung"
 }

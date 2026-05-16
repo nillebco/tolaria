@@ -3,6 +3,7 @@ use regex::{Regex, RegexBuilder};
 use serde::de::{self, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::io::ErrorKind;
@@ -34,7 +35,25 @@ pub struct ViewDefinition {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub list_properties_display: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub table: Option<ViewTableConfig>,
     pub filters: FilterGroup,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ViewTableConfig {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub columns: Vec<String>,
+    #[serde(
+        default,
+        rename = "columnSize",
+        skip_serializing_if = "HashMap::is_empty"
+    )]
+    pub column_size: HashMap<String, u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub density: Option<String>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub summaries: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone)]

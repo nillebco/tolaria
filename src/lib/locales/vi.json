@@ -662,5 +662,14 @@
   "locale.vi": "Tiếng Việt",
   "locale.plPL": "Tiếng Ba Lan",
   "command.view.openViewAsTable": "Mở chế độ xem dưới dạng bảng",
-  "viewTable.emptyState": "Không có ghi chú nào khớp với bộ lọc của chế độ xem này."
+  "viewTable.emptyState": "Không có ghi chú nào khớp với bộ lọc của chế độ xem này.",
+  "viewTable.rows": "hàng",
+  "viewTable.compactDensity": "Gọn",
+  "viewTable.comfortableDensity": "Thoải mái",
+  "viewTable.copyRow": "Sao chép hàng",
+  "viewTable.copyCell": "Sao chép ô",
+  "viewTable.moveColumnLeft": "Di chuyển cột sang trái",
+  "viewTable.moveColumnRight": "Di chuyển cột sang phải",
+  "viewTable.resizeColumn": "Đổi kích thước cột",
+  "viewTable.summary": "Tóm tắt"
 }

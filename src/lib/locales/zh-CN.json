@@ -662,5 +662,14 @@
   "locale.vi": "越南语",
   "locale.plPL": "波兰语",
   "command.view.openViewAsTable": "以表格形式打开视图",
-  "viewTable.emptyState": "没有笔记匹配此视图的筛选条件。"
+  "viewTable.emptyState": "没有笔记匹配此视图的筛选条件。",
+  "viewTable.rows": "行",
+  "viewTable.compactDensity": "紧凑",
+  "viewTable.comfortableDensity": "舒适",
+  "viewTable.copyRow": "复制行",
+  "viewTable.copyCell": "复制单元格",
+  "viewTable.moveColumnLeft": "向左移动列",
+  "viewTable.moveColumnRight": "向右移动列",
+  "viewTable.resizeColumn": "调整列宽",
+  "viewTable.summary": "摘要"
 }

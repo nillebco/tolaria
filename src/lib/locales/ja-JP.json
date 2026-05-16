@@ -662,5 +662,14 @@
   "locale.vi": "ベトナム語",
   "locale.plPL": "ポーランド語",
   "command.view.openViewAsTable": "ビューを表として開く",
-  "viewTable.emptyState": "このビューのフィルターに一致するノートはありません。"
+  "viewTable.emptyState": "このビューのフィルターに一致するノートはありません。",
+  "viewTable.rows": "行",
+  "viewTable.compactDensity": "コンパクト",
+  "viewTable.comfortableDensity": "標準",
+  "viewTable.copyRow": "行をコピー",
+  "viewTable.copyCell": "セルをコピー",
+  "viewTable.moveColumnLeft": "列を左へ移動",
+  "viewTable.moveColumnRight": "列を右へ移動",
+  "viewTable.resizeColumn": "列幅を変更",
+  "viewTable.summary": "集計"
 }

@@ -662,5 +662,14 @@
   "locale.jaJP": "Japanese",
   "locale.koKR": "Korean",
   "locale.vi": "Vietnamese",
-  "locale.plPL": "Polish"
+  "locale.plPL": "Polish",
+  "viewTable.rows": "rows",
+  "viewTable.compactDensity": "Compact",
+  "viewTable.comfortableDensity": "Comfortable",
+  "viewTable.copyRow": "Copy row",
+  "viewTable.copyCell": "Copy cell",
+  "viewTable.moveColumnLeft": "Move column left",
+  "viewTable.moveColumnRight": "Move column right",
+  "viewTable.resizeColumn": "Resize column",
+  "viewTable.summary": "Summary"
 }

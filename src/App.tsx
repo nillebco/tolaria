@@ -1936,6 +1936,7 @@ function App() {
               onCreateNote={notes.handleCreateNoteImmediate}
               tableView={tableView}
               onSelectTableNote={handleSelectTableNote}
+              onUpdateViewDefinition={handleUpdateViewDefinition}
               inspectorCollapsed={layout.inspectorCollapsed}
               onToggleInspector={handleToggleInspector}
               inspectorWidth={layout.inspectorWidth}

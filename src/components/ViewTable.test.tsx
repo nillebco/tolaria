@@ -85,6 +85,47 @@ describe('ViewTable', () => {
     expect(onSelectNote).toHaveBeenCalledWith(entry)
   })
 
+  it('opens the focused row with the keyboard', () => {
+    const onSelectNote = vi.fn()
+    const entry = makeEntry({ path: '/vault/a.md', title: 'Alpha', isA: 'Project' })
+
+    render(<ViewTable view={makeView()} entries={[entry]} onSelectNote={onSelectNote} />)
+    fireEvent.keyDown(screen.getByRole('row', { name: /Alpha/ }), { key: 'Enter' })
+
+    expect(onSelectNote).toHaveBeenCalledWith(entry)
+  })
+
+  it('persists table density and column order changes', () => {
+    const onUpdateViewDefinition = vi.fn()
+
+    render(<ViewTable view={makeView()} entries={[makeEntry({ isA: 'Project' })]} onSelectNote={vi.fn()} onUpdateViewDefinition={onUpdateViewDefinition} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Compact' }))
+    expect(onUpdateViewDefinition).toHaveBeenCalledWith('active-projects.yml', { table: { density: 'compact' } }, undefined)
+
+    fireEvent.click(screen.getAllByLabelText('Move column right')[0])
+    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-projects.yml', { table: { columns: ['property:Owner', 'title'] } }, undefined)
+  })
+
+  it('copies rows and cells as tabular text', () => {
+    const writeText = vi.fn()
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    render(
+      <ViewTable
+        view={makeView()}
+        entries={[makeEntry({ title: 'Alpha', isA: 'Project', properties: { Owner: 'Ivo' } })]}
+        onSelectNote={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('Copy row'))
+    fireEvent.click(screen.getByLabelText('Copy cell'))
+
+    expect(writeText).toHaveBeenNthCalledWith(1, 'Alpha\tIvo')
+    expect(writeText).toHaveBeenNthCalledWith(2, 'Ivo')
+  })
+
   it('shows an empty state when no notes match', () => {
     render(<ViewTable view={makeView()} entries={[makeEntry({ isA: 'Note' })]} onSelectNote={vi.fn()} />)
 

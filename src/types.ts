@@ -250,6 +250,16 @@ export interface FilterCondition {
 export type FilterGroup = { all: FilterNode[] } | { any: FilterNode[] }
 export type FilterNode = FilterCondition | FilterGroup
 
+export type ViewTableDensity = 'compact' | 'comfortable'
+export type ViewTableSummary = 'count' | 'empty' | 'unique' | 'sum'
+
+export interface ViewTableConfig {
+  columns?: string[]
+  columnSize?: Record<string, number>
+  density?: ViewTableDensity
+  summaries?: Record<string, ViewTableSummary>
+}
+
 export interface ViewDefinition {
   name: string
   icon: string | null
@@ -258,6 +268,7 @@ export interface ViewDefinition {
   order?: number | null
   sort: string | null
   listPropertiesDisplay?: string[]
+  table?: ViewTableConfig | null
   filters: FilterGroup
 }
 

@@ -20,6 +20,7 @@ mod tests {
             order: None,
             sort: None,
             list_properties_display: Vec::new(),
+            table: None,
             filters: FilterGroup::All(vec![FilterNode::Condition(FilterCondition {
                 field: "type".to_string(),
                 op: FilterOp::Equals,

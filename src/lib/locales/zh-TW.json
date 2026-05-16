@@ -662,5 +662,14 @@
   "locale.vi": "越南文",
   "locale.plPL": "波蘭語",
   "command.view.openViewAsTable": "以表格形式開啟檢視",
-  "viewTable.emptyState": "沒有筆記符合此檢視的篩選條件。"
+  "viewTable.emptyState": "沒有筆記符合此檢視的篩選條件。",
+  "viewTable.rows": "列",
+  "viewTable.compactDensity": "精簡",
+  "viewTable.comfortableDensity": "舒適",
+  "viewTable.copyRow": "複製列",
+  "viewTable.copyCell": "複製儲存格",
+  "viewTable.moveColumnLeft": "向左移動欄",
+  "viewTable.moveColumnRight": "向右移動欄",
+  "viewTable.resizeColumn": "調整欄寬",
+  "viewTable.summary": "摘要"
 }

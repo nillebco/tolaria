@@ -662,5 +662,14 @@
   "locale.vi": "Вьетнамский",
   "locale.plPL": "Польский",
   "command.view.openViewAsTable": "Открыть представление как таблицу",
-  "viewTable.emptyState": "Нет заметок, соответствующих фильтрам этого представления."
+  "viewTable.emptyState": "Нет заметок, соответствующих фильтрам этого представления.",
+  "viewTable.rows": "строки",
+  "viewTable.compactDensity": "Компактно",
+  "viewTable.comfortableDensity": "Удобно",
+  "viewTable.copyRow": "Копировать строку",
+  "viewTable.copyCell": "Копировать ячейку",
+  "viewTable.moveColumnLeft": "Переместить столбец влево",
+  "viewTable.moveColumnRight": "Переместить столбец вправо",
+  "viewTable.resizeColumn": "Изменить размер столбца",
+  "viewTable.summary": "Сводка"
 }

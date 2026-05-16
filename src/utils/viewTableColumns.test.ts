@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { VaultEntry } from '../types'
-import { buildViewTableRows, resolveViewTableColumns } from './viewTableColumns'
+import { buildViewTableRows, buildViewTableSummaries, resolveViewTableColumns } from './viewTableColumns'
 
 function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
   return {
@@ -68,5 +68,30 @@ describe('resolveViewTableColumns', () => {
       'property:Owner': 'Ivo',
       'property:Tags': 'blue, green',
     })
+  })
+
+  it('uses persisted table columns before list display properties', () => {
+    expect(resolveViewTableColumns(['Owner'], ['property:Priority', 'title', 'created']).map((column) => column.id)).toEqual([
+      'property:Priority',
+      'title',
+      'created',
+    ])
+  })
+
+  it('builds configured summaries from visible rows', () => {
+    const columns = resolveViewTableColumns(['Score', 'Owner'])
+    const rows = buildViewTableRows([
+      makeEntry({ properties: { Score: 2, Owner: 'Ada' } }),
+      makeEntry({ properties: { Score: 3, Owner: 'Ada' } }),
+      makeEntry({ properties: { Score: '', Owner: 'Ivo' } }),
+    ], columns)
+
+    expect(buildViewTableSummaries(rows, columns, {
+      'property:Score': 'sum',
+      'property:Owner': 'unique',
+    })).toEqual([
+      { columnId: 'property:Score', label: 'Score', value: '5' },
+      { columnId: 'property:Owner', label: 'Owner', value: '2' },
+    ])
   })
 })

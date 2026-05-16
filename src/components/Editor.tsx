@@ -8,7 +8,7 @@ import { DEFAULT_AI_AGENT, type AiAgentId, type AiAgentReadiness } from '../lib/
 import type { AiTarget } from '../lib/aiTargets'
 import { translate, type AppLocale } from '../lib/i18n'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
-import type { VaultEntry, GitCommit, NoteWidthMode, NoteStatus, WorkspaceIdentity, ViewFile } from '../types'
+import type { VaultEntry, GitCommit, NoteWidthMode, NoteStatus, WorkspaceIdentity, ViewDefinition, ViewFile } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { FrontmatterValue } from './Inspector'
 import type { FrontmatterOpOptions } from '../hooks/frontmatterOps'
@@ -140,6 +140,7 @@ interface EditorProps {
   locale?: AppLocale
   tableView?: ViewFile | null
   onSelectTableNote?: (entry: VaultEntry) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
 }
 
 function useEditorModeExclusion({
@@ -413,6 +414,7 @@ function EditorLayout({
   locale,
   tableView,
   onSelectTableNote,
+  onUpdateViewDefinition,
 }: {
   tabs: Tab[]
   activeTabPath: string | null
@@ -492,6 +494,7 @@ function EditorLayout({
   locale?: AppLocale
   tableView?: ViewFile | null
   onSelectTableNote?: (entry: VaultEntry) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
 }) {
   const activeBinaryTab = activeTab?.entry.fileKind === 'binary' ? activeTab : null
   const showEmptyState = tabs.length === 0 && activeTabPath === null && !tableView && !isVaultLoading
@@ -521,7 +524,7 @@ function EditorLayout({
                 />
               )
               : tableView && onSelectTableNote
-                ? <ViewTable view={tableView} entries={entries} locale={locale} onSelectNote={onSelectTableNote} />
+                ? <ViewTable view={tableView} entries={entries} locale={locale} onSelectNote={onSelectTableNote} onUpdateViewDefinition={onUpdateViewDefinition} />
             : <EditorContent
               activeTab={activeTab}
               activeTabPath={activeTabPath}

@@ -93,6 +93,14 @@ export function trackViewOpenedAsTable(rowCount: number): void {
   trackEvent('view_opened_as_table', { row_count: rowCount })
 }
 
+export function trackViewTableConfigured(action: 'density' | 'columns' | 'column_size'): void {
+  trackEvent('view_table_configured', { action })
+}
+
+export function trackViewTableCopied(source: 'cell' | 'row'): void {
+  trackEvent('view_table_copied', { source })
+}
+
 export function trackAiAgentMessageBlocked(agent: AiAgentId, reason: AgentBlockedReason): void {
   trackEvent('ai_agent_message_blocked', { agent, reason })
 }
