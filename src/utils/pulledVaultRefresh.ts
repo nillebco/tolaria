@@ -1,5 +1,6 @@
 import type { VaultEntry } from '../types'
 import { findByNotePath, joinVaultPath, normalizeNotePathForIdentity, notePathsMatch } from './notePathIdentity'
+import { isViewTabPath } from './viewTabs'
 
 interface PulledVaultRefreshOptions {
   activeTabPath: string | null
@@ -62,6 +63,7 @@ function isActivePathBlocked(options: {
 }): boolean {
   const { activeTabPath, latestActiveTabPath, hasUnsavedChanges } = options
   if (!activeTabPath) return true
+  if (isViewTabPath(activeTabPath)) return true
   if (!latestActiveTabPath) return true
   if (didActivePathChange({ initialPath: activeTabPath, latestPath: latestActiveTabPath })) return true
   return hasUnsavedChanges(latestActiveTabPath)

@@ -756,9 +756,12 @@ function App() {
     options: { preserveFocusedEditor?: boolean } = {},
   ) => {
     await refreshPulledVaultState({
-      activeTabPath: notes.activeTabPath,
+      activeTabPath: activeNotePath,
       closeAllTabs,
-      getActiveTabPath: () => notes.activeTabPathRef.current,
+      getActiveTabPath: () => {
+        const currentPath = notes.activeTabPathRef.current
+        return isViewTabPath(currentPath) ? null : currentPath
+      },
       hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
       shouldKeepActiveEditorMounted: options.preserveFocusedEditor
         ? isActiveElementInsideEditorSurface
@@ -773,8 +776,8 @@ function App() {
     await refreshGitModifiedFiles()
   }, [
       closeAllTabs,
+      activeNotePath,
       handleReplaceActiveTab,
-      notes.activeTabPath,
       notes.activeTabPathRef,
       refreshGitModifiedFiles,
       resolvedPath,
@@ -869,7 +872,10 @@ function App() {
     shouldKeepActiveEditorMounted: isActiveElementInsideEditorSurface,
     onSelectNote: handleSelectNoteAndClearTable,
     activeTabPath: activeNotePath,
-    getActiveTabPath: () => notes.activeTabPathRef.current,
+    getActiveTabPath: () => {
+      const currentPath = notes.activeTabPathRef.current
+      return isViewTabPath(currentPath) ? null : currentPath
+    },
     recentlySavedRef,
     lastEditTimestampRef,
   })

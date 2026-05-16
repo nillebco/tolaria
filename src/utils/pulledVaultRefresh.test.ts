@@ -67,6 +67,20 @@ describe('refreshPulledVaultState', () => {
     expect(options.replaceActiveTab).not.toHaveBeenCalled()
   })
 
+  it('keeps saved view tabs mounted because they are not note entries', async () => {
+    const options = makeOptions({
+      activeTabPath: 'view::active-items.yml',
+      reloadVault: vi.fn().mockResolvedValue([makeEntry('/vault/other.md', 'Other')]),
+      updatedFiles: ['views/active-items.yml'],
+    })
+
+    await refreshPulledVaultState(options)
+
+    expect(options.reloadVault).toHaveBeenCalledOnce()
+    expect(options.closeAllTabs).not.toHaveBeenCalled()
+    expect(options.replaceActiveTab).not.toHaveBeenCalled()
+  })
+
   it('matches macOS /tmp and /private/tmp aliases when reloading the active tab entry', async () => {
     const activeEntry = makeEntry('/private/tmp/tolaria/active.md', 'Active')
     const options = makeOptions({
