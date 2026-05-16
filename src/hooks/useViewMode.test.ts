@@ -20,7 +20,7 @@ describe('useViewMode', () => {
     const { result } = renderHook(() => useViewMode())
     expect(result.current.viewMode).toBe('all')
     expect(result.current.sidebarVisible).toBe(true)
-    expect(result.current.noteListVisible).toBe(false)
+    expect(result.current.noteListVisible).toBe(true)
   })
 
   it('loads persisted view mode from vault config', () => {
@@ -40,7 +40,7 @@ describe('useViewMode', () => {
     act(() => result.current.setViewMode('editor-list'))
     expect(result.current.viewMode).toBe('editor-list')
     expect(result.current.sidebarVisible).toBe(false)
-    expect(result.current.noteListVisible).toBe(false)
+    expect(result.current.noteListVisible).toBe(true)
     expect(getVaultConfig().view_mode).toBe('editor-list')
   })
 
@@ -51,19 +51,19 @@ describe('useViewMode', () => {
     expect(result.current.noteListVisible).toBe(false)
   })
 
-  it('editor-list hides sidebar and note list (panel removed)', () => {
+  it('editor-list hides sidebar and keeps note list visible', () => {
     const { result } = renderHook(() => useViewMode())
     act(() => result.current.setViewMode('editor-list'))
     expect(result.current.sidebarVisible).toBe(false)
-    expect(result.current.noteListVisible).toBe(false)
+    expect(result.current.noteListVisible).toBe(true)
   })
 
-  it('all mode shows sidebar (note list panel removed)', () => {
+  it('all mode shows sidebar and note list', () => {
     const { result } = renderHook(() => useViewMode())
     act(() => result.current.setViewMode('editor-only'))
     act(() => result.current.setViewMode('all'))
     expect(result.current.sidebarVisible).toBe(true)
-    expect(result.current.noteListVisible).toBe(false)
+    expect(result.current.noteListVisible).toBe(true)
   })
 
   it('ignores invalid vault config values', () => {

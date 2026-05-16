@@ -34,7 +34,7 @@ export function useViewMode(initialOverride?: ViewMode) {
   }, [])
 
   const sidebarVisible = viewMode === 'all'
-  const noteListVisible = false
+  const noteListVisible = viewMode !== 'editor-only'
 
   return { viewMode, setViewMode, sidebarVisible, noteListVisible }
 }

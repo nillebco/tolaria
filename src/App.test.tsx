@@ -521,7 +521,7 @@ describe('App', () => {
     expect(screen.getByTestId('sidebar-loading-views')).toBeInTheDocument()
     expect(screen.getByTestId('sidebar-loading-types')).toBeInTheDocument()
     expect(screen.getByTestId('sidebar-loading-folders')).toBeInTheDocument()
-    expect(screen.queryByTestId('note-list-loading-skeleton')).not.toBeInTheDocument()
+    expect(screen.getByTestId('note-list-loading-skeleton')).toBeInTheDocument()
     expect(screen.getByTestId('breadcrumb-title-skeleton')).toBeInTheDocument()
     expect(screen.getByTestId('editor-content-skeleton')).toBeInTheDocument()
     expect(screen.queryByText('Select a note to start editing')).not.toBeInTheDocument()
@@ -896,7 +896,7 @@ describe('App', () => {
 
     expect(screen.queryByTestId('vault-loading-skeleton')).not.toBeInTheDocument()
     expect(screen.getByTestId('sidebar-loading-favorites')).toBeInTheDocument()
-    expect(screen.queryByTestId('note-list-loading-skeleton')).not.toBeInTheDocument()
+    expect(screen.getByTestId('note-list-loading-skeleton')).toBeInTheDocument()
     expect(screen.getByTestId('breadcrumb-title-skeleton')).toBeInTheDocument()
     expect(screen.getByTestId('editor-content-skeleton')).toBeInTheDocument()
     expect(screen.getByTestId('status-vault-reloading')).toHaveAccessibleName('Reloading vault from disk')
@@ -1060,26 +1060,26 @@ describe('App', () => {
     })
   })
 
-  it('keeps the note-list panel removed in the default app shell', async () => {
+  it('shows the note-list panel in the default app shell', async () => {
     configureNeighborhoodVault()
 
     render(<App />)
 
     await waitFor(() => {
       expect(screen.getByText('All Notes')).toBeInTheDocument()
-      expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
+      expect(screen.getByTestId('note-list-container')).toBeInTheDocument()
     })
   })
 
-  it('opens favorites directly in the editor while the note-list panel is removed', async () => {
+  it('opens favorites in a separate editor tab while keeping the note-list panel visible', async () => {
     configureNeighborhoodFavoritesVault()
 
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByText('Beta')).toBeInTheDocument()
+      expect(within(screen.getByTestId('note-list-container')).getByText('Beta')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText('Beta'))
+    fireEvent.click(within(screen.getByTestId('note-list-container')).getByText('Beta'))
 
     await waitFor(() => {
       expect(window.__laputaTest?.activeTabPath).toBe('/vault/beta.md')
@@ -1098,7 +1098,7 @@ describe('App', () => {
       expect(window.__laputaTest?.activeTabPath).toBe('/vault/alpha.md')
       expect(screen.getByRole('tab', { name: /Beta/ })).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: /Alpha/ })).toBeInTheDocument()
-      expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
+      expect(screen.getByTestId('note-list-container')).toBeInTheDocument()
     })
   })
 
@@ -1128,7 +1128,7 @@ describe('App', () => {
     })
   })
 
-  it('keeps auto-advance inaccessible when the note-list panel is removed', async () => {
+  it('keeps auto-advance accessible when the note-list panel is visible', async () => {
     configureNeighborhoodVault()
     mockCommandResults.get_settings = createSettings({ auto_advance_inbox_after_organize: true })
 
@@ -1136,11 +1136,11 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText('All Notes')).toBeInTheDocument()
-      expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
+      expect(screen.getByTestId('note-list-container')).toBeInTheDocument()
     })
   })
 
-  it('keeps the note-list panel removed while an organize save is pending', async () => {
+  it('keeps the note-list panel visible while an organize save is pending', async () => {
     configureNeighborhoodVault()
     mockCommandResults.get_settings = createSettings({ auto_advance_inbox_after_organize: true })
 
@@ -1154,7 +1154,7 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText('All Notes')).toBeInTheDocument()
-      expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
+      expect(screen.getByTestId('note-list-container')).toBeInTheDocument()
     })
 
     await act(async () => {
@@ -1164,7 +1164,7 @@ describe('App', () => {
       await Promise.resolve()
     })
 
-    expect(screen.queryByTestId('note-list-container')).not.toBeInTheDocument()
+    expect(screen.getByTestId('note-list-container')).toBeInTheDocument()
   })
 
   it('renders status bar', async () => {
@@ -1238,7 +1238,7 @@ describe('App', () => {
 
     // All panels visible by default
     expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
-    expect(document.querySelector('.app__note-list')).not.toBeInTheDocument()
+    expect(document.querySelector('.app__note-list')).toBeInTheDocument()
 
     // Cmd+1 → editor-only
     fireEvent.keyDown(window, { key: '1', metaKey: true })
@@ -1280,7 +1280,7 @@ describe('App', () => {
     })
   })
 
-  it('Cmd+2 hides the sidebar while the note-list panel stays removed', async () => {
+  it('Cmd+2 hides the sidebar while the note-list panel stays visible', async () => {
     render(<App />)
     await waitFor(() => {
       expect(screen.getByText('All Notes')).toBeInTheDocument()
@@ -1289,11 +1289,11 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: '2', metaKey: true })
     await waitFor(() => {
       expect(document.querySelector('.app__sidebar')).not.toBeInTheDocument()
-      expect(document.querySelector('.app__note-list')).not.toBeInTheDocument()
+      expect(document.querySelector('.app__note-list')).toBeInTheDocument()
     })
   })
 
-  it('Cmd+3 restores the sidebar after Cmd+1 while the note-list panel stays removed', async () => {
+  it('Cmd+3 restores the sidebar and note-list after Cmd+1', async () => {
     render(<App />)
     await waitFor(() => {
       expect(screen.getByText('All Notes')).toBeInTheDocument()
@@ -1309,7 +1309,7 @@ describe('App', () => {
     fireEvent.keyDown(window, { key: '3', metaKey: true })
     await waitFor(() => {
       expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
-      expect(document.querySelector('.app__note-list')).not.toBeInTheDocument()
+      expect(document.querySelector('.app__note-list')).toBeInTheDocument()
     })
   })
 
