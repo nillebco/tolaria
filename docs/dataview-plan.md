@@ -386,6 +386,35 @@ Suggested tests:
 
 ---
 
+## Phase 5 — Direct Table Interactions
+
+Add richer table interactions once the saved YAML schema and CSV export are
+stable:
+
+- Drag and drop column headers to reorder table columns instead of requiring the
+  current arrow controls.
+- Persist the resulting order back to `table.columns` in the Saved View `.yml`
+  file.
+- Add a clickable sort affordance in each column header.
+- Clicking a column sort control should cycle through:
+  - ascending
+  - descending
+  - no table-specific sort
+- Support date-aware sorting for date columns and date-like frontmatter
+  properties.
+- Keep sort persistence in the Saved View YAML, using the existing top-level
+  `sort` field where possible.
+- Do not infer private telemetry fields from column names or cell values.
+
+Suggested tests:
+
+- Dragging a header persists the new `table.columns` order.
+- Header sort controls update the saved `sort` value.
+- Date columns sort by date value, not lexicographic text.
+- Removing table-specific sort returns the view to its default saved-view order.
+
+---
+
 ## Files Touched
 
 | File | Change |

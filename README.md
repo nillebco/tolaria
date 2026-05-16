@@ -51,6 +51,115 @@ When you open Tolaria for the first time you get the chance of cloning the [gett
 
 The public user docs live in [`site/`](site/) and are published to GitHub Pages. Start with [Install Tolaria](site/start/install.md), then [First Launch](site/start/first-launch.md).
 
+## Saved View YAML
+
+Saved Views are portable `.yml` files stored in the vault's `views/` folder.
+They can be edited by Tolaria or by hand. A minimal view looks like this:
+
+```yaml
+name: Current ADB activities
+icon: list-checks
+color: blue
+sort: "Date:desc"
+listPropertiesDisplay:
+  - Date
+  - OnBehalfOf
+  - Status
+filters:
+  all:
+    - field: type
+      op: equals
+      value: Activity
+    - field: OnBehalfOf
+      op: equals
+      value: ADB
+    - field: Date
+      op: after
+      value: 2026-05-07
+```
+
+Top-level fields:
+
+| Field | Meaning |
+|---|---|
+| `name` | Display name shown in the sidebar and table header. |
+| `icon` | Optional icon name. Use `null` or omit it for no icon. |
+| `color` | Optional color token. Use `null` or omit it for the default color. |
+| `order` | Optional number used to order Saved Views in the sidebar. Lower values appear first. |
+| `sort` | Optional saved sort, for example `"modified:desc"` or `"Date:asc"`. |
+| `listPropertiesDisplay` | Optional frontmatter property names shown in the note list and used as default table columns. |
+| `filters` | Required filter tree. Use `all` for AND groups and `any` for OR groups. |
+| `table` | Optional table presentation settings used by **Open View as Table**. |
+
+Filter conditions use `field`, `op`, and usually `value`:
+
+```yaml
+filters:
+  any:
+    - field: status
+      op: equals
+      value: active
+    - all:
+        - field: type
+          op: equals
+          value: Activity
+        - field: Date
+          op: after
+          value: 2026-04-30
+```
+
+`field` can be a built-in field such as `title`, `type`, `status`, `modified`,
+`created`, `archived`, or `favorite`. It can also be any frontmatter property
+name, such as `Date`, `OnBehalfOf`, `Project`, or `Priority`.
+
+Supported operators are:
+
+| Operator | Meaning |
+|---|---|
+| `equals` / `not_equals` | Exact case-insensitive match. |
+| `contains` / `not_contains` | Text contains match; array properties match individual elements. |
+| `any_of` / `none_of` | Match against any value in a YAML list. |
+| `is_empty` / `is_not_empty` | Check whether the field is blank or missing. |
+| `before` / `after` | Date comparison. The comparison is strict, so `after: 2026-05-07` starts on May 8, 2026. |
+
+Add `regex: true` to a condition to interpret `value` as a regular expression
+for supported text operators.
+
+Table settings are optional. If `table.columns` is omitted, the table uses
+`title` plus `listPropertiesDisplay`, or a conservative default set.
+
+```yaml
+table:
+  columns:
+    - title
+    - property:Date
+    - property:OnBehalfOf
+    - property:Status
+  columnSize:
+    title: 260
+    "property:Date": 140
+    "property:OnBehalfOf": 180
+  density: compact
+  summaries:
+    "property:Hours": sum
+    "property:OnBehalfOf": unique
+```
+
+Table column IDs:
+
+| Column ID | Meaning |
+|---|---|
+| `title` | Note title. |
+| `filename` | Markdown filename. |
+| `type` | Canonical `type:` frontmatter value. |
+| `status` | Status value. |
+| `modified` | Modified date. |
+| `created` | Created date. |
+| `property:<Name>` | Any frontmatter property, for example `property:Date`. |
+
+Quote map keys that contain `:` in YAML, such as `"property:Date"`.
+Supported table summaries are `count`, `empty`, `unique`, and `sum`.
+
 ## Open source and local setup
 
 Tolaria is open source and built with Tauri, React, and TypeScript. If you want to run or contribute to the app locally, here is [how to get started](https://github.com/refactoringhq/tolaria/blob/main/docs/GETTING-STARTED.md). You can also find the gist below 👇
