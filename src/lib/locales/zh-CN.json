@@ -671,5 +671,14 @@
   "viewTable.moveColumnLeft": "向左移动列",
   "viewTable.moveColumnRight": "向右移动列",
   "viewTable.resizeColumn": "调整列宽",
-  "viewTable.summary": "摘要"
+  "viewTable.summary": "摘要",
+  "viewTable.configure": "Configure",
+  "viewTable.settingsTitle": "View settings",
+  "viewTable.settingsDescription": "Edit the filters and computed table columns for this saved view.",
+  "viewTable.filtersLabel": "Filters",
+  "viewTable.computedColumnsLabel": "Computed columns",
+  "viewTable.computedAliasPlaceholder": "Alias, e.g. hours",
+  "viewTable.addComputedColumn": "Add column",
+  "viewTable.removeComputedColumn": "Remove computed column",
+  "viewTable.computedColumnsEmpty": "No computed columns."
 }

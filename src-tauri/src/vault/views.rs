@@ -50,6 +50,12 @@ pub struct ViewTableConfig {
         skip_serializing_if = "HashMap::is_empty"
     )]
     pub column_size: HashMap<String, u32>,
+    #[serde(
+        default,
+        rename = "computedColumns",
+        skip_serializing_if = "HashMap::is_empty"
+    )]
+    pub computed_columns: HashMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub density: Option<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]

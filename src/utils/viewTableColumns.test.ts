@@ -94,4 +94,17 @@ describe('resolveViewTableColumns', () => {
       { columnId: 'property:Owner', label: 'Owner', value: '2' },
     ])
   })
+
+  it('resolves computed alias columns from source properties', () => {
+    const columns = resolveViewTableColumns(['Owner'], ['title', 'computed:hours'], { hours: 'Hours' })
+    const [row] = buildViewTableRows([
+      makeEntry({ title: 'Alpha', properties: { Hours: 2.5 } }),
+    ], columns)
+
+    expect(columns.map((column) => column.label)).toEqual(['Title', 'hours'])
+    expect(row.cells).toMatchObject({
+      title: 'Alpha',
+      'computed:hours': '2.5',
+    })
+  })
 })

@@ -93,7 +93,7 @@ export function trackViewOpenedAsTable(rowCount: number): void {
   trackEvent('view_opened_as_table', { row_count: rowCount })
 }
 
-export function trackViewTableConfigured(action: 'density' | 'columns' | 'column_size'): void {
+export function trackViewTableConfigured(action: 'density' | 'columns' | 'column_size' | 'filters' | 'computed_columns'): void {
   trackEvent('view_table_configured', { action })
 }
 

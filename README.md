@@ -133,11 +133,15 @@ table:
   columns:
     - title
     - property:Date
+    - computed:hours
     - property:OnBehalfOf
     - property:Status
+  computedColumns:
+    hours: Hours
   columnSize:
     title: 260
     "property:Date": 140
+    "computed:hours": 120
     "property:OnBehalfOf": 180
   density: compact
   summaries:
@@ -156,8 +160,12 @@ Table column IDs:
 | `modified` | Modified date. |
 | `created` | Created date. |
 | `property:<Name>` | Any frontmatter property, for example `property:Date`. |
+| `computed:<alias>` | A computed alias declared in `table.computedColumns`, for example `computed:hours`. |
 
 Quote map keys that contain `:` in YAML, such as `"property:Date"`.
+`table.computedColumns` currently supports simple aliases only: each map key is
+the displayed alias and each value is the source field or frontmatter property,
+such as `hours: Hours`.
 Supported table summaries are `count`, `empty`, `unique`, and `sum`.
 
 ## Open source and local setup

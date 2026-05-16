@@ -671,5 +671,14 @@
   "viewTable.moveColumnLeft": "Переместить столбец влево",
   "viewTable.moveColumnRight": "Переместить столбец вправо",
   "viewTable.resizeColumn": "Изменить размер столбца",
-  "viewTable.summary": "Сводка"
+  "viewTable.summary": "Сводка",
+  "viewTable.configure": "Configure",
+  "viewTable.settingsTitle": "View settings",
+  "viewTable.settingsDescription": "Edit the filters and computed table columns for this saved view.",
+  "viewTable.filtersLabel": "Filters",
+  "viewTable.computedColumnsLabel": "Computed columns",
+  "viewTable.computedAliasPlaceholder": "Alias, e.g. hours",
+  "viewTable.addComputedColumn": "Add column",
+  "viewTable.removeComputedColumn": "Remove computed column",
+  "viewTable.computedColumnsEmpty": "No computed columns."
 }

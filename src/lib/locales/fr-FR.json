@@ -671,5 +671,14 @@
   "viewTable.moveColumnLeft": "Déplacer la colonne à gauche",
   "viewTable.moveColumnRight": "Déplacer la colonne à droite",
   "viewTable.resizeColumn": "Redimensionner la colonne",
-  "viewTable.summary": "Résumé"
+  "viewTable.summary": "Résumé",
+  "viewTable.configure": "Configure",
+  "viewTable.settingsTitle": "View settings",
+  "viewTable.settingsDescription": "Edit the filters and computed table columns for this saved view.",
+  "viewTable.filtersLabel": "Filters",
+  "viewTable.computedColumnsLabel": "Computed columns",
+  "viewTable.computedAliasPlaceholder": "Alias, e.g. hours",
+  "viewTable.addComputedColumn": "Add column",
+  "viewTable.removeComputedColumn": "Remove computed column",
+  "viewTable.computedColumnsEmpty": "No computed columns."
 }

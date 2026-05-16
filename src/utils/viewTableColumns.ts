@@ -7,6 +7,7 @@ export type ViewTableColumnKind =
   | 'status'
   | 'modified'
   | 'created'
+  | 'computed'
   | 'property'
 
 export interface ViewTableColumn {
@@ -14,6 +15,7 @@ export interface ViewTableColumn {
   label: string
   kind: ViewTableColumnKind
   propertyKey?: string
+  sourceField?: string
 }
 
 export interface ViewTableRow {
@@ -43,6 +45,15 @@ function propertyColumn(key: string): ViewTableColumn {
   }
 }
 
+function computedColumn(alias: string, sourceField: string): ViewTableColumn {
+  return {
+    id: `computed:${alias}`,
+    label: alias,
+    kind: 'computed',
+    sourceField,
+  }
+}
+
 function builtInColumn(id: string): ViewTableColumn | null {
   return DEFAULT_COLUMNS.find((column) => column.id === id) ?? (
     id === 'filename' ? { id: 'filename', label: 'Filename', kind: 'filename' } :
@@ -51,10 +62,15 @@ function builtInColumn(id: string): ViewTableColumn | null {
   )
 }
 
-function columnFromId(id: string): ViewTableColumn | null {
+function columnFromId(id: string, computedColumns: Record<string, string> | undefined): ViewTableColumn | null {
   if (id.startsWith('property:')) {
     const propertyKey = id.slice('property:'.length).trim()
     return propertyKey ? propertyColumn(propertyKey) : null
+  }
+  if (id.startsWith('computed:')) {
+    const alias = id.slice('computed:'.length).trim()
+    const sourceField = alias ? computedColumns?.[alias] : undefined
+    return alias && sourceField ? computedColumn(alias, sourceField) : null
   }
   return builtInColumn(id)
 }
@@ -72,12 +88,17 @@ function uniqueColumns(columns: ViewTableColumn[]): ViewTableColumn[] {
 export function resolveViewTableColumns(
   listPropertiesDisplay?: string[],
   tableColumns?: string[],
+  computedColumns?: Record<string, string>,
 ): ViewTableColumn[] {
-  const persistedColumns = uniqueColumns((tableColumns ?? []).map(columnFromId).filter((column): column is ViewTableColumn => Boolean(column)))
+  const persistedColumns = uniqueColumns((tableColumns ?? []).map((id) => columnFromId(id, computedColumns)).filter((column): column is ViewTableColumn => Boolean(column)))
   if (persistedColumns.length > 0) return persistedColumns
 
   const propertyKeys = (listPropertiesDisplay ?? []).map((key) => key.trim()).filter(Boolean)
-  if (propertyKeys.length === 0) return DEFAULT_COLUMNS
+  const computed = Object.entries(computedColumns ?? {})
+    .map(([alias, sourceField]) => [alias.trim(), sourceField.trim()] as const)
+    .filter(([alias, sourceField]) => alias.length > 0 && sourceField.length > 0)
+    .map(([alias, sourceField]) => computedColumn(alias, sourceField))
+  if (propertyKeys.length === 0) return uniqueColumns([...DEFAULT_COLUMNS, ...computed])
 
   const seen = new Set<string>()
   const columns: ViewTableColumn[] = [{ id: 'title', label: 'Title', kind: 'title' }]
@@ -87,7 +108,7 @@ export function resolveViewTableColumns(
     seen.add(normalized)
     columns.push(propertyColumn(key))
   }
-  return columns
+  return uniqueColumns([...columns, ...computed])
 }
 
 function formatTimestamp(value: number | null): string {
@@ -101,6 +122,33 @@ function formatPropertyValue(value: VaultPropertyValue | undefined): string {
   if (value == null) return ''
   if (Array.isArray(value)) return value.map(String).join(', ')
   return String(value)
+}
+
+function propertyValue(entry: VaultEntry, key: string): VaultPropertyValue | undefined {
+  const direct = Reflect.get(entry.properties, key) as VaultPropertyValue | undefined
+  if (direct !== undefined) return direct
+  const normalized = key.toLowerCase()
+  const matchingKey = Object.keys(entry.properties).find((candidate) => candidate.toLowerCase() === normalized)
+  return matchingKey ? Reflect.get(entry.properties, matchingKey) as VaultPropertyValue | undefined : undefined
+}
+
+function fieldValue(entry: VaultEntry, field: string): string {
+  switch (field.toLowerCase()) {
+    case 'title':
+      return entry.title
+    case 'filename':
+      return entry.filename
+    case 'type':
+      return entry.isA ?? ''
+    case 'status':
+      return entry.status ?? ''
+    case 'modified':
+      return formatTimestamp(entry.modifiedAt)
+    case 'created':
+      return formatTimestamp(entry.createdAt)
+    default:
+      return formatPropertyValue(propertyValue(entry, field))
+  }
 }
 
 function cellValue(entry: VaultEntry, column: ViewTableColumn): string {
@@ -117,8 +165,10 @@ function cellValue(entry: VaultEntry, column: ViewTableColumn): string {
       return formatTimestamp(entry.modifiedAt)
     case 'created':
       return formatTimestamp(entry.createdAt)
+    case 'computed':
+      return column.sourceField ? fieldValue(entry, column.sourceField) : ''
     case 'property':
-      return formatPropertyValue(column.propertyKey ? Reflect.get(entry.properties, column.propertyKey) as VaultPropertyValue | undefined : undefined)
+      return formatPropertyValue(column.propertyKey ? propertyValue(entry, column.propertyKey) : undefined)
   }
 }
 

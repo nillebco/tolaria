@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { ArrowLeft, ArrowRight, Copy } from '@phosphor-icons/react'
+import { ArrowLeft, ArrowRight, Copy, GearSix } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import type { AppLocale } from '../lib/i18n'
 import { translate } from '../lib/i18n'
@@ -8,6 +8,7 @@ import type { VaultEntry, ViewDefinition, ViewFile, ViewTableConfig, ViewTableDe
 import { applySavedViewSort } from '../utils/noteListHelpers'
 import { evaluateView } from '../utils/viewFilters'
 import { buildViewTableRows, buildViewTableSummaries, resolveViewTableColumns, type ViewTableColumn } from '../utils/viewTableColumns'
+import { ViewTableConfigDialog } from './ViewTableConfigDialog'
 
 interface ViewTableProps {
   view: ViewFile
@@ -34,6 +35,20 @@ function columnIds(columns: ViewTableColumn[]): string[] {
   return columns.map((column) => column.id)
 }
 
+function availableViewFields(entries: VaultEntry[], configuredProperties?: string[]): string[] {
+  const fields = new Set(['title', 'filename', 'type', 'status', 'modified', 'created'])
+  for (const property of configuredProperties ?? []) {
+    const trimmed = property.trim()
+    if (trimmed) fields.add(trimmed)
+  }
+  for (const entry of entries) {
+    for (const key of Object.keys(entry.properties)) {
+      fields.add(key)
+    }
+  }
+  return Array.from(fields)
+}
+
 export const ViewTable = memo(function ViewTable({
   view,
   entries,
@@ -43,6 +58,7 @@ export const ViewTable = memo(function ViewTable({
 }: ViewTableProps) {
   const tableConfig = view.definition.table ?? undefined
   const [draftColumnSize, setDraftColumnSize] = useState<Record<string, number>>({})
+  const [configOpen, setConfigOpen] = useState(false)
   const filteredEntries = useMemo(
     () => evaluateView(view.definition, entries),
     [view.definition, entries],
@@ -52,8 +68,12 @@ export const ViewTable = memo(function ViewTable({
     [filteredEntries, view.definition.sort],
   )
   const columns = useMemo(
-    () => resolveViewTableColumns(view.definition.listPropertiesDisplay, tableConfig?.columns),
-    [view.definition.listPropertiesDisplay, tableConfig?.columns],
+    () => resolveViewTableColumns(view.definition.listPropertiesDisplay, tableConfig?.columns, tableConfig?.computedColumns),
+    [view.definition.listPropertiesDisplay, tableConfig?.columns, tableConfig?.computedColumns],
+  )
+  const availableFields = useMemo(
+    () => availableViewFields(entries, view.definition.listPropertiesDisplay),
+    [entries, view.definition.listPropertiesDisplay],
   )
   const rows = useMemo(
     () => buildViewTableRows(sortedEntries, columns),
@@ -68,7 +88,7 @@ export const ViewTable = memo(function ViewTable({
   const headerHeightClassName = density === 'compact' ? 'h-8' : 'h-9'
   const canPersistTable = Boolean(onUpdateViewDefinition)
 
-  const saveTableConfig = useCallback((patch: Partial<ViewTableConfig>, action: 'density' | 'columns' | 'column_size') => {
+  const saveTableConfig = useCallback((patch: Partial<ViewTableConfig>, action: 'density' | 'columns' | 'column_size' | 'computed_columns') => {
     const nextTable = {
       ...(view.definition.table ?? {}),
       ...patch,
@@ -150,6 +170,12 @@ export const ViewTable = memo(function ViewTable({
     trackViewTableCopied(source)
   }, [])
 
+  const saveViewConfig = useCallback((patch: Partial<ViewDefinition>) => {
+    onUpdateViewDefinition?.(view.filename, patch, view.rootPath)
+    if (patch.filters) trackViewTableConfigured('filters')
+    if (patch.table?.computedColumns) trackViewTableConfigured('computed_columns')
+  }, [onUpdateViewDefinition, view.filename, view.rootPath])
+
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
       <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
@@ -159,16 +185,37 @@ export const ViewTable = memo(function ViewTable({
             {rows.length} {translate(locale, 'viewTable.rows')}
           </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={!canPersistTable}
-          onClick={toggleDensity}
-        >
-          {density === 'compact' ? translate(locale, 'viewTable.comfortableDensity') : translate(locale, 'viewTable.compactDensity')}
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!canPersistTable}
+            onClick={() => setConfigOpen(true)}
+          >
+            <GearSix size={14} className="mr-1" />
+            {translate(locale, 'viewTable.configure')}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!canPersistTable}
+            onClick={toggleDensity}
+          >
+            {density === 'compact' ? translate(locale, 'viewTable.comfortableDensity') : translate(locale, 'viewTable.compactDensity')}
+          </Button>
+        </div>
       </div>
+      <ViewTableConfigDialog
+        open={configOpen}
+        view={view.definition}
+        currentColumns={columnIds(columns)}
+        availableFields={availableFields}
+        locale={locale}
+        onClose={() => setConfigOpen(false)}
+        onSave={saveViewConfig}
+      />
       {rows.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
           {translate(locale, 'viewTable.emptyState')}

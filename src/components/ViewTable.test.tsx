@@ -107,6 +107,32 @@ describe('ViewTable', () => {
     expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-projects.yml', { table: { columns: ['property:Owner', 'title'] } }, undefined)
   })
 
+  it('saves edited filters and computed alias columns from the configuration dialog', () => {
+    const onUpdateViewDefinition = vi.fn()
+
+    render(
+      <ViewTable
+        view={makeView()}
+        entries={[makeEntry({ isA: 'Project', properties: { Owner: 'Ivo' } })]}
+        onSelectNote={vi.fn()}
+        onUpdateViewDefinition={onUpdateViewDefinition}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Configure' }))
+    fireEvent.change(screen.getByPlaceholderText('Alias, e.g. hours'), { target: { value: 'display' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add column' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onUpdateViewDefinition).toHaveBeenCalledWith('active-projects.yml', {
+      filters: { all: [{ field: 'type', op: 'equals', value: 'Project' }] },
+      table: {
+        computedColumns: { display: 'title' },
+        columns: ['title', 'property:Owner', 'computed:display'],
+      },
+    }, undefined)
+  })
+
   it('copies rows and cells as tabular text', () => {
     const writeText = vi.fn()
     Object.assign(navigator, { clipboard: { writeText } })

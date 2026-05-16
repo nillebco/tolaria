@@ -256,6 +256,7 @@ export type ViewTableSummary = 'count' | 'empty' | 'unique' | 'sum'
 export interface ViewTableConfig {
   columns?: string[]
   columnSize?: Record<string, number>
+  computedColumns?: Record<string, string>
   density?: ViewTableDensity
   summaries?: Record<string, ViewTableSummary>
 }

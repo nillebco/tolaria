@@ -671,5 +671,14 @@
   "viewTable.moveColumnLeft": "列を左へ移動",
   "viewTable.moveColumnRight": "列を右へ移動",
   "viewTable.resizeColumn": "列幅を変更",
-  "viewTable.summary": "集計"
+  "viewTable.summary": "集計",
+  "viewTable.configure": "Configure",
+  "viewTable.settingsTitle": "View settings",
+  "viewTable.settingsDescription": "Edit the filters and computed table columns for this saved view.",
+  "viewTable.filtersLabel": "Filters",
+  "viewTable.computedColumnsLabel": "Computed columns",
+  "viewTable.computedAliasPlaceholder": "Alias, e.g. hours",
+  "viewTable.addComputedColumn": "Add column",
+  "viewTable.removeComputedColumn": "Remove computed column",
+  "viewTable.computedColumnsEmpty": "No computed columns."
 }

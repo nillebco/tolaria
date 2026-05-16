@@ -671,5 +671,14 @@
   "viewTable.moveColumnLeft": "Sposta colonna a sinistra",
   "viewTable.moveColumnRight": "Sposta colonna a destra",
   "viewTable.resizeColumn": "Ridimensiona colonna",
-  "viewTable.summary": "Riepilogo"
+  "viewTable.summary": "Riepilogo",
+  "viewTable.configure": "Configure",
+  "viewTable.settingsTitle": "View settings",
+  "viewTable.settingsDescription": "Edit the filters and computed table columns for this saved view.",
+  "viewTable.filtersLabel": "Filters",
+  "viewTable.computedColumnsLabel": "Computed columns",
+  "viewTable.computedAliasPlaceholder": "Alias, e.g. hours",
+  "viewTable.addComputedColumn": "Add column",
+  "viewTable.removeComputedColumn": "Remove computed column",
+  "viewTable.computedColumnsEmpty": "No computed columns."
 }
