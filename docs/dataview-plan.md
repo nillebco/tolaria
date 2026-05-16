@@ -333,7 +333,7 @@ Only after table rendering and persistence are stable:
 
 Formula scope should start small:
 
-- Simple aliases, e.g. `hours = Hours`.
+- Simple aliases, e.g. `quantity = Hours`.
 - Simple numeric transforms later.
 - Avoid a general expression language until there is a concrete use case.
 
@@ -425,14 +425,24 @@ are stable:
   ```yaml
   table:
     columnFilters:
-      "property:project":
+      "property:item":
         op: equals
-        value: tscmf
+        value: carrot
   ```
 - Apply table column filters to the rendered table rows after the Saved View's
   normal `filters` have already selected the base note set.
 - Ensure CSV copy/export uses the currently rendered rows after table column
   filters are applied.
+- Recompute table summaries after column filters and computed formulas so totals
+  such as total quantity and total amount match the visible table and CSV export.
+- Extend `table.summaries` to support formula columns and numeric frontmatter
+  columns, for example:
+  ```yaml
+  table:
+    summaries:
+      "property:quantity": sum
+      "computed:amount": sum
+  ```
 - Keep table column filters separate from the top-level Saved View `filters` so
   the sidebar note list can keep its current semantics unless the user explicitly
   edits the Saved View filters.
@@ -441,7 +451,7 @@ are stable:
   ```yaml
   table:
     computedColumns:
-      amount: 'if(project == "tscmf", hours * 505, hours * 483)'
+      amount: 'if(item == "carrot", quantity * 2, quantity * 3)'
   ```
 - Support only a conservative expression subset at first:
   - field references by frontmatter key
@@ -455,9 +465,10 @@ Suggested tests:
 
 - Column filters reduce rendered rows and CSV export rows.
 - Clearing a column filter restores the Saved View's base row set.
+- Totals recompute from the filtered rows and include computed amount columns.
 - Formula columns compute numeric arithmetic.
 - Formula columns compute conditional rates such as
-  `if(project == "tscmf", hours * 505, hours * 483)`.
+  `if(item == "carrot", quantity * 2, quantity * 3)`.
 - Invalid formulas fail closed with empty cells and a visible configuration
   error, not a table crash.
 
