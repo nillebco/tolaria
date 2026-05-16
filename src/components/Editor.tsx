@@ -38,6 +38,7 @@ import { createRichEditorTransformErrorRecoveryExtension } from './richEditorTra
 import { useFilenameAutolinkGuard } from './useFilenameAutolinkGuard'
 import { TabBar } from './TabBar'
 import { ViewTable } from './ViewTable'
+import { isViewTabPath } from '../utils/viewTabs'
 import './Editor.css'
 import './EditorTheme.css'
 
@@ -233,7 +234,8 @@ function useEditorSetup({
     ],
   })
   useFilenameAutolinkGuard(editor)
-  const activeTab = tabs.find((t) => t.entry.path === activeTabPath) ?? null
+  const editorActiveTabPath = isViewTabPath(activeTabPath) ? null : activeTabPath
+  const activeTab = tabs.find((t) => t.entry.path === editorActiveTabPath) ?? null
   const {
     rawMode,
     handleToggleRaw,
@@ -243,7 +245,7 @@ function useEditorSetup({
     rawModeContentOverride,
   } = useRawModeWithFlush(
     editor,
-    activeTabPath,
+    editorActiveTabPath,
     activeTab?.content ?? null,
     onContentChange,
     vaultPath,
@@ -254,14 +256,14 @@ function useEditorSetup({
 
   useEffect(() => {
     setPendingRawExitContent((current) => resolvePendingRawExitContent({
-      activeTabPath,
+      activeTabPath: editorActiveTabPath,
       tabs,
       pendingRawExitContent: current,
     }))
-  }, [activeTabPath, setPendingRawExitContent, tabs])
+  }, [editorActiveTabPath, setPendingRawExitContent, tabs])
 
   const { handleEditorChange, flushPendingEditorChange, editorMountedRef } = useEditorTabSwap({
-    tabs: tabsForEditorSwap, activeTabPath, editor, onContentChange, rawMode, vaultPath,
+    tabs: tabsForEditorSwap, activeTabPath: editorActiveTabPath, editor, onContentChange, rawMode, vaultPath,
   })
   useEffect(() => {
     flushPendingEditorChangeRef.current = flushPendingEditorChange
@@ -274,7 +276,7 @@ function useEditorSetup({
   useEditorFocus(editor, editorMountedRef)
 
   const { diffMode, diffContent, diffLoading, handleToggleDiff, handleViewCommitDiff } = useDiffMode({
-    activeTabPath,
+    activeTabPath: editorActiveTabPath,
     onLoadDiff,
     onLoadDiffAtCommit,
     pendingCommitDiffRequest,
@@ -285,7 +287,7 @@ function useEditorSetup({
     diffMode, rawMode, handleToggleDiff, handleToggleRaw, rawToggleRef, diffToggleRef,
   })
 
-  const isLoadingNewTab = activeTabPath !== null && !activeTab
+  const isLoadingNewTab = editorActiveTabPath !== null && !activeTab
   const activeStatus = activeTab ? getNoteStatus?.(activeTab.entry.path) ?? 'clean' : 'clean'
   const showDiffToggle = !!(activeTab && (diffMode || activeStatus === 'modified'))
 

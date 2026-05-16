@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
-import type { VaultEntry } from '../types'
+import type { VaultEntry, ViewFile } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
 import { tabSessionStorageKey, useTabManagement } from './useTabManagement'
 import {
@@ -15,6 +15,7 @@ import {
 import { runFrontmatterAndApply, type FrontmatterOpOptions } from './frontmatterOps'
 import { findByNotePath, notePathFilename, notePathsMatch } from '../utils/notePathIdentity'
 import type { VaultOption } from '../components/status-bar/types'
+import { isViewTabPath } from '../utils/viewTabs'
 
 export interface NoteActionsConfig {
   addEntry: (entry: VaultEntry) => void
@@ -26,6 +27,7 @@ export interface NoteActionsConfig {
   setToastMessage: (msg: string | null) => void
   updateEntry: (path: string, patch: Partial<VaultEntry>) => void
   vaultPath: string
+  views?: ViewFile[]
   defaultWorkspacePath?: string | null
   vaults?: readonly VaultOption[]
   addPendingSave?: (path: string) => void
@@ -478,6 +480,7 @@ export function useNoteActions(config: NoteActionsConfig) {
     ...buildTabManagementOptions(config),
     entries,
     sessionKey: tabSessionStorageKey(config.vaultPath),
+    views: config.views,
   })
   const { setTabs, handleSelectNote, openTabWithContent, activeTabPathRef, handleSwitchTab } = tabMgmt
   useGitignoredVisibilityTabCleanup({
@@ -499,7 +502,7 @@ export function useNoteActions(config: NoteActionsConfig) {
   const handleNavigateWikilink = useCallback(
     (target: string) => navigateWikilink({
       entries,
-      sourceEntry: tabMgmt.tabs.find((tab) => notePathsMatch(tab.entry.path, tabMgmt.activeTabPath))?.entry,
+      sourceEntry: tabMgmt.tabs.find((tab) => !isViewTabPath(tab.entry.path) && notePathsMatch(tab.entry.path, tabMgmt.activeTabPath))?.entry,
       target,
       selectNote: handleSelectNote,
     }),

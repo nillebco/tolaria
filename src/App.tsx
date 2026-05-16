@@ -78,6 +78,7 @@ import {
 import { createViewFilename } from './utils/viewFilename'
 import { nextViewOrder } from './utils/viewOrdering'
 import { viewMatchesSelection, viewVaultPath } from './utils/viewIdentity'
+import { isViewTabPath, viewFromTabPath, viewTabEntry } from './utils/viewTabs'
 import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { ConfirmDeleteDialog } from './components/ConfirmDeleteDialog'
 import { DeleteProgressNotice } from './components/DeleteProgressNotice'
@@ -259,7 +260,6 @@ async function createVaultText(path: string, vaultPath: string, content: string)
 function App() {
   const noteWindowParams = useMemo(() => isNoteWindow() ? getNoteWindowParams() : null, [])
   const [selection, setSelection] = useState<SidebarSelection>(DEFAULT_SELECTION)
-  const [tableViewRef, setTableViewRef] = useState<{ filename: string; rootPath?: string } | null>(null)
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>('open')
   const selectionRef = useRef<SidebarSelection>(DEFAULT_SELECTION)
   const neighborhoodHistoryRef = useRef<SidebarSelection[]>([])
@@ -272,7 +272,7 @@ function App() {
     setSelection(sel)
     setNoteListFilter('open')
   }, [])
-  const clearTableView = useCallback(() => setTableViewRef(null), [])
+  const clearTableView = useCallback(() => undefined, [])
   const handleEnterNeighborhood = useNeighborhoodEntry({
     neighborhoodHistoryRef,
     selectionRef,
@@ -432,15 +432,6 @@ function App() {
     multiWorkspaceEnabled,
     visibleWorkspacePathList,
   })
-  const tableView = useMemo(
-    () => tableViewRef
-      ? vault.views.find((view) => viewMatchesSelection(view, { kind: 'view', ...tableViewRef })) ?? null
-      : null,
-    [tableViewRef, vault.views],
-  )
-  useEffect(() => {
-    if (tableViewRef && !tableView) setTableViewRef(null)
-  }, [tableViewRef, tableView])
   const runtimeMissingVaultPath = !noteWindowParams ? vault.unavailableVaultPath : null
   const {
     markInternalWrite: markRecentVaultWrite,
@@ -644,6 +635,7 @@ function App() {
     addEntry: vault.addEntry,
     removeEntry: vault.removeEntry,
     entries: visibleEntries,
+    views: vault.views,
     flushBeforeNoteSwitch: flushEditorStateBeforeAction,
     flushBeforeNoteMutation: flushEditorStateBeforeAction,
     reloadVault: vault.reloadVault,
@@ -671,6 +663,7 @@ function App() {
     handleReplaceActiveTab,
     closeAllTabs,
     openTabWithContent,
+    openViewTab,
   } = notes
   const handleSelectNoteAndClearTable = useCallback(async (entry: VaultEntry) => {
     clearTableView()
@@ -687,13 +680,25 @@ function App() {
   const handleOpenViewAsTable = useCallback((view: ViewFile) => {
     const rowCount = filterEntriesForViewFile(visibleEntries, view).length
     trackViewOpenedAsTable(rowCount)
-    setTableViewRef(view.rootPath ? { filename: view.filename, rootPath: view.rootPath } : { filename: view.filename })
-  }, [visibleEntries])
+    clearTableView()
+    void openViewTab(view)
+  }, [clearTableView, openViewTab, visibleEntries])
+  const handleSelectSidebarItem = useCallback((sel: SidebarSelection, options?: { preserveNeighborhoodHistory?: boolean }) => {
+    handleSetSelection(sel, options)
+    if (sel.kind !== 'view') return
+    const selectedView = vault.views.find((view) => viewMatchesSelection(view, sel))
+    if (selectedView) handleOpenViewAsTable(selectedView)
+  }, [handleOpenViewAsTable, handleSetSelection, vault.views])
   const handleOpenSelectedViewAsTable = useCallback(() => {
     if (effectiveSelection.kind !== 'view') return
     const selectedView = vault.views.find((view) => viewMatchesSelection(view, effectiveSelection))
     if (selectedView) handleOpenViewAsTable(selectedView)
   }, [effectiveSelection, handleOpenViewAsTable, vault.views])
+  const activeTableView = useMemo(
+    () => viewFromTabPath(notes.activeTabPath, vault.views),
+    [notes.activeTabPath, vault.views],
+  )
+  const activeNotePath = isViewTabPath(notes.activeTabPath) ? null : notes.activeTabPath
   const handleSelectTableNote = useCallback(async (entry: VaultEntry) => {
     clearTableView()
     await handleSelectNote(entry)
@@ -821,6 +826,15 @@ function App() {
     notes.setTabs(prev => {
       let changed = false
       const next = prev.map(tab => {
+        const freshView = viewFromTabPath(tab.entry.path, vault.views)
+        if (freshView) {
+          const freshEntry = viewTabEntry(freshView)
+          if (freshEntry.title !== tab.entry.title || freshEntry.icon !== tab.entry.icon || freshEntry.color !== tab.entry.color) {
+            changed = true
+            return { ...tab, entry: freshEntry }
+          }
+          return tab
+        }
         const fresh = visibleEntries.find(e => e.path === tab.entry.path)
         if (fresh && fresh !== tab.entry) {
           changed = true
@@ -830,11 +844,11 @@ function App() {
       })
       return changed ? next : prev
     })
-  }, [visibleEntries]) // eslint-disable-line react-hooks/exhaustive-deps -- notes.setTabs is stable (useState setter)
+  }, [vault.views, visibleEntries]) // eslint-disable-line react-hooks/exhaustive-deps -- notes.setTabs is stable (useState setter)
 
   const { handleGoBack, handleGoForward, canGoBack, canGoForward, entriesByPath } = useAppNavigation({
     entries: visibleEntries,
-    activeTabPath: notes.activeTabPath,
+    activeTabPath: activeNotePath,
     onSelectNote: handleSelectNoteAndClearTable,
   })
 
@@ -854,7 +868,7 @@ function App() {
     hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
     shouldKeepActiveEditorMounted: isActiveElementInsideEditorSurface,
     onSelectNote: handleSelectNoteAndClearTable,
-    activeTabPath: notes.activeTabPath,
+    activeTabPath: activeNotePath,
     getActiveTabPath: () => notes.activeTabPathRef.current,
     recentlySavedRef,
     lastEditTimestampRef,
@@ -869,7 +883,7 @@ function App() {
     openConflictResolver: dialogs.openConflictResolver,
     closeConflictResolver: dialogs.closeConflictResolver,
     onSelectNote: handleSelectNoteAndClearTable,
-    activeTabPath: notes.activeTabPath,
+    activeTabPath: activeNotePath,
     setToastMessage,
   })
 
@@ -877,7 +891,7 @@ function App() {
     updateEntry: vault.updateEntry, setTabs: notes.setTabs, handleSwitchTab: notes.handleSwitchTab, setToastMessage,
     loadModifiedFiles: refreshGitModifiedFiles, reloadViews: async () => { await vault.reloadViews() },
     trackUnsaved: trackUnsavedAndRecord, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths,
-    tabs: notes.tabs, activeTabPath: notes.activeTabPath,
+    tabs: notes.tabs, activeTabPath: activeNotePath,
     handleRenameNote: notes.handleRenameNote, handleRenameFilename: notes.handleRenameFilename,
     replaceEntry: vault.replaceEntry, resolvedPath,
     writableVaultPaths,
@@ -1078,11 +1092,11 @@ function App() {
   })
 
   const handleRemoveNoteIconCommand = useCallback(() => {
-    if (notes.activeTabPath) handleRemoveNoteIcon(notes.activeTabPath)
-  }, [notes.activeTabPath, handleRemoveNoteIcon])
+    if (activeNotePath) handleRemoveNoteIcon(activeNotePath)
+  }, [activeNotePath, handleRemoveNoteIcon])
 
   const handleOpenInNewWindow = useCallback(() => {
-    const activeTab = notes.tabs.find(t => t.entry.path === notes.activeTabPath)
+    const activeTab = activeNotePath ? notes.tabs.find(t => t.entry.path === activeNotePath) : null
     if (activeTab) {
       openNoteInNewWindow(
         activeTab.entry.path,
@@ -1090,7 +1104,7 @@ function App() {
         activeTab.entry.title,
       )
     }
-  }, [notes.tabs, notes.activeTabPath, resolvedPath])
+  }, [activeNotePath, notes.tabs, resolvedPath])
 
   const handleOpenEntryInNewWindow = useCallback((entry: Pick<VaultEntry, 'path' | 'title' | 'workspace'>) => {
     openNoteInNewWindow(entry.path, vaultPathForEntry(entry, resolvedPath), entry.title)
@@ -1121,7 +1135,7 @@ function App() {
     loadGitHistoryForPath,
     pendingDiffRequest,
   } = useGitFileWorkflows({
-    activeTabPath: notes.activeTabPath,
+    activeTabPath: activeNotePath,
     allGitModifiedFiles,
     changesRepositoryPath,
     effectiveSelection,
@@ -1200,13 +1214,13 @@ function App() {
   }, [handleAppContentChange, recordAutoGitActivity])
 
   const handleTrackedSave = useCallback(async (...args: Parameters<typeof handleAppSave>) => {
-    if (notes.activeTabPath) {
-      flushPendingEditorContentRef.current?.(notes.activeTabPath)
-      flushPendingRawContentRef.current?.(notes.activeTabPath)
+    if (activeNotePath) {
+      flushPendingEditorContentRef.current?.(activeNotePath)
+      flushPendingRawContentRef.current?.(activeNotePath)
     }
     const result = await handleAppSave(...args)
-    const activeTab = notes.activeTabPath
-      ? notes.tabs.find((tab) => tab.entry.path === notes.activeTabPath)
+    const activeTab = activeNotePath
+      ? notes.tabs.find((tab) => tab.entry.path === activeNotePath)
       : null
     if (activeTab) {
       await loadModifiedFilesForRepository(vaultPathForEntry(activeTab.entry, resolvedPath), {
@@ -1219,7 +1233,7 @@ function App() {
     handleAppSave,
     isChangesSelection,
     loadModifiedFilesForRepository,
-    notes.activeTabPath,
+    activeNotePath,
     notes.tabs,
     recordAutoGitActivity,
     resolvedPath,
@@ -1230,7 +1244,7 @@ function App() {
       throw new Error('seedAutoGitSavedChange is only available in browser smoke tests')
     }
 
-    const activePath = notes.activeTabPath
+    const activePath = activeNotePath
     const activeTab = activePath
       ? notes.tabs.find((tab) => tab.entry.path === activePath)
       : null
@@ -1249,12 +1263,12 @@ function App() {
 
     await loadModifiedFiles()
     recordAutoGitActivity()
-  }, [loadModifiedFiles, notes.activeTabPath, notes.tabs, recordAutoGitActivity, resolvedPath])
+  }, [activeNotePath, loadModifiedFiles, notes.tabs, recordAutoGitActivity, resolvedPath])
 
   useEffect(() => {
     window.__laputaTest = {
       ...window.__laputaTest,
-      activeTabPath: notes.activeTabPath,
+      activeTabPath: activeNotePath,
       seedAutoGitSavedChange,
     }
 
@@ -1263,7 +1277,7 @@ function App() {
         delete window.__laputaTest.seedAutoGitSavedChange
       }
     }
-  }, [notes.activeTabPath, seedAutoGitSavedChange])
+  }, [activeNotePath, seedAutoGitSavedChange])
 
   const entryActions = useEntryActions({
     entries: visibleEntries, updateEntry: vault.updateEntry,
@@ -1297,7 +1311,7 @@ function App() {
   }, [deleteActions, visibleEntries])
 
   const shouldLoadGitHistory = !layout.inspectorCollapsed && !effectiveShowAIChat
-  const gitHistory = useGitHistory(notes.activeTabPath, loadGitHistoryForPath, shouldLoadGitHistory)
+  const gitHistory = useGitHistory(activeNotePath, loadGitHistoryForPath, shouldLoadGitHistory)
 
   const handleCreateType = useCallback(async (name: string) => {
     const created = await notes.handleCreateType(name)
@@ -1555,11 +1569,11 @@ function App() {
   }, [refreshVaultAiGuidance, resolvedPath, vault, setToastMessage])
 
   const activeCommandEntry = useMemo(() => {
-    if (!notes.activeTabPath) return null
-    return notes.tabs.find((tab) => tab.entry.path === notes.activeTabPath)?.entry
-      ?? vault.entries.find((entry) => entry.path === notes.activeTabPath)
+    if (!activeNotePath) return null
+    return notes.tabs.find((tab) => tab.entry.path === activeNotePath)?.entry
+      ?? vault.entries.find((entry) => entry.path === activeNotePath)
       ?? null
-  }, [notes.activeTabPath, notes.tabs, vault.entries])
+  }, [activeNotePath, notes.tabs, vault.entries])
   const noteRetargetingUi = useNoteRetargetingUi({
     activeEntry: activeCommandEntry,
     activeNoteBlocked: !!activeDeletedFile,
@@ -1625,8 +1639,8 @@ function App() {
     [canToggleRichEditor],
   )
   const toggleTableOfContentsCommand = useCallback(() => {
-    if (notes.activeTabPath) tableOfContentsToggleRef.current()
-  }, [notes.activeTabPath])
+    if (activeNotePath) tableOfContentsToggleRef.current()
+  }, [activeNotePath])
   const togglePropertiesCommand = useCallback(() => {
     propertiesToggleRef.current()
   }, [])
@@ -1666,11 +1680,11 @@ function App() {
     [noteRetargetingUi.canMoveActiveNoteToFolder, noteRetargetingUi.openMoveNoteToFolderDialog],
   )
   const activeNoteHasIcon = useMemo(() => {
-    const entry = vault.entries.find((candidate) => candidate.path === notes.activeTabPath)
+    const entry = vault.entries.find((candidate) => candidate.path === activeNotePath)
     return hasNoteIconValue(entry?.icon)
-  }, [notes.activeTabPath, vault.entries])
+  }, [activeNotePath, vault.entries])
   const handleToggleOrganizedWithInboxAdvance = useInboxOrganizeAdvance({
-    activeTabPath: notes.activeTabPath,
+    activeTabPath: activeNotePath,
     activeTabPathRef: notes.activeTabPathRef,
     autoAdvanceEnabled: settings.auto_advance_inbox_after_organize === true,
     entries: visibleEntries,
@@ -1695,6 +1709,10 @@ function App() {
     return entries
   }, [reloadVaultForCommand, setToastMessage])
 
+  const noteTabs = useMemo(
+    () => notes.tabs.filter((tab) => !isViewTabPath(tab.entry.path)),
+    [notes.tabs],
+  )
   const {
     activeTab,
     defaultNoteWidth,
@@ -1703,8 +1721,8 @@ function App() {
     setNoteWidth: handleSetActiveNoteWidth,
     toggleNoteWidth: handleToggleNoteWidth,
   } = useNoteWidthMode({
-    tabs: notes.tabs,
-    activeTabPath: notes.activeTabPath,
+    tabs: noteTabs,
+    activeTabPath: activeNotePath,
     settings,
     saveSettings,
     updateFrontmatter: notes.handleUpdateFrontmatter,
@@ -1888,7 +1906,7 @@ function App() {
           {sidebarVisible && (
             <>
               <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-                <Sidebar entries={visibleEntries} activeNotePath={notes.activeTabPath ?? undefined} vaultPath={resolvedPath} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={handleSelectNoteAndClearTable} onMoveFileToFolder={handleMoveFileToFolder} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onDeleteType={handleDeleteType} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} onUpdateViewDefinition={handleSidebarUpdateViewDefinition} onOpenViewAsTable={handleOpenViewAsTable} onReorderViews={canReorderSavedViews ? viewOrdering.onReorderViews : undefined} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} allNotesFileVisibility={allNotesFileVisibility} pluralizeTypeLabels={settings.sidebar_type_pluralization_enabled ?? true} onCollapse={handleCollapseSidebar} onGoBack={handleGoBack} onGoForward={handleGoForward} canGoBack={canGoBack} canGoForward={canGoForward} locale={appLocale} loading={isVaultContentLoading} vaultRootPath={resolvedPath} icons={{ ...obsidianIcons, ...(vaultConfig.path_icons ?? {}) }} showOriginalFilenames={vaultConfig.show_original_filenames === true} onSetPathIcon={handleSetPathIcon} />
+                <Sidebar entries={visibleEntries} activeNotePath={activeNotePath ?? undefined} vaultPath={resolvedPath} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSelectSidebarItem} onSelectNote={handleSelectNoteAndClearTable} onMoveFileToFolder={handleMoveFileToFolder} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onDeleteType={handleDeleteType} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} onUpdateViewDefinition={handleSidebarUpdateViewDefinition} onOpenViewAsTable={handleOpenViewAsTable} onReorderViews={canReorderSavedViews ? viewOrdering.onReorderViews : undefined} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} allNotesFileVisibility={allNotesFileVisibility} pluralizeTypeLabels={settings.sidebar_type_pluralization_enabled ?? true} onCollapse={handleCollapseSidebar} onGoBack={handleGoBack} onGoForward={handleGoForward} canGoBack={canGoBack} canGoForward={canGoForward} locale={appLocale} loading={isVaultContentLoading} vaultRootPath={resolvedPath} icons={{ ...obsidianIcons, ...(vaultConfig.path_icons ?? {}) }} showOriginalFilenames={vaultConfig.show_original_filenames === true} onSetPathIcon={handleSetPathIcon} />
               </div>
               <ResizeHandle onResize={layout.handleSidebarResize} />
             </>
@@ -1934,7 +1952,7 @@ function App() {
               onPendingCommitDiffHandled={handlePendingDiffHandled}
               getNoteStatus={vault.getNoteStatus}
               onCreateNote={notes.handleCreateNoteImmediate}
-              tableView={tableView}
+              tableView={activeTableView}
               onSelectTableNote={handleSelectTableNote}
               onUpdateViewDefinition={handleUpdateViewDefinition}
               inspectorCollapsed={layout.inspectorCollapsed}

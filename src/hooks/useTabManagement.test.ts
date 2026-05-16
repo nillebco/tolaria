@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
-import type { VaultEntry } from '../types'
+import type { VaultEntry, ViewFile } from '../types'
 import {
   useTabManagement,
   prefetchNoteContent,
@@ -13,6 +13,7 @@ import {
   NOTE_CONTENT_PREFETCH_CONCURRENCY,
   tabSessionStorageKey,
 } from './useTabManagement'
+import { viewTabPath } from '../utils/viewTabs'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 vi.mock('../mock-tauri', () => ({
@@ -41,6 +42,19 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   order: null,
   template: null, sort: null,
   outgoingLinks: [],
+  ...overrides,
+})
+
+const makeView = (overrides: Partial<ViewFile> = {}): ViewFile => ({
+  filename: 'views/produce.yml',
+  definition: {
+    name: 'Produce',
+    icon: null,
+    color: null,
+    sort: null,
+    filters: { all: [] },
+    table: { columns: [] },
+  },
   ...overrides,
 })
 
@@ -155,6 +169,22 @@ describe('useTabManagement', () => {
     expect(result.current.activeTabPath).toBeNull()
   })
 
+  it('opens or focuses a saved view as a first-class tab', async () => {
+    const view = makeView()
+    const { result } = renderHook(() => useTabManagement())
+
+    await act(async () => {
+      await result.current.openViewTab(view)
+      await result.current.openViewTab(view)
+    })
+
+    expect(result.current.tabs).toHaveLength(1)
+    expect(result.current.tabs[0].entry.path).toBe(viewTabPath(view))
+    expect(result.current.tabs[0].entry.title).toBe('Produce')
+    expect(result.current.activeTabPath).toBe(viewTabPath(view))
+    expect(mockInvoke).not.toHaveBeenCalled()
+  })
+
   describe('session persistence', () => {
     it('persists open paths and the active note for the session key', async () => {
       const sessionKey = tabSessionStorageKey('/vault')!
@@ -193,6 +223,41 @@ describe('useTabManagement', () => {
       expect(result.current.activeTabPath).toBe('/vault/a.md')
       expect(result.current.tabs[0].content).toBe('# A')
       expect(result.current.tabs[1].content).toBe('# B')
+    })
+
+    it('persists open view tabs in the same session as notes', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      const view = makeView()
+      const { result } = renderHook(() => useTabManagement({ sessionKey, views: [view] }))
+
+      await act(async () => {
+        await result.current.openViewTab(view)
+      })
+
+      expect(JSON.parse(localStorage.getItem(sessionKey) ?? '{}')).toEqual({
+        version: 1,
+        openPaths: [viewTabPath(view)],
+        activePath: viewTabPath(view),
+      })
+    })
+
+    it('restores stored view tabs without loading note content', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      const view = makeView()
+      localStorage.setItem(sessionKey, JSON.stringify({
+        version: 1,
+        openPaths: [viewTabPath(view)],
+        activePath: viewTabPath(view),
+      }))
+
+      const { result } = renderHook(() => useTabManagement({ sessionKey, views: [view] }))
+
+      await flushAsyncRestore()
+
+      expect(result.current.tabs.map((tab) => tab.entry.path)).toEqual([viewTabPath(view)])
+      expect(result.current.tabs[0].entry.title).toBe('Produce')
+      expect(result.current.activeTabPath).toBe(viewTabPath(view))
+      expect(mockInvoke).not.toHaveBeenCalled()
     })
 
     it('restores after the vault path and entries load after startup', async () => {

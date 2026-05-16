@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri } from '../mock-tauri'
-import type { VaultEntry } from '../types'
+import type { VaultEntry, ViewFile } from '../types'
 import {
   beginNoteOpenTrace,
   failNoteOpenTrace,
@@ -26,6 +26,13 @@ import {
 import { clearParsedNoteBlockCache } from './editorParsedBlockCache'
 import { notePathsMatch } from '../utils/notePathIdentity'
 import { normalizeVaultEntry } from '../utils/vaultMetadataNormalization'
+import {
+  isViewTabPath,
+  tabPathsMatch,
+  viewFromTabPath,
+  viewTabEntry,
+  viewTabPath,
+} from '../utils/viewTabs'
 
 interface Tab {
   entry: VaultEntry
@@ -118,7 +125,7 @@ function saveStoredTabSession(sessionKey: string, tabs: Tab[], activePath: strin
   const session = {
     version: 1,
     openPaths,
-    activePath: activePath && openPaths.some((path) => notePathsMatch(path, activePath)) ? activePath : null,
+    activePath: activePath && openPaths.some((path) => tabPathsMatch(path, activePath)) ? activePath : null,
   } satisfies PersistedTabSession
 
   try {
@@ -140,7 +147,7 @@ function savePersistedTabSession(sessionKey: string, tabs: Tab[], activePath: st
     session: {
       version: 1,
       open_paths: openPaths,
-      active_path: activePath && openPaths.some((path) => notePathsMatch(path, activePath)) ? activePath : null,
+      active_path: activePath && openPaths.some((path) => tabPathsMatch(path, activePath)) ? activePath : null,
     },
   })).catch((err) => {
     console.warn('Failed to save tab session:', err)
@@ -163,6 +170,7 @@ interface TabManagementOptions {
   onMissingNotePath?: (entry: VaultEntry, error: unknown) => void | Promise<void>
   onUnreadableNoteContent?: (entry: VaultEntry, error: unknown) => void | Promise<void>
   sessionKey?: string | null
+  views?: ViewFile[]
 }
 
 interface NavigateToEntryOptions {
@@ -214,7 +222,7 @@ function addOrSwitchTab(
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
   nextTab: Tab,
 ) {
-  const existingIdx = tabsRef.current.findIndex(t => notePathsMatch(t.entry.path, nextTab.entry.path))
+  const existingIdx = tabsRef.current.findIndex(t => tabPathsMatch(t.entry.path, nextTab.entry.path))
   const newTabs = existingIdx >= 0
     ? tabsRef.current.map((t, i) => i === existingIdx ? nextTab : t)
     : [...tabsRef.current, nextTab]
@@ -227,7 +235,7 @@ function replaceTabInList(
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
   nextTab: Tab,
 ) {
-  const existingIdx = tabsRef.current.findIndex(t => notePathsMatch(t.entry.path, nextTab.entry.path))
+  const existingIdx = tabsRef.current.findIndex(t => tabPathsMatch(t.entry.path, nextTab.entry.path))
   if (existingIdx >= 0) {
     const newTabs = tabsRef.current.map((t, i) => i === existingIdx ? nextTab : t)
     tabsRef.current = newTabs
@@ -260,8 +268,8 @@ function isAlreadyViewingPath(
   activeTabPathRef: React.MutableRefObject<string | null>,
   path: string,
 ) {
-  return notePathsMatch(activeTabPathRef.current, path)
-    || tabsRef.current.some((tab) => notePathsMatch(tab.entry.path, path))
+  return tabPathsMatch(activeTabPathRef.current, path)
+    || tabsRef.current.some((tab) => tabPathsMatch(tab.entry.path, path))
 }
 
 function startEntryNavigation(options: {
@@ -635,6 +643,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   const beforeNavigateSeqRef = useRef(0)
   const beforeNavigate = options.beforeNavigate
   const entries = options.entries
+  const views = options.views
   const hasUnsavedChanges = options.hasUnsavedChanges
   const onMissingActiveVault = options.onMissingActiveVault
   const onMissingNotePath = options.onMissingNotePath
@@ -642,8 +651,12 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   // Refs keep callbacks current without triggering the restore effect on every render.
   // The restore effect must only re-run when sessionKey or entries change — not when
   // these callbacks are recreated by the parent (which happens on every render).
+  const hasUnsavedChangesRef = useRef(hasUnsavedChanges)
+  const onMissingActiveVaultRef = useRef(onMissingActiveVault)
   const onMissingNotePathRef = useRef(onMissingNotePath)
   const onUnreadableNoteContentRef = useRef(onUnreadableNoteContent)
+  useEffect(() => { hasUnsavedChangesRef.current = hasUnsavedChanges })
+  useEffect(() => { onMissingActiveVaultRef.current = onMissingActiveVault })
   useEffect(() => { onMissingNotePathRef.current = onMissingNotePath })
   useEffect(() => { onUnreadableNoteContentRef.current = onUnreadableNoteContent })
   const sessionKey = options.sessionKey ?? null
@@ -667,7 +680,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
       return
     }
 
-    if (!entries || entries.length === 0) return
+    if ((!entries || entries.length === 0) && (!views || views.length === 0)) return
 
     const seq = ++restoreRequestSeqRef.current
     void (async () => {
@@ -679,17 +692,25 @@ export function useTabManagement(options: TabManagementOptions = {}) {
       }
 
       const entriesToRestore = storedSession.openPaths
-        .map((path) => entries.find((entry) => notePathsMatch(entry.path, path)))
-        .filter((entry): entry is VaultEntry => entry !== undefined && entry.fileKind !== 'binary')
+        .map((path) => {
+          const view = viewFromTabPath(path, views ?? [])
+          if (view) return viewTabEntry(view)
+          return entries?.find((entry) => notePathsMatch(entry.path, path)) ?? null
+        })
+        .filter((entry): entry is VaultEntry => entry !== null && entry.fileKind !== 'binary')
 
       // Don't mark as restored if entries are from the wrong vault — retry when correct entries load
       if (entriesToRestore.length === 0) return
       restoredSessionKeyRef.current = sessionKey
 
-      const activeRestoreEntry = entriesToRestore.find((entry) => notePathsMatch(entry.path, storedSession.activePath))
+      const activeRestoreEntry = entriesToRestore.find((entry) => tabPathsMatch(entry.path, storedSession.activePath))
         ?? entriesToRestore[entriesToRestore.length - 1]
 
       for (const entry of entriesToRestore) {
+        if (isViewTabPath(entry.path)) {
+          addOrSwitchTab(tabsRef, setTabs, { entry, content: '' })
+          continue
+        }
         await navigateToEntry({
           entry,
           tabMode: 'add',
@@ -698,15 +719,15 @@ export function useTabManagement(options: TabManagementOptions = {}) {
           activeTabPathRef,
           setTabs,
           setActiveTabPath,
-          hasUnsavedChanges,
-          onMissingActiveVault,
+          hasUnsavedChanges: hasUnsavedChangesRef.current,
+          onMissingActiveVault: onMissingActiveVaultRef.current,
           onMissingNotePath: onMissingNotePathRef.current,
           onUnreadableNoteContent: onUnreadableNoteContentRef.current,
         })
       }
       syncActiveTabPath(activeTabPathRef, setActiveTabPath, activeRestoreEntry.path)
     })()
-  }, [entries, sessionKey])
+  }, [entries, sessionKey, views])
 
   useEffect(() => {
     if (!sessionKey) return
@@ -735,7 +756,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   ) => {
     const seq = ++beforeNavigateSeqRef.current
     const currentPath = activeTabPathRef.current
-    if (beforeNavigate && currentPath && !notePathsMatch(currentPath, targetPath)) {
+    if (beforeNavigate && currentPath && !isViewTabPath(currentPath) && !tabPathsMatch(currentPath, targetPath)) {
       try {
         markNoteOpenTrace(targetPath, 'beforeNavigateStart')
         await beforeNavigate(currentPath, targetPath)
@@ -799,6 +820,20 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     })
   }, [executeNavigationWithBoundary])
 
+  const openViewTab = useCallback(async (view: ViewFile) => {
+    const entry = viewTabEntry(view)
+    const targetPath = viewTabPath(view)
+    requestedActiveTabPathRef.current = targetPath
+    const navigated = await executeNavigationWithBoundary(targetPath, () => {
+      navSeqRef.current += 1
+      addOrSwitchTab(tabsRef, setTabs, { entry, content: '' })
+      syncActiveTabPath(activeTabPathRef, setActiveTabPath, targetPath)
+    })
+    if (!navigated) {
+      resetRequestedPathIfStillPending(requestedActiveTabPathRef, activeTabPathRef, targetPath)
+    }
+  }, [executeNavigationWithBoundary])
+
   const handleReplaceActiveTab = useCallback(async (entry: VaultEntry) => {
     const openEntry = normalizeOpenEntry(entry)
     if (!openEntry) return
@@ -828,7 +863,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
 
   const closeTab = useCallback((path: string) => {
     const currentTabs = tabsRef.current
-    const index = currentTabs.findIndex(tab => notePathsMatch(tab.entry.path, path))
+    const index = currentTabs.findIndex(tab => tabPathsMatch(tab.entry.path, path))
     if (index < 0) return
     const newTabs = currentTabs.filter((_, tabIndex) => tabIndex !== index)
     tabsRef.current = newTabs
@@ -836,7 +871,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
       allowNextEmptySessionPersistRef.current = true
     }
     setTabs(newTabs)
-    if (notePathsMatch(activeTabPathRef.current, path)) {
+    if (tabPathsMatch(activeTabPathRef.current, path)) {
       const nextTab = newTabs[index - 1] ?? newTabs[index] ?? null
       requestedActiveTabPathRef.current = nextTab?.entry.path ?? null
       syncActiveTabPath(activeTabPathRef, setActiveTabPath, nextTab?.entry.path ?? null)
@@ -866,7 +901,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     const activePath = activeTabPathRef.current
     if (!activePath) return
 
-    const activeTab = tabsRef.current.find((tab) => notePathsMatch(tab.entry.path, activePath))
+    const activeTab = tabsRef.current.find((tab) => tabPathsMatch(tab.entry.path, activePath))
     if (!activeTab) return
 
     tabsRef.current = [activeTab]
@@ -875,11 +910,11 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   }, [])
 
   const reorderTabs = useCallback((sourcePath: string, targetPath: string) => {
-    if (notePathsMatch(sourcePath, targetPath)) return
+    if (tabPathsMatch(sourcePath, targetPath)) return
 
     const currentTabs = tabsRef.current
-    const sourceIndex = currentTabs.findIndex(tab => notePathsMatch(tab.entry.path, sourcePath))
-    const targetIndex = currentTabs.findIndex(tab => notePathsMatch(tab.entry.path, targetPath))
+    const sourceIndex = currentTabs.findIndex(tab => tabPathsMatch(tab.entry.path, sourcePath))
+    const targetIndex = currentTabs.findIndex(tab => tabPathsMatch(tab.entry.path, targetPath))
     if (sourceIndex < 0 || targetIndex < 0) return
 
     const nextTabs = [...currentTabs]
@@ -892,7 +927,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   const nextTab = useCallback(() => {
     const currentTabs = tabsRef.current
     if (currentTabs.length <= 1) return
-    const idx = currentTabs.findIndex(t => notePathsMatch(t.entry.path, activeTabPathRef.current))
+    const idx = currentTabs.findIndex(t => tabPathsMatch(t.entry.path, activeTabPathRef.current))
     const nextIdx = (idx + 1) % currentTabs.length
     syncActiveTabPath(activeTabPathRef, setActiveTabPath, currentTabs[nextIdx].entry.path)
   }, [])
@@ -900,7 +935,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   const prevTab = useCallback(() => {
     const currentTabs = tabsRef.current
     if (currentTabs.length <= 1) return
-    const idx = currentTabs.findIndex(t => notePathsMatch(t.entry.path, activeTabPathRef.current))
+    const idx = currentTabs.findIndex(t => tabPathsMatch(t.entry.path, activeTabPathRef.current))
     const prevIdx = (idx - 1 + currentTabs.length) % currentTabs.length
     syncActiveTabPath(activeTabPathRef, setActiveTabPath, currentTabs[prevIdx].entry.path)
   }, [])
@@ -913,6 +948,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     requestedActiveTabPathRef,
     handleSelectNote,
     openTabWithContent,
+    openViewTab,
     handleSwitchTab,
     handleReplaceActiveTab,
     closeTab,
