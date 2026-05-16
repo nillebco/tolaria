@@ -1430,7 +1430,10 @@ function App() {
 
   const handleSetViewMode = useCallback((mode: ViewMode) => {
     setViewMode(mode)
-    updateMainWindowConstraints(mode === 'all', mode !== 'editor-only')
+    updateMainWindowConstraints(
+      mode === 'all' || mode === 'sidebar-only',
+      mode === 'all' || mode === 'editor-list',
+    )
   }, [setViewMode, updateMainWindowConstraints])
 
   const handleCollapseSidebar = useCallback(() => {

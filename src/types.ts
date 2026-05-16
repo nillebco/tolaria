@@ -41,7 +41,7 @@ export interface VaultEntry {
   template: string | null
   /** Default sort preference for the note list of this Type. Format: "option:direction". */
   sort: string | null
-  /** Default view mode for the note list of this Type: "all", "editor-list", or "editor-only". */
+  /** Default view mode for the note list of this Type: "all", "editor-list", "editor-only", or "sidebar-only". */
   view: string | null
   /** Rich-editor note width mode from `_width` frontmatter. null means use the default. */
   noteWidth?: NoteWidthMode | null

@@ -510,7 +510,7 @@ Managed by `useVaultSwitcher` hook. Switching vaults resets sidebar and clears t
 
 Per-vault UI settings stored locally per vault path (currently in browser/Tauri localStorage, not synced via git):
 - `zoom`: Float zoom level (0.8–1.5)
-- `view_mode`: "all" | "editor-list" | "editor-only"
+- `view_mode`: "all" | "editor-list" | "editor-only" | "sidebar-only"
 - `editor_mode`: "raw" | "preview" (persists across note switches and sessions)
 - `note_layout`: "centered" | "left" (wide-screen note column alignment for rich and raw editors)
 - `tab-sessions.json` in the app config directory (`~/.config/com.tolaria.app/` on Linux-like config paths; platform config dir on macOS): installation-local open-note sessions keyed by `tolaria:tab-session:<vault-path>`, storing open paths plus the active path so the editor restores on next launch without syncing through the vault

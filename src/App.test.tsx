@@ -1342,6 +1342,17 @@ describe('App', () => {
         growToFit: true,
       })
     })
+
+    invoke.mockClear()
+
+    fireEvent.keyDown(window, { key: '4', metaKey: true })
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith('update_current_window_min_size', {
+        minWidth: 730,
+        minHeight: 400,
+        growToFit: true,
+      })
+    })
   })
 
   it('does not ask Windows to grow the native window when toggling Properties', async () => {

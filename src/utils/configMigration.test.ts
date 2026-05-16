@@ -66,7 +66,7 @@ describe('migrateLocalStorageToVaultConfig', () => {
   })
 
   // 4. View mode migration
-  it.each(['editor-only', 'editor-list', 'all'])('migrates view mode "%s"', (mode) => {
+  it.each(['editor-only', 'editor-list', 'all', 'sidebar-only'])('migrates view mode "%s"', (mode) => {
     store[APP_STORAGE_KEYS.viewMode] = mode
     const result = migrateLocalStorageToVaultConfig(makeConfig())
     expect(result.view_mode).toBe(mode)

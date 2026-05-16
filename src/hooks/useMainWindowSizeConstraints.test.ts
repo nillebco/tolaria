@@ -44,6 +44,15 @@ describe('getMainWindowMinWidth', () => {
       expectedWidth: 700,
     },
     {
+      name: 'accounts for the sidebar without the note list',
+      visibility: {
+        sidebarVisible: true,
+        noteListVisible: false,
+        inspectorCollapsed: true,
+      },
+      expectedWidth: 700,
+    },
+    {
       name: 'adds inspector width when the properties panel is open',
       visibility: {
         sidebarVisible: false,

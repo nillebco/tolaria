@@ -95,6 +95,13 @@ describe('useAppKeyboard', () => {
     expect(actions.onSetViewMode).toHaveBeenCalledWith('all')
   })
 
+  it('Cmd+4 sets view mode to sidebar-only', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('4', { metaKey: true })
+    expect(actions.onSetViewMode).toHaveBeenCalledWith('sidebar-only')
+  })
+
   it('does not fire view mode when Cmd+Alt pressed', () => {
     const actions = makeActions()
     renderHook(() => useAppKeyboard(actions))

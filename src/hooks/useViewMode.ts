@@ -2,10 +2,10 @@ import { useState, useCallback, useEffect } from 'react'
 import { getAppStorageItem } from '../constants/appStorage'
 import { getVaultConfig, updateVaultConfigField, subscribeVaultConfig } from '../utils/vaultConfigStore'
 
-export type ViewMode = 'editor-only' | 'editor-list' | 'all'
+export type ViewMode = 'editor-only' | 'editor-list' | 'all' | 'sidebar-only'
 
 function isViewMode(v: string | null | undefined): v is ViewMode {
-  return v === 'editor-only' || v === 'editor-list' || v === 'all'
+  return v === 'editor-only' || v === 'editor-list' || v === 'all' || v === 'sidebar-only'
 }
 
 function loadViewMode(): ViewMode {
@@ -33,8 +33,8 @@ export function useViewMode(initialOverride?: ViewMode) {
     updateVaultConfigField('view_mode', mode)
   }, [])
 
-  const sidebarVisible = viewMode === 'all'
-  const noteListVisible = viewMode !== 'editor-only'
+  const sidebarVisible = viewMode === 'all' || viewMode === 'sidebar-only'
+  const noteListVisible = viewMode === 'all' || viewMode === 'editor-list'
 
   return { viewMode, setViewMode, sidebarVisible, noteListVisible }
 }

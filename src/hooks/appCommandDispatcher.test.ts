@@ -136,6 +136,7 @@ describe('appCommandDispatcher', () => {
 
   it('finds raw editor, AI, and plain-text paste shortcuts from the shared catalog', () => {
     expect(findShortcutCommandId('command-or-ctrl', 'o', 'KeyO')).toBe(APP_COMMAND_IDS.fileQuickOpen)
+    expect(findShortcutCommandId('command-or-ctrl', '4')).toBe(APP_COMMAND_IDS.viewSidebarOnly)
     expect(findShortcutCommandId('command-or-ctrl', '\\')).toBe(APP_COMMAND_IDS.editToggleRawEditor)
     expect(findShortcutCommandId('command-or-ctrl-shift', '∫', 'KeyB')).toBe(APP_COMMAND_IDS.viewToggleAiChat)
     expect(findShortcutCommandId('command-or-ctrl-shift', '¬', 'KeyL')).toBe(APP_COMMAND_IDS.viewOpenAiChat)
@@ -234,6 +235,12 @@ describe('appCommandDispatcher', () => {
     const handlers = makeHandlers()
     expect(dispatchAppCommand(APP_COMMAND_IDS.viewToggleProperties, handlers)).toBe(true)
     expect(handlers.onToggleInspector).toHaveBeenCalled()
+  })
+
+  it('dispatches sidebar-only view mode through the shared command path', () => {
+    const handlers = makeHandlers()
+    expect(dispatchAppCommand(APP_COMMAND_IDS.viewSidebarOnly, handlers)).toBe(true)
+    expect(handlers.onSetViewMode).toHaveBeenCalledWith('sidebar-only')
   })
 
   it('dispatches AI panel toggle through the shared command path', () => {

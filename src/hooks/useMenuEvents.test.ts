@@ -130,6 +130,12 @@ describe('dispatchMenuEvent', () => {
     expect(h.onSetViewMode).toHaveBeenCalledWith('all')
   })
 
+  it('view-sidebar-only sets sidebar-only mode', () => {
+    const h = makeHandlers()
+    dispatchMenuEvent('view-sidebar-only', h)
+    expect(h.onSetViewMode).toHaveBeenCalledWith('sidebar-only')
+  })
+
   // Simple handler events
   it('file-new-note triggers create note', () => {
     const h = makeHandlers()

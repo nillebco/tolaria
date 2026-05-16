@@ -52,7 +52,7 @@ pub struct VaultEntry {
     /// Stored as "option:direction" (e.g. "modified:desc", "title:asc", "property:Priority:asc").
     pub sort: Option<String>,
     /// Default view mode for the note list when viewing instances of this Type.
-    /// Stored as a string: "all", "editor-list", or "editor-only".
+    /// Stored as a string: "all", "editor-list", "editor-only", or "sidebar-only".
     pub view: Option<String>,
     /// Rich-editor width mode for this note. None means use the app default.
     #[serde(rename = "noteWidth")]

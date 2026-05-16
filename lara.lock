@@ -68,6 +68,7 @@ files:
     command.view.editorOnly: 8355e056b32086b9190d639be290dda8
     command.view.editorNoteList: b9604b1609eb6f581cd9570dca72d3f0
     command.view.fullLayout: 1cebdf839eee2b1713828731aaa3b507
+    command.view.sidebarEditor: a74b444bd3849d3695484220332df7c4
     command.view.toggleProperties: 54f12756a363401243d82cbd0466117e
     command.view.toggleDiff: 148a10ef6f04f897e73289f529ecae86
     command.view.toggleRaw: 9b622257cd6345ceaf58e42b1410899b

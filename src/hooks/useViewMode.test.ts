@@ -58,6 +58,14 @@ describe('useViewMode', () => {
     expect(result.current.noteListVisible).toBe(true)
   })
 
+  it('sidebar-only keeps sidebar visible and hides note list', () => {
+    const { result } = renderHook(() => useViewMode())
+    act(() => result.current.setViewMode('sidebar-only'))
+    expect(result.current.sidebarVisible).toBe(true)
+    expect(result.current.noteListVisible).toBe(false)
+    expect(getVaultConfig().view_mode).toBe('sidebar-only')
+  })
+
   it('all mode shows sidebar and note list', () => {
     const { result } = renderHook(() => useViewMode())
     act(() => result.current.setViewMode('editor-only'))

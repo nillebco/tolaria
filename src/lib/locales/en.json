@@ -67,6 +67,7 @@
   "command.view.editorOnly": "Editor Only",
   "command.view.editorNoteList": "Editor + Note List",
   "command.view.fullLayout": "Full Layout",
+  "command.view.sidebarEditor": "Sidebar + Editor",
   "command.view.toggleFileList": "Toggle File List",
   "command.view.toggleProperties": "Toggle Properties Panel",
   "command.view.toggleDiff": "Toggle Diff Mode",
