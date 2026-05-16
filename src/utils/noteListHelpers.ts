@@ -120,7 +120,7 @@ export function sortByModified(a: VaultEntry, b: VaultEntry): number {
   return (getDisplayDate(b) ?? 0) - (getDisplayDate(a) ?? 0)
 }
 
-export type SortOption = 'modified' | 'created' | 'title' | 'status' | `property:${string}`
+export type SortOption = 'modified' | 'created' | 'title' | 'status' | 'type' | 'filename' | `property:${string}`
 export type SortDirection = 'asc' | 'desc'
 
 export interface SortConfig {
@@ -129,7 +129,7 @@ export interface SortConfig {
 }
 
 export const DEFAULT_SORT_OPTIONS: SortOption[] = ['modified', 'created', 'title', 'status']
-const BUILT_IN_SORT_OPTIONS = new Set<string>(DEFAULT_SORT_OPTIONS)
+const BUILT_IN_SORT_OPTIONS = new Set<string>([...DEFAULT_SORT_OPTIONS, 'type', 'filename'])
 
 export function getDefaultDirection(option: SortOption): SortDirection {
   if (option === 'modified' || option === 'created') return 'desc'
@@ -145,6 +145,8 @@ export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 export function getSortOptionLabel(option: SortOption): string {
   if (option.startsWith('property:')) return option.slice('property:'.length)
+  if (option === 'type') return 'Type'
+  if (option === 'filename') return 'Filename'
   return SORT_OPTIONS.find((o) => o.value === option)?.label ?? option
 }
 
@@ -202,6 +204,8 @@ function makePropertyComparator(key: string, flip: number): (a: VaultEntry, b: V
 
 function makeBuiltinComparator(option: string, flip: number): (a: VaultEntry, b: VaultEntry) => number {
   if (option === 'title') return (a, b) => flip * stringField(a.title).localeCompare(stringField(b.title))
+  if (option === 'filename') return (a, b) => flip * stringField(a.filename).localeCompare(stringField(b.filename))
+  if (option === 'type') return (a, b) => flip * stringField(a.isA).localeCompare(stringField(b.isA))
   if (option === 'created') return (a, b) => flip * ((a.createdAt ?? a.modifiedAt ?? 0) - (b.createdAt ?? b.modifiedAt ?? 0))
   if (option === 'status') return (a, b) => {
     const sa = STATUS_ORDER_LOOKUP.get(a.status ?? '') ?? 999

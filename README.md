@@ -170,6 +170,10 @@ Supported table summaries are `count`, `empty`, `unique`, and `sum`.
 When a saved view is open as a table, the toolbar can copy the current table as
 CSV or export it to a `.csv` file. The exported CSV uses the currently rendered
 columns and rows.
+Drag column headers to change `table.columns`. Click a column header label to
+cycle the saved view `sort` value through ascending, descending, and the default
+saved-view order. Date-like frontmatter values such as `2026-05-08` sort by date
+value rather than plain text.
 
 ## Open source and local setup
 

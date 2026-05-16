@@ -415,6 +415,54 @@ Suggested tests:
 
 ---
 
+## Phase 6 — Column Filters and Formula Columns
+
+Add table-scoped filters and richer computed columns after direct interactions
+are stable:
+
+- Add per-column filter controls in table headers.
+- Persist table-specific filters in the Saved View YAML, for example:
+  ```yaml
+  table:
+    columnFilters:
+      "property:project":
+        op: equals
+        value: tscmf
+  ```
+- Apply table column filters to the rendered table rows after the Saved View's
+  normal `filters` have already selected the base note set.
+- Ensure CSV copy/export uses the currently rendered rows after table column
+  filters are applied.
+- Keep table column filters separate from the top-level Saved View `filters` so
+  the sidebar note list can keep its current semantics unless the user explicitly
+  edits the Saved View filters.
+- Extend `table.computedColumns` beyond simple aliases with a small formula
+  syntax for arithmetic and conditionals, for example:
+  ```yaml
+  table:
+    computedColumns:
+      amount: 'if(project == "tscmf", hours * 505, hours * 483)'
+  ```
+- Support only a conservative expression subset at first:
+  - field references by frontmatter key
+  - string and numeric literals
+  - arithmetic operators
+  - equality checks
+  - a single `if(condition, when_true, when_false)` function
+- Avoid evaluating arbitrary JavaScript or exposing note content to formulas.
+
+Suggested tests:
+
+- Column filters reduce rendered rows and CSV export rows.
+- Clearing a column filter restores the Saved View's base row set.
+- Formula columns compute numeric arithmetic.
+- Formula columns compute conditional rates such as
+  `if(project == "tscmf", hours * 505, hours * 483)`.
+- Invalid formulas fail closed with empty cells and a visible configuration
+  error, not a table crash.
+
+---
+
 ## Files Touched
 
 | File | Change |

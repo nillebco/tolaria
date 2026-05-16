@@ -1,11 +1,11 @@
-import { memo, useCallback, useMemo, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { ArrowLeft, ArrowRight, Copy, DownloadSimple, GearSix } from '@phosphor-icons/react'
+import { memo, useCallback, useMemo, useState, type DragEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { CaretDown, CaretUp, CaretUpDown, Copy, DotsSixVertical, DownloadSimple, GearSix } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import type { AppLocale } from '../lib/i18n'
 import { translate } from '../lib/i18n'
 import { trackViewTableCopied, trackViewTableConfigured, trackViewTableCsvExported } from '../lib/productAnalytics'
 import type { VaultEntry, ViewDefinition, ViewFile, ViewTableConfig, ViewTableDensity } from '../types'
-import { applySavedViewSort } from '../utils/noteListHelpers'
+import { applySavedViewSort, parseSortConfig, serializeSortConfig, type SortDirection, type SortOption } from '../utils/noteListHelpers'
 import { evaluateView } from '../utils/viewFilters'
 import { viewTableCsvText } from '../utils/viewTableCsv'
 import { buildViewTableRows, buildViewTableSummaries, resolveViewTableColumns, type ViewTableColumn } from '../utils/viewTableColumns'
@@ -41,6 +41,51 @@ function columnIds(columns: ViewTableColumn[]): string[] {
   return columns.map((column) => column.id)
 }
 
+function reorderColumnIds(columns: ViewTableColumn[], fromIndex: number, toIndex: number): string[] {
+  const ids = columnIds(columns)
+  const [moved] = ids.splice(fromIndex, 1)
+  ids.splice(toIndex, 0, moved)
+  return ids
+}
+
+function sortOptionForColumn(column: ViewTableColumn): SortOption | null {
+  switch (column.kind) {
+    case 'title':
+      return 'title'
+    case 'filename':
+      return 'filename'
+    case 'type':
+      return 'type'
+    case 'status':
+      return 'status'
+    case 'modified':
+      return 'modified'
+    case 'created':
+      return 'created'
+    case 'property':
+      return column.propertyKey ? `property:${column.propertyKey}` : null
+    case 'computed':
+      return column.sourceField ? sortOptionForComputedSource(column.sourceField) : null
+  }
+}
+
+function sortOptionForComputedSource(sourceField: string): SortOption {
+  const normalized = sourceField.trim().toLowerCase()
+  if (normalized === 'title') return 'title'
+  if (normalized === 'filename') return 'filename'
+  if (normalized === 'type') return 'type'
+  if (normalized === 'status') return 'status'
+  if (normalized === 'modified') return 'modified'
+  if (normalized === 'created') return 'created'
+  return `property:${sourceField}`
+}
+
+function nextSortDirection(current: SortDirection | null): SortDirection | null {
+  if (current === null) return 'asc'
+  if (current === 'asc') return 'desc'
+  return null
+}
+
 function availableViewFields(entries: VaultEntry[], configuredProperties?: string[]): string[] {
   const fields = new Set(['title', 'filename', 'type', 'status', 'modified', 'created'])
   for (const property of configuredProperties ?? []) {
@@ -64,6 +109,7 @@ export const ViewTable = memo(function ViewTable({
 }: ViewTableProps) {
   const tableConfig = view.definition.table ?? undefined
   const [draftColumnSize, setDraftColumnSize] = useState<Record<string, number>>({})
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null)
   const [configOpen, setConfigOpen] = useState(false)
   const filteredEntries = useMemo(
     () => evaluateView(view.definition, entries),
@@ -93,6 +139,7 @@ export const ViewTable = memo(function ViewTable({
   const rowHeightClassName = density === 'compact' ? 'h-8' : 'h-10'
   const headerHeightClassName = density === 'compact' ? 'h-8' : 'h-9'
   const canPersistTable = Boolean(onUpdateViewDefinition)
+  const currentSort = useMemo(() => parseSortConfig(view.definition.sort), [view.definition.sort])
 
   const saveTableConfig = useCallback((patch: Partial<ViewTableConfig>, action: 'density' | 'columns' | 'column_size' | 'computed_columns') => {
     const nextTable = {
@@ -103,14 +150,41 @@ export const ViewTable = memo(function ViewTable({
     trackViewTableConfigured(action)
   }, [onUpdateViewDefinition, view.definition.table, view.filename, view.rootPath])
 
-  const moveColumn = useCallback((columnIndex: number, direction: -1 | 1) => {
-    const nextIndex = columnIndex + direction
-    if (nextIndex < 0 || nextIndex >= columns.length) return
-    const ids = columnIds(columns)
-    const [moved] = ids.splice(columnIndex, 1)
-    ids.splice(nextIndex, 0, moved)
-    saveTableConfig({ columns: ids }, 'columns')
+  const reorderColumns = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= columns.length || toIndex >= columns.length) return
+    saveTableConfig({ columns: reorderColumnIds(columns, fromIndex, toIndex) }, 'columns')
   }, [columns, saveTableConfig])
+
+  const startColumnDrag = useCallback((event: DragEvent<HTMLButtonElement>, column: ViewTableColumn) => {
+    if (!canPersistTable) {
+      event.preventDefault()
+      return
+    }
+    setDraggedColumnId(column.id)
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', column.id)
+  }, [canPersistTable])
+
+  const handleColumnDrop = useCallback((event: DragEvent<HTMLTableCellElement>, targetIndex: number) => {
+    event.preventDefault()
+    const draggedId = event.dataTransfer.getData('text/plain') || draggedColumnId
+    const sourceIndex = columns.findIndex((column) => column.id === draggedId)
+    reorderColumns(sourceIndex, targetIndex)
+    setDraggedColumnId(null)
+  }, [columns, draggedColumnId, reorderColumns])
+
+  const cycleColumnSort = useCallback((column: ViewTableColumn) => {
+    const option = sortOptionForColumn(column)
+    if (!option || !canPersistTable) return
+    const activeDirection = currentSort?.option === option ? currentSort.direction : null
+    const direction = nextSortDirection(activeDirection)
+    onUpdateViewDefinition?.(view.filename, { sort: direction ? serializeSortConfig({ option, direction }) : null }, view.rootPath)
+  }, [canPersistTable, currentSort, onUpdateViewDefinition, view.filename, view.rootPath])
+
+  const sortDirectionForColumn = useCallback((column: ViewTableColumn): SortDirection | null => {
+    const option = sortOptionForColumn(column)
+    return option && currentSort?.option === option ? currentSort.direction : null
+  }, [currentSort])
 
   const toggleDensity = useCallback(() => {
     saveTableConfig({ density: nextDensity(density) }, 'density')
@@ -276,30 +350,39 @@ export const ViewTable = memo(function ViewTable({
                     key={column.id}
                     scope="col"
                     className={`${headerHeightClassName} relative px-3 text-xs font-medium uppercase text-muted-foreground`}
+                    onDragOver={(event) => {
+                      if (!canPersistTable) return
+                      event.preventDefault()
+                      event.dataTransfer.dropEffect = 'move'
+                    }}
+                    onDrop={(event) => handleColumnDrop(event, index)}
                   >
                     <span className="flex min-w-0 items-center gap-1">
-                      <span className="block min-w-0 flex-1 truncate">{column.label}</span>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="size-6"
-                        disabled={!canPersistTable || index === 0}
-                        aria-label={translate(locale, 'viewTable.moveColumnLeft')}
-                        onClick={() => moveColumn(index, -1)}
+                        className="size-6 shrink-0 cursor-grab"
+                        disabled={!canPersistTable}
+                        draggable={canPersistTable}
+                        aria-label={translate(locale, 'viewTable.dragColumn')}
+                        onDragStart={(event) => startColumnDrag(event, column)}
+                        onDragEnd={() => setDraggedColumnId(null)}
                       >
-                        <ArrowLeft size={13} />
+                        <DotsSixVertical size={13} />
                       </Button>
                       <Button
                         type="button"
                         variant="ghost"
-                        size="icon"
-                        className="size-6"
-                        disabled={!canPersistTable || index === columns.length - 1}
-                        aria-label={translate(locale, 'viewTable.moveColumnRight')}
-                        onClick={() => moveColumn(index, 1)}
+                        className="h-7 min-w-0 flex-1 justify-start gap-1 px-1 text-xs font-medium uppercase text-muted-foreground hover:text-foreground"
+                        disabled={!canPersistTable || !sortOptionForColumn(column)}
+                        aria-label={translate(locale, 'viewTable.sortColumn')}
+                        onClick={() => cycleColumnSort(column)}
                       >
-                        <ArrowRight size={13} />
+                        <span className="block min-w-0 truncate">{column.label}</span>
+                        {sortDirectionForColumn(column) === 'asc' ? <CaretUp size={13} /> : null}
+                        {sortDirectionForColumn(column) === 'desc' ? <CaretDown size={13} /> : null}
+                        {sortDirectionForColumn(column) === null ? <CaretUpDown size={13} /> : null}
                       </Button>
                     </span>
                     <span

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { VaultEntry, ViewFile } from '../types'
 import { viewTableCsvText } from '../utils/viewTableCsv'
@@ -97,7 +97,17 @@ describe('ViewTable', () => {
     expect(onSelectNote).toHaveBeenCalledWith(entry)
   })
 
-  it('persists table density and column order changes', () => {
+  function createDataTransfer() {
+    let value = ''
+    return {
+      effectAllowed: 'none',
+      dropEffect: 'none',
+      setData: vi.fn((_type: string, nextValue: string) => { value = nextValue }),
+      getData: vi.fn(() => value),
+    }
+  }
+
+  it('persists table density and dragged column order changes', () => {
     const onUpdateViewDefinition = vi.fn()
 
     render(<ViewTable view={makeView()} entries={[makeEntry({ isA: 'Project' })]} onSelectNote={vi.fn()} onUpdateViewDefinition={onUpdateViewDefinition} />)
@@ -105,8 +115,65 @@ describe('ViewTable', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Compact' }))
     expect(onUpdateViewDefinition).toHaveBeenCalledWith('active-projects.yml', { table: { density: 'compact' } }, undefined)
 
-    fireEvent.click(screen.getAllByLabelText('Move column right')[0])
+    const dataTransfer = createDataTransfer()
+    fireEvent.dragStart(screen.getAllByRole('button', { name: 'Drag column' })[0], { dataTransfer })
+    fireEvent.drop(screen.getByRole('columnheader', { name: /Owner/ }), { dataTransfer })
+
     expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-projects.yml', { table: { columns: ['property:Owner', 'title'] } }, undefined)
+  })
+
+  it('cycles header sort persistence through ascending, descending, and default order', () => {
+    const onUpdateViewDefinition = vi.fn()
+    const { rerender } = render(
+      <ViewTable
+        view={makeView()}
+        entries={[makeEntry({ isA: 'Project', properties: { Owner: 'Ivo' } })]}
+        onSelectNote={vi.fn()}
+        onUpdateViewDefinition={onUpdateViewDefinition}
+      />,
+    )
+
+    const ownerHeader = screen.getByRole('columnheader', { name: /Owner/ })
+    fireEvent.click(within(ownerHeader).getByRole('button', { name: 'Sort column' }))
+    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-projects.yml', { sort: 'property:Owner:asc' }, undefined)
+
+    rerender(
+      <ViewTable
+        view={makeView({ sort: 'property:Owner:asc' })}
+        entries={[makeEntry({ isA: 'Project', properties: { Owner: 'Ivo' } })]}
+        onSelectNote={vi.fn()}
+        onUpdateViewDefinition={onUpdateViewDefinition}
+      />,
+    )
+    fireEvent.click(within(screen.getByRole('columnheader', { name: /Owner/ })).getByRole('button', { name: 'Sort column' }))
+    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-projects.yml', { sort: 'property:Owner:desc' }, undefined)
+
+    rerender(
+      <ViewTable
+        view={makeView({ sort: 'property:Owner:desc' })}
+        entries={[makeEntry({ isA: 'Project', properties: { Owner: 'Ivo' } })]}
+        onSelectNote={vi.fn()}
+        onUpdateViewDefinition={onUpdateViewDefinition}
+      />,
+    )
+    fireEvent.click(within(screen.getByRole('columnheader', { name: /Owner/ })).getByRole('button', { name: 'Sort column' }))
+    expect(onUpdateViewDefinition).toHaveBeenLastCalledWith('active-projects.yml', { sort: null }, undefined)
+  })
+
+  it('sorts date-like frontmatter values by date value', () => {
+    render(
+      <ViewTable
+        view={makeView({ listPropertiesDisplay: ['Start'], sort: 'property:Start:asc' })}
+        entries={[
+          makeEntry({ path: '/vault/may.md', title: 'May', isA: 'Project', properties: { Start: '2026-05-08' } }),
+          makeEntry({ path: '/vault/april.md', title: 'April', isA: 'Project', properties: { Start: '2026-04-30' } }),
+        ]}
+        onSelectNote={vi.fn()}
+      />,
+    )
+
+    const titleButtons = screen.getAllByRole('button', { name: /April|May/ }).map((button) => button.textContent)
+    expect(titleButtons).toEqual(['April', 'May'])
   })
 
   it('saves edited filters and computed alias columns from the configuration dialog', () => {
