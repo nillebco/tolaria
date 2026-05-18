@@ -47,14 +47,24 @@ describe('compactMarkdown', () => {
     expect(compactMarkdown(input)).toBe('```js\nconst a = 1\n\nconst b = 2\n```\n')
   })
 
+  it('removes BlockNote hard-break markers from serialized pasted prose', () => {
+    const input = 'First pasted line\\\nSecond pasted line\\\nThird pasted line\n'
+    expect(compactMarkdown(input)).toBe('First pasted line\nSecond pasted line\nThird pasted line\n')
+  })
+
+  it('removes doubled BlockNote hard-break markers from serialized pasted prose', () => {
+    const input = 'First pasted line\\\\\nSecond pasted line\\\\\nThird pasted line\n'
+    expect(compactMarkdown(input)).toBe('First pasted line\nSecond pasted line\nThird pasted line\n')
+  })
+
   it('removes stray hard-break-only lines after a hard line break', () => {
     const input = 'some text\\\\\n\\\\\nafter\n'
-    expect(compactMarkdown(input)).toBe('some text\\\\\nafter\n')
+    expect(compactMarkdown(input)).toBe('some text\nafter\n')
   })
 
   it('removes stray hard-break-only lines after formatted hard line breaks', () => {
     const input = '**text\\\\**\n\\\\\nafter\n'
-    expect(compactMarkdown(input)).toBe('**text\\\\**\nafter\n')
+    expect(compactMarkdown(input)).toBe('**text**\nafter\n')
   })
 
   it('preserves intentional backslash-only lines when no hard line break precedes them', () => {

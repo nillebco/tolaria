@@ -5,6 +5,7 @@
  * - Bullet list markers normalized to `-` (BlockNote outputs `*`)
  * - HTML entities like `&#x20;` decoded back to spaces
  * - Leading/trailing inline whitespace moved outside bold markers
+ * - BlockNote serialized hard-break markers removed from normal prose lines
  * - Stray hard-break-only lines removed after a markdown hard break
  * - No runs of 3+ blank lines (collapsed to one blank line)
  * - No trailing blank lines
@@ -30,6 +31,8 @@ export function compactMarkdown(md: string): string {
 
 const LIST_RE = /^(\s*)([-*+]|\d+\.)\s/
 const HARD_BREAK_ONLY_RE = /^\\+$/
+const TRAILING_HARD_BREAK_MARKER_RE = /\\+$/
+const FORMATTED_TRAILING_HARD_BREAK_MARKER_RE = /\\+([*_~`]+)$/
 const TRAILING_INLINE_CLOSERS_RE = /(?:[*_~`]+)$/
 const STRONG_RE = /\*\*([^*\n]*?)\*\*/g
 
@@ -83,7 +86,8 @@ function isFenceDelimiter({ line }: MarkdownLineValue): boolean {
 function normalizeMarkdownLine({ line }: MarkdownLineValue): string {
   const normalizedBullets = normalizeBulletMarker({ line })
   const decodedEntities = decodeHtmlEntities({ line: normalizedBullets })
-  return normalizeStrongWhitespace({ line: decodedEntities })
+  const normalizedStrongWhitespace = normalizeStrongWhitespace({ line: decodedEntities })
+  return normalizeSerializedHardBreakMarker({ line: normalizedStrongWhitespace })
 }
 
 function shouldSkipLine({ doc, idx, line }: NormalizedLinePosition): boolean {
@@ -130,7 +134,7 @@ function isRedundantHardBreakLine({ doc, idx, line }: NormalizedLinePosition): b
   const prev = findPrevNonBlank({ doc, idx })
   if (prev === null) return false
 
-  const prevLine = normalizeMarkdownLine({ line: doc.lines.at(prev) ?? '' })
+  const prevLine = doc.lines.at(prev) ?? ''
   return isHardBreakOnlyLine({ line: prevLine }) || endsWithHardBreakMarker({ line: prevLine })
 }
 
@@ -140,8 +144,8 @@ function isHardBreakOnlyLine({ line }: MarkdownLineValue): boolean {
 
 function endsWithHardBreakMarker({ line }: MarkdownLineValue): boolean {
   const trimmed = line.trimEnd()
-  if (trimmed.endsWith('\\\\')) return true
-  return trimmed.replace(TRAILING_INLINE_CLOSERS_RE, '').endsWith('\\\\')
+  if (trimmed.endsWith('\\')) return true
+  return trimmed.replace(TRAILING_INLINE_CLOSERS_RE, '').endsWith('\\')
 }
 
 const BULLET_RE = /^(\s*)\*(\s)/
@@ -174,6 +178,21 @@ function normalizeStrongWhitespace({ line }: MarkdownLineValue): string {
 
     return `${leadingWhitespace}**${strongContent}**${trailingWhitespace}`
   })
+}
+
+function normalizeSerializedHardBreakMarker({ line }: MarkdownLineValue): string {
+  const trimmedEnd = line.trimEnd()
+  if (isHardBreakOnlyLine({ line: trimmedEnd })) {
+    return line
+  }
+
+  const trailingWhitespace = line.slice(trimmedEnd.length)
+  if (trimmedEnd.endsWith('\\')) {
+    return `${trimmedEnd.replace(TRAILING_HARD_BREAK_MARKER_RE, '')}${trailingWhitespace}`
+  }
+
+  const withoutFormattedHardBreak = trimmedEnd.replace(FORMATTED_TRAILING_HARD_BREAK_MARKER_RE, '$1')
+  return `${withoutFormattedHardBreak}${trailingWhitespace}`
 }
 
 function finalizeMarkdown(doc: MarkdownDocument): string {
