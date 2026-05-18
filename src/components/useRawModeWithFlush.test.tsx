@@ -6,6 +6,7 @@ import * as store from '../utils/vaultConfigStore'
 const notePath = '/vault/project/test.md'
 const originalContent = '# Test\n\nOriginal body\n'
 const rawEditedContent = '# Test\n\nEdited in raw mode\n'
+const externallyUpdatedContent = '# Test\n\nExternally updated body\n'
 
 function makeEditor() {
   return {
@@ -66,6 +67,37 @@ describe('useRawModeWithFlush', () => {
     expect(result.current.rawModeContentOverride).toEqual({
       path: notePath,
       content: rawEditedContent,
+    })
+  })
+
+  it('does not replace the raw buffer with external content after local raw edits', async () => {
+    const onContentChange = vi.fn()
+    const flushPendingEditorChangeRef = { current: vi.fn(() => false) }
+    const editor = makeEditor()
+    const { result, rerender } = renderHook(
+      ({ activeTabContent }) => useRawModeWithFlush(
+        editor as never,
+        notePath,
+        activeTabContent,
+        onContentChange,
+        undefined,
+        flushPendingEditorChangeRef,
+      ),
+      { initialProps: { activeTabContent: originalContent } },
+    )
+
+    await act(async () => {
+      await result.current.handleToggleRaw()
+    })
+    act(() => {
+      result.current.rawLatestContentRef.current = rawEditedContent
+    })
+
+    rerender({ activeTabContent: externallyUpdatedContent })
+
+    expect(result.current.rawModeContentOverride).toEqual({
+      path: notePath,
+      content: originalContent,
     })
   })
 })

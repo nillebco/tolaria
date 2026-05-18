@@ -45,6 +45,7 @@ describe('useVaultBridge', () => {
       hasUnsavedChanges: typeof hasUnsavedChanges
       recentlySaved: Set<string>
       lastEditTimestamp: number
+      shouldKeepActiveEditorMounted: () => boolean
     }> = {},
   ) {
     const entriesByPath = new Map(entries.map(e => [e.path, e]))
@@ -62,6 +63,7 @@ describe('useVaultBridge', () => {
         closeAllTabs,
         replaceActiveTab,
         hasUnsavedChanges: overrides.hasUnsavedChanges ?? hasUnsavedChanges,
+        shouldKeepActiveEditorMounted: overrides.shouldKeepActiveEditorMounted,
         onSelectNote,
         activeTabPath,
         recentlySavedRef,
@@ -219,6 +221,19 @@ describe('useVaultBridge', () => {
     reloadVault.mockResolvedValue([fresh])
     const { result } = renderBridge([], '/vault/active.md', {
       lastEditTimestamp: Date.now() - 500, // edited 500ms ago, within 3s grace
+    })
+
+    await act(async () => { result.current.handleExternalVaultChanged(['active.md']) })
+
+    expectVaultDerivedStateReloaded({ reloadVault, reloadFolders, reloadViews })
+    expect(replaceActiveTab).not.toHaveBeenCalled()
+  })
+
+  it('handleExternalVaultChanged keeps focused active editor mounted', async () => {
+    const fresh = makeEntry('/vault/active.md', 'Fresh active')
+    reloadVault.mockResolvedValue([fresh])
+    const { result } = renderBridge([], '/vault/active.md', {
+      shouldKeepActiveEditorMounted: () => true,
     })
 
     await act(async () => { result.current.handleExternalVaultChanged(['active.md']) })

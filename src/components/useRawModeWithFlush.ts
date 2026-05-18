@@ -261,17 +261,20 @@ function useHandleBeforeRawEnd({
 function useSyncRawModeContentOverride({
   activeTabContent,
   activeTabPath,
+  rawLatestContentRef,
   rawSourceContentRef,
   setRawModeContentOverride,
 }: {
   activeTabContent: string | null
   activeTabPath: string | null
+  rawLatestContentRef: React.MutableRefObject<string | null>
   rawSourceContentRef: React.MutableRefObject<string | null>
   setRawModeContentOverride: React.Dispatch<React.SetStateAction<PendingRawExitContent | null>>
 }) {
   useLayoutEffect(() => {
     if (!activeTabPath || activeTabContent === null) return
     if (rawSourceContentRef.current === null || activeTabContent === rawSourceContentRef.current) return
+    if (rawLatestContentRef.current !== rawSourceContentRef.current) return
     const nextContent = activeTabContent
 
     setRawModeContentOverride((current) => {
@@ -279,7 +282,7 @@ function useSyncRawModeContentOverride({
       if (current.path !== activeTabPath || current.content === nextContent) return current
       return { path: activeTabPath, content: nextContent }
     })
-  }, [activeTabContent, activeTabPath, rawSourceContentRef, setRawModeContentOverride])
+  }, [activeTabContent, activeTabPath, rawLatestContentRef, rawSourceContentRef, setRawModeContentOverride])
 }
 
 export function useRawModeWithFlush(
@@ -318,6 +321,7 @@ export function useRawModeWithFlush(
   useSyncRawModeContentOverride({
     activeTabContent: effectiveActiveTabContent,
     activeTabPath,
+    rawLatestContentRef,
     rawSourceContentRef,
     setRawModeContentOverride,
   })

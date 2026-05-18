@@ -128,10 +128,11 @@ export function useVaultBridge({
     if (!activeTabPath || hasUnsavedChanges(activeTabPath)) return
     if (Date.now() - lastEditTimestampRef.current < RECENT_EDIT_GRACE_MS) return
     if (!isActiveTabInChangedPaths(changedPaths, resolvedPath, activeTabPath)) return
+    if (shouldKeepActiveEditorMounted?.() === true) return
 
     const refreshedEntry = entries.find((e) => normalizePath(e.path) === normalizePath(activeTabPath))
     if (refreshedEntry) await replaceActiveTab(refreshedEntry)
-  }, [activeTabPath, hasUnsavedChanges, lastEditTimestampRef, recentlySavedRef, reloadFolders, reloadVault, reloadViews, replaceActiveTab, resolvedPath])
+  }, [activeTabPath, hasUnsavedChanges, lastEditTimestampRef, recentlySavedRef, reloadFolders, reloadVault, reloadViews, replaceActiveTab, resolvedPath, shouldKeepActiveEditorMounted])
 
   return {
     openNoteByPath,
