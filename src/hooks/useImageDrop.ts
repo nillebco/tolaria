@@ -35,7 +35,7 @@ function isImagePath(path: string): boolean {
   return IMAGE_EXTENSIONS.includes(ext)
 }
 
-/** Upload an image file — saves to vault/attachments in Tauri, returns data URL in browser */
+/** Upload an image file — saves to the vault attachment folder in Tauri, returns data URL in browser. */
 export async function uploadImageFile(file: File, vaultPath?: string): Promise<string> {
   if (isTauri() && vaultPath) {
     const buf = await file.arrayBuffer()
@@ -58,7 +58,7 @@ export async function uploadImageFile(file: File, vaultPath?: string): Promise<s
   })
 }
 
-/** Copy a dropped file (by OS path) into vault/attachments and return its asset URL. */
+/** Copy a dropped file (by OS path) into the vault attachment folder and return its asset URL. */
 async function copyImageToVault({
   sourcePath,
   vaultPath,

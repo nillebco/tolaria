@@ -23,6 +23,12 @@ describe('resolveVaultAttachmentPath', () => {
     )
   })
 
+  it('resolves relative attachment URLs with existing folder casing', () => {
+    expect(resolveVaultAttachmentPath({ url: 'Attachments/report.pdf', vaultPath: '/vault' })).toBe(
+      '/vault/Attachments/report.pdf',
+    )
+  })
+
   it('resolves encoded Tauri asset URLs inside the active vault', () => {
     expect(
       resolveVaultAttachmentPath({
@@ -89,12 +95,29 @@ describe('vault attachment URL/path conversions', () => {
     ).toBe('attachments/shot.png')
   })
 
+  it('preserves attachment folder casing when converting current-vault asset URLs', () => {
+    expect(
+      portableAttachmentPathFromCurrentVaultAssetUrl({
+        url: assetUrl('/vault/Attachments/shot.png'),
+        vaultPath: '/vault',
+      }),
+    ).toBe('Attachments/shot.png')
+  })
+
   it('extracts portable attachment paths from legacy asset URLs in another vault', () => {
     expect(
       portableAttachmentPathFromAnyAssetUrl({
         url: assetUrl('/old-vault/attachments/shot.png'),
       }),
     ).toBe('attachments/shot.png')
+  })
+
+  it('preserves attachment folder casing in legacy asset URLs', () => {
+    expect(
+      portableAttachmentPathFromAnyAssetUrl({
+        url: assetUrl('/old-vault/Attachments/shot.png'),
+      }),
+    ).toBe('Attachments/shot.png')
   })
 
   it('identifies every Tauri asset URL form used by editor media flows', () => {

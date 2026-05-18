@@ -11,6 +11,7 @@ const ASSET_URL_PREFIXES = [
 ]
 const ATTACHMENTS_SEGMENT = '/attachments/'
 const RELATIVE_ATTACHMENTS_PREFIX = 'attachments/'
+const ATTACHMENTS_FOLDER_NAME = 'attachments'
 const WINDOWS_EXTENDED_PATH_PREFIX = '\\\\?\\'
 const WINDOWS_EXTENDED_UNC_PREFIX = '\\\\?\\UNC\\'
 const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:[\\/]/
@@ -80,6 +81,11 @@ function normalizedFilesystemPath(path: AbsolutePath): AbsolutePath {
   return removeWindowsExtendedPrefix(path).replace(/\\/g, '/')
 }
 
+function attachmentSegmentIndex(path: AbsolutePath): number {
+  const normalizedPath = normalizedFilesystemPath(path)
+  return normalizedPath.toLowerCase().lastIndexOf(ATTACHMENTS_SEGMENT)
+}
+
 function withoutTrailingSlash(path: AbsolutePath): AbsolutePath {
   return path.replace(/\/+$/, '')
 }
@@ -115,11 +121,11 @@ function resolveAssetPath({ url }: UrlRequest): AbsolutePath | null {
 
 function extractPortableAttachmentPath({ path }: PathRequest): AttachmentPath | null {
   const normalizedPath = normalizedFilesystemPath(path)
-  const index = normalizedPath.lastIndexOf(ATTACHMENTS_SEGMENT)
+  const index = attachmentSegmentIndex(normalizedPath)
   if (index === -1) return null
 
-  const filename = normalizedPath.slice(index + ATTACHMENTS_SEGMENT.length)
-  return filename ? `${RELATIVE_ATTACHMENTS_PREFIX}${filename}` : null
+  const attachmentPath = normalizedPath.slice(index + 1)
+  return attachmentPath.includes('/') ? attachmentPath : null
 }
 
 function currentVaultAttachmentPath({
@@ -128,13 +134,16 @@ function currentVaultAttachmentPath({
 }: PathRequest & VaultPathRequest): AttachmentPath | null {
   const normalizedPath = normalizedFilesystemPath(path)
   const normalizedVaultPath = withoutTrailingSlash(normalizedFilesystemPath(vaultPath))
-  const attachmentsRoot = `${normalizedVaultPath}/${RELATIVE_ATTACHMENTS_PREFIX}`
+  const relativePath = normalizedPath.slice(normalizedVaultPath.length + 1)
+  const [firstSegment] = relativePath.split('/')
+  if (!firstSegment || firstSegment.toLowerCase() !== ATTACHMENTS_FOLDER_NAME) return null
+  const attachmentsRoot = `${normalizedVaultPath}/${firstSegment}/`
   const comparablePath = normalizeForComparison(normalizedPath, vaultPath)
   const comparableRoot = normalizeForComparison(attachmentsRoot, vaultPath)
   if (!comparablePath.startsWith(comparableRoot)) return null
 
   const filename = normalizedPath.slice(attachmentsRoot.length)
-  return filename ? `${RELATIVE_ATTACHMENTS_PREFIX}${filename}` : null
+  return filename ? `${firstSegment}/${filename}` : null
 }
 
 function isPathInsideVault({
@@ -151,7 +160,7 @@ function resolveRelativeAttachmentPath({
   url,
   vaultPath,
 }: UrlRequest & VaultPathRequest): AbsolutePath | null {
-  if (!url.startsWith(RELATIVE_ATTACHMENTS_PREFIX)) return null
+  if (!isPortableAttachmentPath({ path: url })) return null
 
   const attachmentPath = safeDecode(url)
   if (hasUnsafeRelativeSegment({ path: attachmentPath })) return null
@@ -182,7 +191,10 @@ export function vaultAttachmentAssetUrl({
 }
 
 export function isPortableAttachmentPath({ path }: PathRequest): boolean {
-  return path.startsWith(RELATIVE_ATTACHMENTS_PREFIX)
+  const normalizedPath = path.replace(/\\/g, '/')
+  return normalizedPath
+    .slice(0, RELATIVE_ATTACHMENTS_PREFIX.length)
+    .toLowerCase() === RELATIVE_ATTACHMENTS_PREFIX
 }
 
 export function isTauriAssetUrl({ url }: UrlRequest): boolean {

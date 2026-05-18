@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 /// Check if a character is safe for use in filenames (alphanumeric, dot, dash, underscore).
@@ -16,10 +16,94 @@ fn sanitize_filename(name: &str) -> String {
 
 /// Image file extensions considered valid for drag-drop import.
 const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "tiff"];
+const DEFAULT_ATTACHMENTS_DIR: &str = "attachments";
+
+#[derive(serde::Deserialize)]
+struct ObsidianAppConfig {
+    #[serde(rename = "attachmentFolderPath")]
+    attachment_folder_path: Option<String>,
+}
+
+fn safe_vault_relative_path(path: &str) -> Option<PathBuf> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed == "." || trimmed == "/" {
+        return Some(PathBuf::new());
+    }
+
+    let normalized = trimmed.trim_start_matches('/').replace('\\', "/");
+    let relative_path = Path::new(&normalized);
+    let mut safe_path = PathBuf::new();
+    for component in relative_path.components() {
+        match component {
+            Component::Normal(segment) => safe_path.push(segment),
+            Component::CurDir => {}
+            _ => return None,
+        }
+    }
+
+    Some(safe_path)
+}
+
+fn obsidian_attachment_dir(vault_path: &Path) -> Result<Option<PathBuf>, String> {
+    let config_path = vault_path.join(".obsidian").join("app.json");
+    if !config_path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(&config_path)
+        .map_err(|e| format!("Failed to read Obsidian app config: {}", e))?;
+    let config: ObsidianAppConfig = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse Obsidian app config: {}", e))?;
+    Ok(config
+        .attachment_folder_path
+        .as_deref()
+        .and_then(safe_vault_relative_path)
+        .map(|relative| vault_path.join(relative)))
+}
+
+fn existing_attachments_dir(vault_path: &Path) -> Result<Option<std::path::PathBuf>, String> {
+    let entries = match fs::read_dir(vault_path) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(format!("Failed to read vault directory: {}", error)),
+    };
+
+    let mut candidates = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read vault entry: {}", e))?;
+        let file_name = entry.file_name();
+        let Some(file_name) = file_name.to_str() else {
+            continue;
+        };
+        if file_name.eq_ignore_ascii_case(DEFAULT_ATTACHMENTS_DIR) && entry.path().is_dir() {
+            candidates.push(entry.path());
+        }
+    }
+
+    candidates.sort_by_key(|path| {
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .map(|name| (name != DEFAULT_ATTACHMENTS_DIR, name.to_string()))
+            .unwrap_or((true, String::new()))
+    });
+    Ok(candidates.into_iter().next())
+}
+
+fn attachments_dir(vault_path: &str) -> Result<std::path::PathBuf, String> {
+    let vault = Path::new(vault_path);
+    if let Some(configured_dir) = obsidian_attachment_dir(vault)? {
+        return Ok(configured_dir);
+    }
+
+    Ok(existing_attachments_dir(vault)?.unwrap_or_else(|| vault.join(DEFAULT_ATTACHMENTS_DIR)))
+}
 
 /// Prepare the attachments directory and generate a unique target path.
 fn prepare_attachment_path(vault_path: &str, filename: &str) -> Result<std::path::PathBuf, String> {
-    let attachments_dir = Path::new(vault_path).join("attachments");
+    let attachments_dir = attachments_dir(vault_path)?;
     fs::create_dir_all(&attachments_dir)
         .map_err(|e| format!("Failed to create attachments directory: {}", e))?;
 
@@ -125,6 +209,74 @@ mod tests {
         let data = base64::engine::general_purpose::STANDARD.encode(b"test");
         save_image(vault_path, "img.png", &data).unwrap();
         assert!(attachments.exists());
+    }
+
+    #[test]
+    fn test_save_image_preserves_existing_attachments_dir_casing() {
+        use base64::Engine;
+
+        let dir = TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+        let attachments = dir.path().join("Attachments");
+        fs::create_dir_all(&attachments).unwrap();
+
+        let data = base64::engine::general_purpose::STANDARD.encode(b"test");
+        let saved_path = save_image(vault_path, "img.png", &data).unwrap();
+
+        assert!(saved_path.contains("Attachments"));
+        assert!(std::path::Path::new(&saved_path).exists());
+        assert_eq!(
+            std::path::Path::new(&saved_path)
+                .parent()
+                .and_then(|path| path.file_name())
+                .and_then(|name| name.to_str()),
+            Some("Attachments"),
+        );
+    }
+
+    #[test]
+    fn test_save_image_uses_obsidian_attachment_folder_path() {
+        use base64::Engine;
+
+        let dir = TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+        fs::create_dir_all(dir.path().join(".obsidian")).unwrap();
+        fs::write(
+            dir.path().join(".obsidian").join("app.json"),
+            r#"{"attachmentFolderPath":"Media/Inbox"}"#,
+        )
+        .unwrap();
+
+        let data = base64::engine::general_purpose::STANDARD.encode(b"test");
+        let saved_path = save_image(vault_path, "img.png", &data).unwrap();
+
+        assert!(saved_path.contains("Media/Inbox"));
+        assert!(std::path::Path::new(&saved_path).exists());
+        assert!(!dir.path().join("attachments").exists());
+    }
+
+    #[test]
+    fn test_save_image_uses_vault_root_for_obsidian_root_attachment_path() {
+        use base64::Engine;
+
+        let dir = TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+        fs::create_dir_all(dir.path().join(".obsidian")).unwrap();
+        fs::write(
+            dir.path().join(".obsidian").join("app.json"),
+            r#"{"attachmentFolderPath":"/"}"#,
+        )
+        .unwrap();
+
+        let data = base64::engine::general_purpose::STANDARD.encode(b"test");
+        let saved_path = save_image(vault_path, "img.png", &data).unwrap();
+
+        assert!(std::path::Path::new(&saved_path).exists());
+        assert!(std::path::Path::new(&saved_path)
+            .parent()
+            .unwrap()
+            .ends_with(dir.path()));
+        assert!(!dir.path().join("attachments").exists());
     }
 
     #[test]

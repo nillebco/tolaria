@@ -43,6 +43,15 @@ describe('resolveImageUrls', () => {
     )
   })
 
+  it('converts relative attachment paths with configured folder casing to asset URLs', () => {
+    tauriMode = true
+    const markdown = '![screenshot](Attachments/shot.png)'
+
+    expect(resolveImageUrls(markdown, '/vault')).toBe(
+      `![screenshot](${assetUrl('/vault/Attachments/shot.png')})`,
+    )
+  })
+
   it('converts Windows relative attachment paths without mixed separators', () => {
     tauriMode = true
     const vaultPath = 'C:\\Users\\lnq12\\Documents\\tolaria-test\\Getting Started'
@@ -163,6 +172,15 @@ describe('portableImageUrls', () => {
     )
   })
 
+  it('preserves configured attachment folder casing when serializing asset URLs', () => {
+    const url = assetUrl('/vault/Attachments/shot.png')
+    const markdown = `![screenshot](${url})`
+
+    expect(portableImageUrls(markdown, '/vault')).toBe(
+      '![screenshot](Attachments/shot.png)',
+    )
+  })
+
   it('converts legacy asset protocol attachment URLs to relative paths', () => {
     const url = httpAssetUrl('/vault/attachments/legacy.png')
     const markdown = `![screenshot](${url})`
@@ -245,6 +263,13 @@ describe('resolveImageUrls / portableImageUrls round-trip', () => {
   it('keeps relative attachment markdown stable', () => {
     tauriMode = true
     const markdown = '![shot](attachments/file.png)'
+
+    expect(portableImageUrls(resolveImageUrls(markdown, '/vault'), '/vault')).toBe(markdown)
+  })
+
+  it('keeps configured-casing attachment markdown stable', () => {
+    tauriMode = true
+    const markdown = '![shot](Attachments/file.png)'
 
     expect(portableImageUrls(resolveImageUrls(markdown, '/vault'), '/vault')).toBe(markdown)
   })
