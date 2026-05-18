@@ -95,11 +95,12 @@ describe('uploadImageFile', () => {
     const blob = new Blob([new Uint8Array([0x89, 0x50])], { type: 'image/png' })
     const file = new File([blob], 'test.png', { type: 'image/png' })
 
-    const url = await uploadImageFile(file, '/vault')
+    const url = await uploadImageFile(file, '/vault', '/vault/notes/today.md')
     expect(invoke).toHaveBeenCalledWith('save_image', {
       vaultPath: '/vault',
       filename: 'test.png',
       data: expect.any(String),
+      notePath: '/vault/notes/today.md',
     })
     expect(url).toBe('asset://localhost/vault/attachments/123-test.png')
 
@@ -119,7 +120,7 @@ describe('useImageDrop', () => {
     container.remove()
   })
 
-  function renderImageDrop(opts?: { onImageUrl?: (url: string) => void; vaultPath?: string }) {
+  function renderImageDrop(opts?: { notePath?: string; onImageUrl?: (url: string) => void; vaultPath?: string }) {
     const ref = createRef<HTMLDivElement>()
     Object.defineProperty(ref, 'current', { value: container, writable: true })
     return renderHook(() => useImageDrop({ containerRef: ref, ...opts }))
@@ -202,7 +203,7 @@ describe('useImageDrop — Tauri native drag-drop', () => {
     container.remove()
   })
 
-  function renderImageDropTauri(opts?: { onImageUrl?: (url: string) => void; vaultPath?: string }) {
+  function renderImageDropTauri(opts?: { notePath?: string; onImageUrl?: (url: string) => void; vaultPath?: string }) {
     const ref = createRef<HTMLDivElement>()
     Object.defineProperty(ref, 'current', { value: container, writable: true })
     return renderHook(() => useImageDrop({ containerRef: ref, ...opts }))
@@ -252,7 +253,7 @@ describe('useImageDrop — Tauri native drag-drop', () => {
     vi.mocked(convertFileSrc).mockClear()
     vi.mocked(invoke).mockResolvedValue('/vault/attachments/123-photo.png')
     vi.mocked(convertFileSrc).mockReturnValue('asset://localhost/vault/attachments/123-photo.png')
-    renderImageDropTauri({ onImageUrl, vaultPath: '/vault' })
+    renderImageDropTauri({ notePath: '/vault/notes/today.md', onImageUrl, vaultPath: '/vault' })
 
     await waitForNativeDropListeners()
 
@@ -270,6 +271,7 @@ describe('useImageDrop — Tauri native drag-drop', () => {
     expect(invoke).toHaveBeenCalledWith('copy_image_to_vault', {
       vaultPath: '/vault',
       sourcePath: '/tmp/photo.png',
+      notePath: '/vault/notes/today.md',
     })
     expect(invoke).toHaveBeenCalledTimes(1)
   })

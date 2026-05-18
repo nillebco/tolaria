@@ -485,14 +485,16 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     syncWindowContent()
     return null
   },
-  save_image: (args: { vault_path?: string; filename: string; data: string }) => {
+  save_image: (args: { note_path?: string; vault_path?: string; filename: string; data: string }) => {
     const vault = args.vault_path ?? '/Users/luca/Laputa'
-    return `${vault}/attachments/${Date.now()}-${args.filename}`
+    const folder = args.note_path ? args.note_path.split('/').slice(0, -1).join('/') : `${vault}/attachments`
+    return `${folder}/${Date.now()}-${args.filename}`
   },
-  copy_image_to_vault: (args: { vault_path?: string; source_path: string }) => {
+  copy_image_to_vault: (args: { note_path?: string; vault_path?: string; source_path: string }) => {
     const vault = args.vault_path ?? '/Users/luca/Laputa'
     const filename = args.source_path.split('/').pop() ?? 'image.png'
-    return `${vault}/attachments/${Date.now()}-${filename}`
+    const folder = args.note_path ? args.note_path.split('/').slice(0, -1).join('/') : `${vault}/attachments`
+    return `${folder}/${Date.now()}-${filename}`
   },
   get_settings: () => ({ ...mockSettings }),
   save_settings: (args: { settings: Settings }) => {

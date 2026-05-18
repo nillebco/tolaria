@@ -29,7 +29,7 @@ fn safe_vault_relative_path(path: &str) -> Option<PathBuf> {
     if trimmed.is_empty() {
         return None;
     }
-    if trimmed == "." || trimmed == "/" {
+    if trimmed == "/" {
         return Some(PathBuf::new());
     }
 
@@ -47,7 +47,68 @@ fn safe_vault_relative_path(path: &str) -> Option<PathBuf> {
     Some(safe_path)
 }
 
-fn obsidian_attachment_dir(vault_path: &Path) -> Result<Option<PathBuf>, String> {
+fn current_note_relative_path(path: &str) -> Option<&str> {
+    let trimmed = path.trim();
+    if trimmed == "." || trimmed == "./" || trimmed == ".\\" {
+        return Some("");
+    }
+    trimmed
+        .strip_prefix("./")
+        .or_else(|| trimmed.strip_prefix(".\\"))
+}
+
+fn note_parent_dir(vault_path: &Path, note_path: Option<&str>) -> Result<Option<PathBuf>, String> {
+    let Some(raw_note_path) = note_path.map(str::trim).filter(|path| !path.is_empty()) else {
+        return Ok(None);
+    };
+
+    let requested_note = if Path::new(raw_note_path).is_absolute() {
+        PathBuf::from(raw_note_path)
+    } else {
+        let relative_note = safe_vault_relative_path(raw_note_path)
+            .ok_or_else(|| "Active note path must stay inside the active vault".to_string())?;
+        vault_path.join(relative_note)
+    };
+
+    let canonical_vault = vault_path
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve vault path: {}", e))?;
+    let canonical_note = requested_note
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve active note path: {}", e))?;
+    if !canonical_note.starts_with(&canonical_vault) {
+        return Err("Active note path must stay inside the active vault".to_string());
+    }
+
+    Ok(requested_note.parent().map(Path::to_path_buf))
+}
+
+fn configured_attachment_dir(
+    vault_path: &Path,
+    setting: &str,
+    note_path: Option<&str>,
+) -> Result<Option<PathBuf>, String> {
+    if let Some(relative_to_note) = current_note_relative_path(setting) {
+        let Some(note_dir) = note_parent_dir(vault_path, note_path)? else {
+            return Ok(None);
+        };
+        let relative_path = if relative_to_note.is_empty() {
+            PathBuf::new()
+        } else {
+            safe_vault_relative_path(relative_to_note).ok_or_else(|| {
+                "Obsidian attachment folder must stay inside the active vault".to_string()
+            })?
+        };
+        return Ok(Some(note_dir.join(relative_path)));
+    }
+
+    Ok(safe_vault_relative_path(setting).map(|relative| vault_path.join(relative)))
+}
+
+fn obsidian_attachment_dir(
+    vault_path: &Path,
+    note_path: Option<&str>,
+) -> Result<Option<PathBuf>, String> {
     let config_path = vault_path.join(".obsidian").join("app.json");
     if !config_path.exists() {
         return Ok(None);
@@ -57,11 +118,10 @@ fn obsidian_attachment_dir(vault_path: &Path) -> Result<Option<PathBuf>, String>
         .map_err(|e| format!("Failed to read Obsidian app config: {}", e))?;
     let config: ObsidianAppConfig = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse Obsidian app config: {}", e))?;
-    Ok(config
-        .attachment_folder_path
-        .as_deref()
-        .and_then(safe_vault_relative_path)
-        .map(|relative| vault_path.join(relative)))
+    match config.attachment_folder_path.as_deref() {
+        Some(setting) => configured_attachment_dir(vault_path, setting, note_path),
+        None => Ok(None),
+    }
 }
 
 fn existing_attachments_dir(vault_path: &Path) -> Result<Option<std::path::PathBuf>, String> {
@@ -92,9 +152,12 @@ fn existing_attachments_dir(vault_path: &Path) -> Result<Option<std::path::PathB
     Ok(candidates.into_iter().next())
 }
 
-fn attachments_dir(vault_path: &str) -> Result<std::path::PathBuf, String> {
+fn attachments_dir(
+    vault_path: &str,
+    note_path: Option<&str>,
+) -> Result<std::path::PathBuf, String> {
     let vault = Path::new(vault_path);
-    if let Some(configured_dir) = obsidian_attachment_dir(vault)? {
+    if let Some(configured_dir) = obsidian_attachment_dir(vault, note_path)? {
         return Ok(configured_dir);
     }
 
@@ -102,8 +165,12 @@ fn attachments_dir(vault_path: &str) -> Result<std::path::PathBuf, String> {
 }
 
 /// Prepare the attachments directory and generate a unique target path.
-fn prepare_attachment_path(vault_path: &str, filename: &str) -> Result<std::path::PathBuf, String> {
-    let attachments_dir = attachments_dir(vault_path)?;
+fn prepare_attachment_path(
+    vault_path: &str,
+    filename: &str,
+    note_path: Option<&str>,
+) -> Result<std::path::PathBuf, String> {
+    let attachments_dir = attachments_dir(vault_path, note_path)?;
     fs::create_dir_all(&attachments_dir)
         .map_err(|e| format!("Failed to create attachments directory: {}", e))?;
 
@@ -117,10 +184,15 @@ fn prepare_attachment_path(vault_path: &str, filename: &str) -> Result<std::path
 
 /// Save an uploaded image to the vault's attachments directory.
 /// Returns the absolute path to the saved file.
-pub fn save_image(vault_path: &str, filename: &str, data: &str) -> Result<String, String> {
+pub fn save_image(
+    vault_path: &str,
+    filename: &str,
+    data: &str,
+    note_path: Option<&str>,
+) -> Result<String, String> {
     use base64::Engine;
 
-    let target_path = prepare_attachment_path(vault_path, filename)?;
+    let target_path = prepare_attachment_path(vault_path, filename, note_path)?;
 
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(data)
@@ -134,7 +206,11 @@ pub fn save_image(vault_path: &str, filename: &str, data: &str) -> Result<String
 /// Copy an image file from a source path into the vault's attachments directory.
 /// Used for Tauri native drag-drop which provides absolute file paths.
 /// Returns the absolute path to the saved file.
-pub fn copy_image_to_vault(vault_path: &str, source_path: &str) -> Result<String, String> {
+pub fn copy_image_to_vault(
+    vault_path: &str,
+    source_path: &str,
+    note_path: Option<&str>,
+) -> Result<String, String> {
     let source = Path::new(source_path);
     if !source.exists() {
         return Err(format!("Source file does not exist: {}", source_path));
@@ -153,7 +229,7 @@ pub fn copy_image_to_vault(vault_path: &str, source_path: &str) -> Result<String
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("image");
-    let target_path = prepare_attachment_path(vault_path, filename)?;
+    let target_path = prepare_attachment_path(vault_path, filename, note_path)?;
 
     fs::copy(source, &target_path).map_err(|e| format!("Failed to copy image: {}", e))?;
 
@@ -185,7 +261,7 @@ mod tests {
         let vault_path = dir.path().to_str().unwrap();
         let data = base64::engine::general_purpose::STANDARD.encode(b"fake image data");
 
-        let result = save_image(vault_path, "test.png", &data);
+        let result = save_image(vault_path, "test.png", &data, None);
         assert!(result.is_ok());
 
         let saved_path = result.unwrap();
@@ -207,7 +283,7 @@ mod tests {
         assert!(!attachments.exists());
 
         let data = base64::engine::general_purpose::STANDARD.encode(b"test");
-        save_image(vault_path, "img.png", &data).unwrap();
+        save_image(vault_path, "img.png", &data, None).unwrap();
         assert!(attachments.exists());
     }
 
@@ -221,7 +297,7 @@ mod tests {
         fs::create_dir_all(&attachments).unwrap();
 
         let data = base64::engine::general_purpose::STANDARD.encode(b"test");
-        let saved_path = save_image(vault_path, "img.png", &data).unwrap();
+        let saved_path = save_image(vault_path, "img.png", &data, None).unwrap();
 
         assert!(saved_path.contains("Attachments"));
         assert!(std::path::Path::new(&saved_path).exists());
@@ -248,7 +324,7 @@ mod tests {
         .unwrap();
 
         let data = base64::engine::general_purpose::STANDARD.encode(b"test");
-        let saved_path = save_image(vault_path, "img.png", &data).unwrap();
+        let saved_path = save_image(vault_path, "img.png", &data, None).unwrap();
 
         assert!(saved_path.contains("Media/Inbox"));
         assert!(std::path::Path::new(&saved_path).exists());
@@ -269,7 +345,7 @@ mod tests {
         .unwrap();
 
         let data = base64::engine::general_purpose::STANDARD.encode(b"test");
-        let saved_path = save_image(vault_path, "img.png", &data).unwrap();
+        let saved_path = save_image(vault_path, "img.png", &data, None).unwrap();
 
         assert!(std::path::Path::new(&saved_path).exists());
         assert!(std::path::Path::new(&saved_path)
@@ -280,11 +356,76 @@ mod tests {
     }
 
     #[test]
+    fn test_save_image_uses_current_note_folder_for_obsidian_dot_attachment_path() {
+        use base64::Engine;
+
+        let dir = TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+        let note_path = dir.path().join("Daily").join("2026-05-18.md");
+        fs::create_dir_all(note_path.parent().unwrap()).unwrap();
+        fs::write(&note_path, "# Daily").unwrap();
+        fs::create_dir_all(dir.path().join(".obsidian")).unwrap();
+        fs::write(
+            dir.path().join(".obsidian").join("app.json"),
+            r#"{"attachmentFolderPath":"./"}"#,
+        )
+        .unwrap();
+
+        let data = base64::engine::general_purpose::STANDARD.encode(b"test");
+        let saved_path = save_image(
+            vault_path,
+            "img.png",
+            &data,
+            Some(note_path.to_str().unwrap()),
+        )
+        .unwrap();
+
+        assert!(std::path::Path::new(&saved_path).exists());
+        assert!(std::path::Path::new(&saved_path)
+            .parent()
+            .unwrap()
+            .ends_with(dir.path().join("Daily")));
+        assert!(!dir.path().join("attachments").exists());
+    }
+
+    #[test]
+    fn test_save_image_uses_current_note_subfolder_for_obsidian_relative_attachment_path() {
+        use base64::Engine;
+
+        let dir = TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+        let note_path = dir.path().join("Projects").join("Plan.md");
+        fs::create_dir_all(note_path.parent().unwrap()).unwrap();
+        fs::write(&note_path, "# Plan").unwrap();
+        fs::create_dir_all(dir.path().join(".obsidian")).unwrap();
+        fs::write(
+            dir.path().join(".obsidian").join("app.json"),
+            r#"{"attachmentFolderPath":"./assets"}"#,
+        )
+        .unwrap();
+
+        let data = base64::engine::general_purpose::STANDARD.encode(b"test");
+        let saved_path = save_image(
+            vault_path,
+            "img.png",
+            &data,
+            Some(note_path.to_str().unwrap()),
+        )
+        .unwrap();
+
+        assert!(std::path::Path::new(&saved_path).exists());
+        assert!(std::path::Path::new(&saved_path)
+            .parent()
+            .unwrap()
+            .ends_with(dir.path().join("Projects").join("assets")));
+    }
+
+    #[test]
     fn test_save_image_invalid_base64() {
         let dir = TempDir::new().unwrap();
         let vault_path = dir.path().to_str().unwrap();
 
-        let result = save_image(vault_path, "test.png", "not-valid-base64!!!");
+        let result = save_image(vault_path, "test.png", "not-valid-base64!!!", None);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Invalid base64"));
     }
@@ -298,7 +439,7 @@ mod tests {
         let source_path = dir.path().join("source.png");
         fs::write(&source_path, b"fake png data").unwrap();
 
-        let result = copy_image_to_vault(vault_path, source_path.to_str().unwrap());
+        let result = copy_image_to_vault(vault_path, source_path.to_str().unwrap(), None);
         assert!(result.is_ok());
 
         let saved_path = result.unwrap();
@@ -315,7 +456,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let vault_path = dir.path().to_str().unwrap();
 
-        let result = copy_image_to_vault(vault_path, "/nonexistent/photo.png");
+        let result = copy_image_to_vault(vault_path, "/nonexistent/photo.png", None);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("does not exist"));
     }
@@ -328,7 +469,7 @@ mod tests {
         let source_path = dir.path().join("document.pdf");
         fs::write(&source_path, b"fake pdf").unwrap();
 
-        let result = copy_image_to_vault(vault_path, source_path.to_str().unwrap());
+        let result = copy_image_to_vault(vault_path, source_path.to_str().unwrap(), None);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Not a supported image"));
     }
@@ -341,7 +482,7 @@ mod tests {
         for ext in &["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "tiff"] {
             let source_path = dir.path().join(format!("img.{}", ext));
             fs::write(&source_path, b"data").unwrap();
-            let result = copy_image_to_vault(vault_path, source_path.to_str().unwrap());
+            let result = copy_image_to_vault(vault_path, source_path.to_str().unwrap(), None);
             assert!(result.is_ok(), "failed for extension: {}", ext);
         }
     }

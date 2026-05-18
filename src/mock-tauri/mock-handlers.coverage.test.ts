@@ -204,5 +204,12 @@ describe('mockHandlers coverage', () => {
       vault_path: '/vault',
       source_path: '/tmp/screenshot.jpg',
     })).toBe('/vault/attachments/12345-screenshot.jpg')
+
+    expect(mockHandlers.save_image({
+      vault_path: '/vault',
+      note_path: '/vault/Daily/today.md',
+      filename: 'inline.png',
+      data: 'base64',
+    })).toBe('/vault/Daily/12345-inline.png')
   })
 })

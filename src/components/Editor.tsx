@@ -218,13 +218,16 @@ function useEditorSetup({
   onLoadDiff, onLoadDiffAtCommit, pendingCommitDiffRequest, onPendingCommitDiffHandled, getNoteStatus,
   rawToggleRef, diffToggleRef,
 }: EditorSetupParams) {
+  const editorActiveTabPath = isViewTabPath(activeTabPath) ? null : activeTabPath
   const vaultPathRef = useRef(vaultPath)
+  const activeTabPathRef = useRef(editorActiveTabPath ?? undefined)
   const flushPendingEditorChangeRef = useRef<(() => boolean) | null>(null)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
+  useEffect(() => { activeTabPathRef.current = editorActiveTabPath ?? undefined }, [editorActiveTabPath])
 
   const editor = useCreateBlockNote({
     schema,
-    uploadFile: (file: File) => uploadImageFile(file, vaultPathRef.current),
+    uploadFile: (file: File) => uploadImageFile(file, vaultPathRef.current, activeTabPathRef.current),
     _tiptapOptions: { injectNonce: RUNTIME_STYLE_NONCE },
     extensions: [
       createRichEditorTransformErrorRecoveryExtension(),
@@ -234,7 +237,6 @@ function useEditorSetup({
     ],
   })
   useFilenameAutolinkGuard(editor)
-  const editorActiveTabPath = isViewTabPath(activeTabPath) ? null : activeTabPath
   const activeTab = tabs.find((t) => t.entry.path === editorActiveTabPath) ?? null
   const {
     rawMode,

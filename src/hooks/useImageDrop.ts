@@ -13,11 +13,13 @@ const TAURI_DRAG_LEAVE_EVENT = 'tauri://drag-leave'
 type ImageUrlHandler = (url: string) => void
 type TauriDropEvent = TauriEvent<TauriDragDropPayload>
 type CopyImageToVaultRequest = {
+  notePath?: string
   sourcePath: string
   vaultPath: string
 }
 type DroppedImagesRequest = {
   imagePaths: string[]
+  notePath: string | undefined
   vaultPath: string | undefined
   onImageUrl: ImageUrlHandler | undefined
 }
@@ -36,7 +38,7 @@ function isImagePath(path: string): boolean {
 }
 
 /** Upload an image file — saves to the vault attachment folder in Tauri, returns data URL in browser. */
-export async function uploadImageFile(file: File, vaultPath?: string): Promise<string> {
+export async function uploadImageFile(file: File, vaultPath?: string, notePath?: string): Promise<string> {
   if (isTauri() && vaultPath) {
     const buf = await file.arrayBuffer()
     const bytes = new Uint8Array(buf)
@@ -47,6 +49,7 @@ export async function uploadImageFile(file: File, vaultPath?: string): Promise<s
       vaultPath,
       filename: file.name,
       data: base64,
+      notePath,
     })
     return attachmentAssetUrlFromPath({ path: savedPath })
   }
@@ -60,15 +63,17 @@ export async function uploadImageFile(file: File, vaultPath?: string): Promise<s
 
 /** Copy a dropped file (by OS path) into the vault attachment folder and return its asset URL. */
 async function copyImageToVault({
+  notePath,
   sourcePath,
   vaultPath,
 }: CopyImageToVaultRequest): Promise<string> {
-  const savedPath = await invoke<string>('copy_image_to_vault', { vaultPath, sourcePath })
+  const savedPath = await invoke<string>('copy_image_to_vault', { vaultPath, sourcePath, notePath })
   return attachmentAssetUrlFromPath({ path: savedPath })
 }
 
 function insertDroppedImages({
   imagePaths,
+  notePath,
   vaultPath,
   onImageUrl,
 }: DroppedImagesRequest): void {
@@ -76,7 +81,7 @@ function insertDroppedImages({
   if (!vaultPath || !onImageUrl) return
 
   for (const sourcePath of imagePaths) {
-    void copyImageToVault({ sourcePath, vaultPath }).then(onImageUrl)
+    void copyImageToVault({ notePath, sourcePath, vaultPath }).then(onImageUrl)
   }
 }
 
@@ -109,15 +114,18 @@ interface UseImageDropOptions {
   containerRef: RefObject<HTMLDivElement | null>
   /** Called with an asset URL for each image dropped via Tauri native drag-drop. */
   onImageUrl?: (url: string) => void
+  notePath?: string | null
   vaultPath?: string
 }
 
-export function useImageDrop({ containerRef, onImageUrl, vaultPath }: UseImageDropOptions) {
+export function useImageDrop({ containerRef, notePath, onImageUrl, vaultPath }: UseImageDropOptions) {
   const [isDragOver, setIsDragOver] = useState(false)
   const onImageUrlRef = useRef(onImageUrl)
   useEffect(() => { onImageUrlRef.current = onImageUrl }, [onImageUrl])
   const vaultPathRef = useRef(vaultPath)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
+  const notePathRef = useRef(notePath ?? undefined)
+  useEffect(() => { notePathRef.current = notePath ?? undefined }, [notePath])
 
   // HTML5 DnD visual feedback; BlockNote handles browser-mode uploads.
   useEffect(() => {
@@ -166,6 +174,7 @@ export function useImageDrop({ containerRef, onImageUrl, vaultPath }: UseImageDr
             setIsDragOver(false)
             insertDroppedImages({
               imagePaths: event.payload.paths.filter(isImagePath),
+              notePath: notePathRef.current,
               vaultPath: vaultPathRef.current,
               onImageUrl: onImageUrlRef.current,
             })

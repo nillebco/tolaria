@@ -284,9 +284,13 @@ pub fn save_image(
     vault_path: PathBuf,
     filename: String,
     data: String,
+    note_path: Option<PathBuf>,
 ) -> Result<String, String> {
     with_image_asset_scope(&app_handle, vault_path.as_path(), |requested_root| {
-        vault::save_image(requested_root, &filename, &data)
+        let note_path = note_path
+            .as_ref()
+            .map(|path| path.to_string_lossy().to_string());
+        vault::save_image(requested_root, &filename, &data, note_path.as_deref())
     })
 }
 
@@ -295,9 +299,17 @@ pub fn copy_image_to_vault(
     app_handle: tauri::AppHandle,
     vault_path: PathBuf,
     source_path: PathBuf,
+    note_path: Option<PathBuf>,
 ) -> Result<String, String> {
     with_image_asset_scope(&app_handle, vault_path.as_path(), |requested_root| {
-        vault::copy_image_to_vault(requested_root, source_path.to_string_lossy().as_ref())
+        let note_path = note_path
+            .as_ref()
+            .map(|path| path.to_string_lossy().to_string());
+        vault::copy_image_to_vault(
+            requested_root,
+            source_path.to_string_lossy().as_ref(),
+            note_path.as_deref(),
+        )
     })
 }
 
