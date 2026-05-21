@@ -29,6 +29,7 @@ export interface RawEditorViewProps {
   entries: VaultEntry[]
   sourceEntry?: VaultEntry
   onContentChange: (path: string, content: string) => void
+  onInputActivity?: () => void
   vaultPath?: string
   onSave: () => void
   /** Mutable ref updated on every keystroke with the latest doc string.
@@ -142,12 +143,14 @@ function useRawEditorPendingChanges({
   content,
   latestContentRef,
   onContentChange,
+  onInputActivity,
   onSave,
   path,
-}: Pick<RawEditorViewProps, 'content' | 'latestContentRef' | 'onContentChange' | 'onSave' | 'path'>): RawEditorPendingChanges {
+}: Pick<RawEditorViewProps, 'content' | 'latestContentRef' | 'onContentChange' | 'onInputActivity' | 'onSave' | 'path'>): RawEditorPendingChanges {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pathRef = useLatestRef(path)
   const onContentChangeRef = useLatestRef(onContentChange)
+  const onInputActivityRef = useLatestRef(onInputActivity)
   const onSaveRef = useLatestRef(onSave)
   const latestContentRefStable = useRef(latestContentRef)
   const latestDocRef = useRef(content)
@@ -160,11 +163,12 @@ function useRawEditorPendingChanges({
     latestDocRef.current = doc
     if (latestContentRefStable.current) latestContentRefStable.current.current = doc
     setYamlError(detectYamlError(doc))
+    onInputActivityRef.current?.()
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       onContentChangeRef.current(pathRef.current, doc)
     }, DEBOUNCE_MS)
-  }, [latestContentRefStable, onContentChangeRef, pathRef])
+  }, [latestContentRefStable, onContentChangeRef, onInputActivityRef, pathRef])
 
   const handleSave = useCallback(() => {
     flushPendingRawEditorChange({ debounceRef, latestDocRef, onContentChangeRef, pathRef })
@@ -392,12 +396,12 @@ function useRawEditorPlainTextPasteTarget({
   }, [])
 }
 
-export function RawEditorView({ content, path, entries, sourceEntry, onContentChange, onSave, latestContentRef, vaultPath, locale = 'en', findRequest }: RawEditorViewProps) {
+export function RawEditorView({ content, path, entries, sourceEntry, onContentChange, onInputActivity, onSave, latestContentRef, vaultPath, locale = 'en', findRequest }: RawEditorViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [rawDoc, setRawDoc] = useState(content)
   const [findOpen, setFindOpen] = useState(false)
   const [replaceOpen, setReplaceOpen] = useState(false)
-  const pendingChanges = useRawEditorPendingChanges({ content, latestContentRef, onContentChange, onSave, path })
+  const pendingChanges = useRawEditorPendingChanges({ content, latestContentRef, onContentChange, onInputActivity, onSave, path })
   const {
     autocomplete,
     handleAutocompleteKey,

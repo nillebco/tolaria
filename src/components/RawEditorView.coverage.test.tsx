@@ -217,6 +217,29 @@ describe('RawEditorView additional coverage', () => {
     expect(onContentChange).toHaveBeenCalledWith('/vault/raw-note.md', 'draft 4')
   })
 
+  it('calls onInputActivity immediately on doc change before debounce fires', () => {
+    vi.useFakeTimers()
+    const onInputActivity = vi.fn()
+    const onContentChange = vi.fn()
+    render(
+      <RawEditorView
+        {...defaultProps}
+        onContentChange={onContentChange}
+        onInputActivity={onInputActivity}
+      />,
+    )
+
+    act(() => { latestCallbacks?.onDocChange('draft 1') })
+
+    expect(onInputActivity).toHaveBeenCalledTimes(1)
+    expect(onContentChange).not.toHaveBeenCalled()
+
+    act(() => { vi.advanceTimersByTime(500) })
+
+    expect(onContentChange).toHaveBeenCalledTimes(1)
+    expect(onInputActivity).toHaveBeenCalledTimes(1)
+  })
+
   it('renders YAML errors from the parser result', () => {
     detectYamlErrorMock.mockReturnValue('Missing closing delimiter')
 

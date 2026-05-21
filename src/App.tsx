@@ -66,7 +66,7 @@ import { useLayoutPanels } from './hooks/useLayoutPanels'
 import { useConflictFlow } from './hooks/useConflictFlow'
 import { useAppSave } from './hooks/useAppSave'
 import { useNoteRetargetingUi } from './hooks/useNoteRetargetingUi'
-import { useVaultBridge } from './hooks/useVaultBridge'
+import { useVaultBridge, RECENT_EDIT_GRACE_MS } from './hooks/useVaultBridge'
 import { useSavedViewOrdering } from './hooks/useSavedViewOrdering'
 import { APP_COMMAND_IDS, getAppCommandShortcutDisplay } from './hooks/appCommandCatalog'
 import {
@@ -91,7 +91,7 @@ import { initializeNoteProperties } from './utils/initializeNoteProperties'
 import { filterEntries, filterEntriesForViewFile, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { isWindows } from './utils/platform'
-import { getPulledVaultUpdateOptions, refreshPulledVaultState } from './utils/pulledVaultRefresh'
+import { refreshPulledVaultState } from './utils/pulledVaultRefresh'
 import { isNoteWindow, getNoteWindowParams } from './utils/windowMode'
 import { GitSetupDialog } from './components/GitRequiredModal'
 import { RenameDetectedBanner } from './components/RenameDetectedBanner'
@@ -144,14 +144,6 @@ import { useStartupScreenState } from './hooks/useStartupScreenState'
 import { useGitFileWorkflows } from './hooks/useGitFileWorkflows'
 import { SidebarSimple } from '@phosphor-icons/react'
 import './App.css'
-
-const ACTIVE_EDITOR_SURFACE_SELECTOR = '.editor__blocknote-container, .raw-editor-codemirror'
-
-function isActiveElementInsideEditorSurface(): boolean {
-  const activeElement = document.activeElement
-  if (!(activeElement instanceof HTMLElement)) return false
-  return Boolean(activeElement.closest(ACTIVE_EDITOR_SURFACE_SELECTOR))
-}
 
 // Type declarations for mock content storage and test overrides
 declare global {
@@ -631,6 +623,10 @@ function App() {
     vault.trackUnsaved(path)
   }, [vault])
 
+  const handleEditorActivity = useCallback(() => {
+    lastEditTimestampRef.current = Date.now()
+  }, [])
+
   const notes = useNoteActions({
     addEntry: vault.addEntry,
     removeEntry: vault.removeEntry,
@@ -753,7 +749,6 @@ function App() {
   })
   const handleVaultUpdate = useCallback(async (
     updatedFiles: string[],
-    options: { preserveFocusedEditor?: boolean } = {},
   ) => {
     await refreshPulledVaultState({
       activeTabPath: activeNotePath,
@@ -763,9 +758,7 @@ function App() {
         return isViewTabPath(currentPath) ? null : currentPath
       },
       hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
-      shouldKeepActiveEditorMounted: options.preserveFocusedEditor
-        ? isActiveElementInsideEditorSurface
-        : undefined,
+      shouldKeepActiveEditorMounted: () => Date.now() - lastEditTimestampRef.current < RECENT_EDIT_GRACE_MS,
       reloadFolders: vault.reloadFolders,
       reloadVault: vault.reloadVault,
       reloadViews: vault.reloadViews,
@@ -778,6 +771,7 @@ function App() {
       closeAllTabs,
       activeNotePath,
       handleReplaceActiveTab,
+      lastEditTimestampRef,
       notes.activeTabPathRef,
       refreshGitModifiedFiles,
       resolvedPath,
@@ -787,11 +781,11 @@ function App() {
       vault.unsavedPaths,
     ])
   const handlePulledVaultUpdate = useCallback(
-    (updatedFiles: string[]) => handleVaultUpdate(updatedFiles, getPulledVaultUpdateOptions()),
+    (updatedFiles: string[]) => handleVaultUpdate(updatedFiles),
     [handleVaultUpdate],
   )
   const handleFocusedVaultUpdate = useCallback(
-    (updatedFiles: string[]) => handleVaultUpdate(updatedFiles, { preserveFocusedEditor: true }),
+    (updatedFiles: string[]) => handleVaultUpdate(updatedFiles),
     [handleVaultUpdate],
   )
   useEffect(() => {
@@ -869,7 +863,7 @@ function App() {
     closeAllTabs,
     replaceActiveTab: handleReplaceActiveTab,
     hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
-    shouldKeepActiveEditorMounted: isActiveElementInsideEditorSurface,
+    shouldKeepActiveEditorMounted: () => Date.now() - lastEditTimestampRef.current < RECENT_EDIT_GRACE_MS,
     onSelectNote: handleSelectNoteAndClearTable,
     activeTabPath: activeNotePath,
     getActiveTabPath: () => {
@@ -1996,6 +1990,7 @@ function App() {
               onArchiveNote={activeDeletedFile ? undefined : entryActions.handleArchiveNote}
               onUnarchiveNote={activeDeletedFile ? undefined : entryActions.handleUnarchiveNote}
               onContentChange={handleTrackedContentChange}
+              onEditorActivity={handleEditorActivity}
               onSave={handleTrackedSave}
               onRenameFilename={activeDeletedFile ? undefined : appSave.handleFilenameRename}
               noteWidth={activeNoteWidth}

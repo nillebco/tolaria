@@ -69,6 +69,7 @@ interface UseEditorTabSwapOptions {
   activeTabPath: string | null
   editor: ReturnType<typeof useCreateBlockNote>
   onContentChange?: (path: string, content: string) => void
+  onEditorActivity?: () => void
   /** When true, the BlockNote editor is hidden (raw/CodeMirror mode active). */
   rawMode?: boolean
   vaultPath?: string
@@ -252,6 +253,7 @@ function useEditorChangeHandler(options: {
   editor: ReturnType<typeof useCreateBlockNote>
   tabsRef: MutableRefObject<Tab[]>
   onContentChangeRef: MutableRefObject<((path: string, content: string) => void) | undefined>
+  onEditorActivity?: () => void
   prevActivePathRef: MutableRefObject<string | null>
   editorContentPathRef: EditorContentPathRef
   suppressChangeRef: MutableRefObject<boolean>
@@ -263,6 +265,7 @@ function useEditorChangeHandler(options: {
     editor,
     tabsRef,
     onContentChangeRef,
+    onEditorActivity,
     prevActivePathRef,
     editorContentPathRef,
     suppressChangeRef,
@@ -299,7 +302,7 @@ function useEditorChangeHandler(options: {
     onContentChangeRef.current?.(path, next.content)
   }, [editor, editorContentPathRef, onContentChangeRef, pendingLocalContentRef, prevActivePathRef, tabCacheRef, tabsRef, vaultPathRef])
 
-  return useDebouncedEditorChange({ onFlush: propagateEditorChange, suppressChangeRef })
+  return useDebouncedEditorChange({ onFlush: propagateEditorChange, onActivity: onEditorActivity, suppressChangeRef })
 }
 
 function cachePreviousTabOnPathChange(options: {
@@ -1155,7 +1158,7 @@ function usePrepareParsedBlocks(options: {
  * Returns the onChange callback for SingleEditorView and a flush hook for
  * save/navigation paths that need the latest rich-editor content immediately.
  */
-export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange, rawMode, vaultPath }: UseEditorTabSwapOptions) {
+export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange, onEditorActivity, rawMode, vaultPath }: UseEditorTabSwapOptions) {
   const tabCacheRef = useRef<Map<string, CachedTabState>>(new Map())
   const pendingLocalContentRef = useRef<PendingLocalContent | null>(null)
   const prevActivePathRef = useRef<string | null>(null)
@@ -1175,6 +1178,7 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
     editor,
     tabsRef,
     onContentChangeRef,
+    onEditorActivity,
     prevActivePathRef,
     editorContentPathRef,
     suppressChangeRef,

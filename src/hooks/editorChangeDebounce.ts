@@ -4,9 +4,11 @@ export const RICH_EDITOR_CHANGE_DEBOUNCE_MS = 500
 
 export function useDebouncedEditorChange({
   onFlush,
+  onActivity,
   suppressChangeRef,
 }: {
   onFlush: () => void
+  onActivity?: () => void
   suppressChangeRef: MutableRefObject<boolean>
 }) {
   const pendingRef = useRef(false)
@@ -29,13 +31,14 @@ export function useDebouncedEditorChange({
   const handleEditorChange = useCallback(() => {
     if (suppressChangeRef.current) return
 
+    onActivity?.()
     pendingRef.current = true
     clearTimer()
     timerRef.current = setTimeout(() => {
       timerRef.current = null
       void flushPendingEditorChange()
     }, RICH_EDITOR_CHANGE_DEBOUNCE_MS)
-  }, [clearTimer, flushPendingEditorChange, suppressChangeRef])
+  }, [clearTimer, flushPendingEditorChange, onActivity, suppressChangeRef])
 
   useEffect(() => {
     return () => {

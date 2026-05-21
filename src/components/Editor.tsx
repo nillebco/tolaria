@@ -100,6 +100,7 @@ interface EditorProps {
   onArchiveNote?: (path: string) => void
   onUnarchiveNote?: (path: string) => void
   onContentChange?: (path: string, content: string) => void
+  onEditorActivity?: () => void
   onSave?: () => void
   /** Called when the user explicitly renames the filename from the breadcrumb. */
   onRenameFilename?: (path: string, newFilenameStem: string) => void
@@ -204,6 +205,7 @@ interface EditorSetupParams {
   activeTabPath: string | null
   vaultPath?: string
   onContentChange?: (path: string, content: string) => void
+  onEditorActivity?: () => void
   onLoadDiff?: (path: string) => Promise<string>
   onLoadDiffAtCommit?: (path: string, commitHash: string) => Promise<string>
   pendingCommitDiffRequest?: CommitDiffRequest | null
@@ -214,7 +216,7 @@ interface EditorSetupParams {
 }
 
 function useEditorSetup({
-  tabs, activeTabPath, vaultPath, onContentChange,
+  tabs, activeTabPath, vaultPath, onContentChange, onEditorActivity,
   onLoadDiff, onLoadDiffAtCommit, pendingCommitDiffRequest, onPendingCommitDiffHandled, getNoteStatus,
   rawToggleRef, diffToggleRef,
 }: EditorSetupParams) {
@@ -265,7 +267,7 @@ function useEditorSetup({
   }, [editorActiveTabPath, setPendingRawExitContent, tabs])
 
   const { handleEditorChange, flushPendingEditorChange, editorMountedRef } = useEditorTabSwap({
-    tabs: tabsForEditorSwap, activeTabPath: editorActiveTabPath, editor, onContentChange, rawMode, vaultPath,
+    tabs: tabsForEditorSwap, activeTabPath: editorActiveTabPath, editor, onContentChange, onEditorActivity, rawMode, vaultPath,
   })
   useEffect(() => {
     flushPendingEditorChangeRef.current = flushPendingEditorChange
@@ -354,6 +356,7 @@ function EditorLayout({
   rawMode,
   handleToggleRawExclusive,
   onContentChange,
+  onEditorActivity,
   onSave,
   activeStatus,
   showDiffToggle,
@@ -434,6 +437,7 @@ function EditorLayout({
   rawMode: boolean
   handleToggleRawExclusive: () => void
   onContentChange?: (path: string, content: string) => void
+  onEditorActivity?: () => void
   onSave?: () => void
   activeStatus: NoteStatus
   showDiffToggle: boolean
@@ -543,6 +547,7 @@ function EditorLayout({
               rawMode={rawMode}
               onToggleRaw={handleToggleRawExclusive}
               onRawContentChange={onContentChange}
+              onRawEditorActivity={onEditorActivity}
               onSave={onSave}
               activeStatus={activeStatus}
               showDiffToggle={showDiffToggle}
@@ -647,6 +652,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     activeTabPath: props.activeTabPath,
     vaultPath: props.vaultPath,
     onContentChange: props.onContentChange,
+    onEditorActivity: props.onEditorActivity,
     onLoadDiff: props.onLoadDiff,
     onLoadDiffAtCommit: props.onLoadDiffAtCommit,
     pendingCommitDiffRequest: props.pendingCommitDiffRequest,

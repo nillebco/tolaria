@@ -18,7 +18,7 @@ function isActiveTabInChangedPaths(changedPaths: string[], vaultPath: string, ac
   })
 }
 
-const RECENT_EDIT_GRACE_MS = 3000
+export const RECENT_EDIT_GRACE_MS = 3000
 
 interface VaultBridgeDeps {
   entriesByPath: Map<string, VaultEntry>

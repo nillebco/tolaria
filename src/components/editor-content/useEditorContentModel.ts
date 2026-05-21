@@ -26,6 +26,7 @@ export interface EditorContentProps {
   rawMode: boolean
   onToggleRaw: () => void
   onRawContentChange?: (path: string, content: string) => void
+  onRawEditorActivity?: () => void
   onSave?: () => void
   activeStatus: NoteStatus
   showDiffToggle: boolean
