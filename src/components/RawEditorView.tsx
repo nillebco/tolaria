@@ -166,6 +166,7 @@ function useRawEditorPendingChanges({
     onInputActivityRef.current?.()
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
+      debounceRef.current = null
       onContentChangeRef.current(pathRef.current, doc)
     }, DEBOUNCE_MS)
   }, [latestContentRefStable, onContentChangeRef, onInputActivityRef, pathRef])

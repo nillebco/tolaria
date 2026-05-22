@@ -217,6 +217,24 @@ describe('RawEditorView additional coverage', () => {
     expect(onContentChange).toHaveBeenCalledWith('/vault/raw-note.md', 'draft 4')
   })
 
+  it('does not fire onContentChange again on unmount when debounce already fired', async () => {
+    vi.useFakeTimers()
+    const onContentChange = vi.fn()
+    const { unmount } = render(
+      <RawEditorView {...defaultProps} onContentChange={onContentChange} />,
+    )
+
+    act(() => { latestCallbacks?.onDocChange('settled') })
+    await act(async () => { vi.advanceTimersByTimeAsync(500) })
+
+    expect(onContentChange).toHaveBeenCalledTimes(1)
+    expect(onContentChange).toHaveBeenCalledWith('/vault/raw-note.md', 'settled')
+
+    unmount()
+
+    expect(onContentChange).toHaveBeenCalledTimes(1)
+  })
+
   it('calls onInputActivity immediately on doc change before debounce fires', () => {
     vi.useFakeTimers()
     const onInputActivity = vi.fn()
