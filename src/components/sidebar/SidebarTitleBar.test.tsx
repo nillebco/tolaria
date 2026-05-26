@@ -9,7 +9,7 @@ function renderTitleBar(overrides: Partial<ComponentProps<typeof SidebarTitleBar
 }
 
 describe('SidebarTitleBar', () => {
-  it('renders sidebar and history controls with shortcut tooltips', () => {
+  it('renders sidebar and history controls with shortcut titles', () => {
     const onCollapse = vi.fn()
     const onGoBack = vi.fn()
     const onGoForward = vi.fn()

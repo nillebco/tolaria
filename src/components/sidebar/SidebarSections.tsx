@@ -16,7 +16,6 @@ import {
 } from '@phosphor-icons/react'
 import { APP_COMMAND_IDS, getAppCommandShortcutDisplay } from '../../hooks/appCommandCatalog'
 import { Button } from '@/components/ui/button'
-import { ActionTooltip } from '@/components/ui/action-tooltip'
 import {
   type SectionGroup, isSelectionActive, SectionContent, VisibilityPopover,
 } from '../SidebarParts'
@@ -355,23 +354,19 @@ function SidebarTitleBarAction({
   const title = titleWithShortcut(label, shortcut)
 
   return (
-    <ActionTooltip copy={{ label, shortcut }} side="bottom" sideOffset={8}>
-      <span className="inline-flex" title={title} data-no-drag>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          className={SIDEBAR_TITLE_BAR_ACTION_CLASSNAME}
-          onClick={(event) => { event.stopPropagation(); onClick?.() }}
-          disabled={disabled}
-          aria-label={label}
-          title={title}
-          data-no-drag
-        >
-          {children}
-        </Button>
-      </span>
-    </ActionTooltip>
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-xs"
+      className={SIDEBAR_TITLE_BAR_ACTION_CLASSNAME}
+      onClick={(event) => { event.stopPropagation(); onClick?.() }}
+      disabled={disabled}
+      aria-label={label}
+      title={title}
+      data-no-drag
+    >
+      {children}
+    </Button>
   )
 }
 
