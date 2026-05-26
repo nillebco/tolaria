@@ -18,6 +18,7 @@
     "l10n:validate": "node scripts/validate-locales.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
+    "tauri:build:unsigned": "tauri build --bundles app,dmg --no-sign",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
