@@ -670,7 +670,6 @@
   "viewTable.copyCell": "Copy cell",
   "viewTable.copyCsv": "Copy CSV",
   "viewTable.copyTsv": "Copy as TSV",
-  "viewTable.copyTsv": "Copy as TSV",
   "viewTable.exportCsv": "Export CSV",
   "viewTable.moveColumnLeft": "Move column left",
   "viewTable.moveColumnRight": "Move column right",
