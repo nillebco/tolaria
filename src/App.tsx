@@ -91,6 +91,7 @@ import { initializeNoteProperties } from './utils/initializeNoteProperties'
 import { filterEntries, filterEntriesForViewFile, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { isWindows } from './utils/platform'
+import { notePathsMatch } from './utils/notePathIdentity'
 import { refreshPulledVaultState } from './utils/pulledVaultRefresh'
 import { isNoteWindow, getNoteWindowParams } from './utils/windowMode'
 import { GitSetupDialog } from './components/GitRequiredModal'
@@ -611,6 +612,10 @@ function App() {
 
   const recentlySavedRef = useRef(new Set<string>())
   const lastEditTimestampRef = useRef<number>(0)
+  const isEditorRecentlyActive = useCallback(
+    () => Date.now() - lastEditTimestampRef.current < RECENT_EDIT_GRACE_MS,
+    [],
+  )
 
   const clearUnsavedAndTrack = useCallback((path: string) => {
     vault.clearUnsaved(path)
@@ -747,6 +752,18 @@ function App() {
     setToastMessage,
     tabs: notes.tabs,
   })
+  const tabsForRefreshRef = useRef(notes.tabs)
+  useEffect(() => {
+    tabsForRefreshRef.current = notes.tabs
+  }, [notes.tabs])
+  const isActiveTabContentCurrent = useCallback(async (path: string) => {
+    const tab = tabsForRefreshRef.current.find((candidate) => notePathsMatch(candidate.entry.path, path))
+    if (!tab) return false
+    const request = { path, content: tab.content, vaultPath: vaultPathForEntry(tab.entry, resolvedPath) }
+    return isTauri()
+      ? invoke<boolean>('validate_note_content', request)
+      : mockInvoke<boolean>('validate_note_content', request)
+  }, [resolvedPath])
   const handleVaultUpdate = useCallback(async (
     updatedFiles: string[],
   ) => {
@@ -758,7 +775,8 @@ function App() {
         return isViewTabPath(currentPath) ? null : currentPath
       },
       hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
-      shouldKeepActiveEditorMounted: () => Date.now() - lastEditTimestampRef.current < RECENT_EDIT_GRACE_MS,
+      shouldKeepActiveEditorMounted: isEditorRecentlyActive,
+      isActiveTabContentCurrent,
       reloadFolders: vault.reloadFolders,
       reloadVault: vault.reloadVault,
       reloadViews: vault.reloadViews,
@@ -771,7 +789,8 @@ function App() {
       closeAllTabs,
       activeNotePath,
       handleReplaceActiveTab,
-      lastEditTimestampRef,
+      isActiveTabContentCurrent,
+      isEditorRecentlyActive,
       notes.activeTabPathRef,
       refreshGitModifiedFiles,
       resolvedPath,
@@ -805,6 +824,7 @@ function App() {
     vaultPaths: watchedVaultPaths,
     onVaultChanged: handleFocusedVaultUpdate,
     filterChangedPaths: filterExternalVaultPaths,
+    shouldDeferRefresh: isEditorRecentlyActive,
   })
   const autoSync = useAutoSync({
     enabled: gitRepoState === 'ready',
@@ -863,7 +883,8 @@ function App() {
     closeAllTabs,
     replaceActiveTab: handleReplaceActiveTab,
     hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
-    shouldKeepActiveEditorMounted: () => Date.now() - lastEditTimestampRef.current < RECENT_EDIT_GRACE_MS,
+    shouldKeepActiveEditorMounted: isEditorRecentlyActive,
+    isActiveTabContentCurrent,
     onSelectNote: handleSelectNoteAndClearTable,
     activeTabPath: activeNotePath,
     getActiveTabPath: () => {

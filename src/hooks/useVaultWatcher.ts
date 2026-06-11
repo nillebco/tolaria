@@ -6,6 +6,7 @@ import { isPathInsideVaultRoot } from '../utils/vaultPathContainment'
 
 export const VAULT_CHANGED_EVENT = 'vault-changed'
 export const VAULT_WATCHER_DEBOUNCE_MS = 350
+export const VAULT_WATCHER_MIN_REFRESH_INTERVAL_MS = 5000
 export const INTERNAL_WRITE_SUPPRESSION_MS = 4000
 
 type WatchPath = string
@@ -22,6 +23,10 @@ interface UseVaultWatcherOptions {
   onVaultChanged: (paths: WatchPath[]) => Promise<void> | void
   debounceMs?: number
   filterChangedPaths?: (paths: WatchPath[]) => WatchPath[]
+  /** Returns true while refreshes must wait (e.g. the user is actively typing). */
+  shouldDeferRefresh?: () => boolean
+  /** Minimum quiet time between two onVaultChanged runs. */
+  minRefreshIntervalMs?: number
 }
 
 interface ChangedPathOptions {
@@ -266,20 +271,41 @@ function cleanupNativeWatcherListener(unlisten: UnlistenFn): void {
     .catch(() => {})
 }
 
+function refreshDelayMs({
+  shouldDeferRefresh,
+  lastRefreshAt,
+  debounceMs,
+  minRefreshIntervalMs,
+}: {
+  shouldDeferRefresh: UseVaultWatcherOptions['shouldDeferRefresh']
+  lastRefreshAt: number
+  debounceMs: number
+  minRefreshIntervalMs: number
+}): number {
+  if (shouldDeferRefresh?.()) return debounceMs
+  return Math.max(0, minRefreshIntervalMs - (Date.now() - lastRefreshAt))
+}
+
 function usePendingVaultRefresh({
   onVaultChanged,
   filterChangedPaths,
   debounceMs,
+  shouldDeferRefresh,
+  minRefreshIntervalMs,
 }: {
   onVaultChanged: UseVaultWatcherOptions['onVaultChanged']
   filterChangedPaths: UseVaultWatcherOptions['filterChangedPaths']
   debounceMs: number
+  shouldDeferRefresh: UseVaultWatcherOptions['shouldDeferRefresh']
+  minRefreshIntervalMs: number
 }) {
   const onVaultChangedRef = useLatestRef(onVaultChanged)
   const filterChangedPathsRef = useLatestRef(filterChangedPaths)
+  const shouldDeferRefreshRef = useLatestRef(shouldDeferRefresh)
   const queuedPathsRef = useRef<Set<string>>(new Set())
   const fullRefreshPendingRef = useRef(false)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastRefreshAtRef = useRef(0)
 
   const clearPendingRefresh = useCallback(() => clearRefreshQueue({
     debounceTimerRef,
@@ -287,7 +313,7 @@ function usePendingVaultRefresh({
     fullRefreshPendingRef,
   }), [])
 
-  const flushQueuedRefresh = useCallback(() => {
+  const runQueuedRefresh = useCallback(() => {
     const { fullRefresh, queuedPaths } = pendingRefreshPaths({ queuedPathsRef, fullRefreshPendingRef })
     clearPendingRefresh()
     const filteredPaths = filteredRefreshPaths({
@@ -296,10 +322,31 @@ function usePendingVaultRefresh({
       filterChangedPaths: filterChangedPathsRef.current,
     })
     if (!fullRefresh && filteredPaths.length === 0) return
+    lastRefreshAtRef.current = Date.now()
     void Promise.resolve(onVaultChangedRef.current(filteredPaths)).catch((err) => {
       console.warn('Vault watcher refresh failed:', err)
     })
   }, [clearPendingRefresh, filterChangedPathsRef, onVaultChangedRef])
+
+  const flushQueuedRefreshRef = useRef<() => void>(() => {})
+  const flushQueuedRefresh = useCallback(() => {
+    const delayMs = refreshDelayMs({
+      shouldDeferRefresh: shouldDeferRefreshRef.current,
+      lastRefreshAt: lastRefreshAtRef.current,
+      debounceMs,
+      minRefreshIntervalMs,
+    })
+    if (delayMs > 0) {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = setTimeout(() => flushQueuedRefreshRef.current(), delayMs)
+      return
+    }
+    runQueuedRefresh()
+  }, [debounceMs, minRefreshIntervalMs, runQueuedRefresh, shouldDeferRefreshRef])
+
+  useEffect(() => {
+    flushQueuedRefreshRef.current = flushQueuedRefresh
+  }, [flushQueuedRefresh])
 
   const enqueueChangedPaths = useCallback((root: WatchPath, paths: WatchPath[]) => {
     if (!root) return
@@ -367,6 +414,8 @@ export function useVaultWatcher({
   onVaultChanged,
   debounceMs = VAULT_WATCHER_DEBOUNCE_MS,
   filterChangedPaths,
+  shouldDeferRefresh,
+  minRefreshIntervalMs = VAULT_WATCHER_MIN_REFRESH_INTERVAL_MS,
 }: UseVaultWatcherOptions) {
   const watchRoots = useMemo(() => watchRootsFromOptions(vaultPath, vaultPaths), [vaultPath, vaultPaths])
   const watchRootsKey = watchRootsKeyFor(watchRoots)
@@ -374,6 +423,8 @@ export function useVaultWatcher({
     onVaultChanged,
     filterChangedPaths,
     debounceMs,
+    shouldDeferRefresh,
+    minRefreshIntervalMs,
   })
 
   useNativeVaultWatcher({

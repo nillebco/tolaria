@@ -8,6 +8,8 @@ interface PulledVaultRefreshOptions {
   closeAllTabs: () => void
   hasUnsavedChanges: (path: string) => boolean
   shouldKeepActiveEditorMounted?: () => boolean
+  /** Resolves true when the active tab already shows the on-disk content. */
+  isActiveTabContentCurrent?: (path: string) => Promise<boolean>
   reloadFolders: () => Promise<unknown> | unknown
   reloadVault: () => Promise<VaultEntry[]>
   reloadViews: () => Promise<unknown> | unknown
@@ -95,6 +97,16 @@ export function getPulledVaultUpdateOptions(): { preserveFocusedEditor: true } {
   return { preserveFocusedEditor: true }
 }
 
+async function editorAlreadyShowsDiskContent(options: {
+  activePath: string
+  movedEntry: VaultEntry | null
+  isActiveTabContentCurrent?: PulledVaultRefreshOptions['isActiveTabContentCurrent']
+}): Promise<boolean> {
+  const { activePath, movedEntry, isActiveTabContentCurrent } = options
+  if (movedEntry || !isActiveTabContentCurrent) return false
+  return isActiveTabContentCurrent(activePath).catch(() => false)
+}
+
 export async function refreshPulledVaultState(options: PulledVaultRefreshOptions): Promise<VaultEntry[]> {
   const {
     activeTabPath,
@@ -102,6 +114,7 @@ export async function refreshPulledVaultState(options: PulledVaultRefreshOptions
     getActiveTabPath,
     hasUnsavedChanges,
     shouldKeepActiveEditorMounted,
+    isActiveTabContentCurrent,
     reloadFolders,
     reloadVault,
     reloadViews,
@@ -137,6 +150,9 @@ export async function refreshPulledVaultState(options: PulledVaultRefreshOptions
     updatedFiles,
     vaultPath,
   })) {
+    if (await editorAlreadyShowsDiskContent({ activePath, movedEntry, isActiveTabContentCurrent })) {
+      return entries
+    }
     closeAllTabs()
     await replaceActiveTab(replacementEntry)
     return entries

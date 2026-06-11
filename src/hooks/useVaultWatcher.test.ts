@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   VAULT_CHANGED_EVENT,
   VAULT_WATCHER_DEBOUNCE_MS,
+  VAULT_WATCHER_MIN_REFRESH_INTERVAL_MS,
   normalizeWatchPath,
   resolveChangedPath,
   useRecentVaultWrites,
@@ -287,6 +288,72 @@ describe('useVaultWatcher', () => {
     await flushWatcherDebounce()
 
     expect(onVaultChanged).not.toHaveBeenCalled()
+  })
+
+  it('defers the refresh while the caller reports active editing', async () => {
+    const onVaultChanged = vi.fn()
+    let editing = true
+    renderHook(() => useVaultWatcher({
+      vaultPath: '/vault',
+      onVaultChanged,
+      shouldDeferRefresh: () => editing,
+    }))
+
+    await settleWatcherSubscription()
+    expect(mocks.listener).toBeDefined()
+    emitVaultChanged({ vaultPath: '/vault', paths: ['notes/a.md'] })
+    await flushWatcherDebounce()
+    await flushWatcherDebounce()
+
+    expect(onVaultChanged).not.toHaveBeenCalled()
+
+    editing = false
+    await flushWatcherDebounce()
+
+    expect(onVaultChanged).toHaveBeenCalledWith(['/vault/notes/a.md'])
+  })
+
+  it('keeps batching changed paths arriving during a deferred refresh', async () => {
+    const onVaultChanged = vi.fn()
+    let editing = true
+    renderHook(() => useVaultWatcher({
+      vaultPath: '/vault',
+      onVaultChanged,
+      shouldDeferRefresh: () => editing,
+    }))
+
+    await settleWatcherSubscription()
+    emitVaultChanged({ vaultPath: '/vault', paths: ['notes/a.md'] })
+    await flushWatcherDebounce()
+    emitVaultChanged({ vaultPath: '/vault', paths: ['notes/b.md'] })
+    await flushWatcherDebounce()
+
+    editing = false
+    await flushWatcherDebounce()
+
+    expect(onVaultChanged).toHaveBeenCalledWith(['/vault/notes/a.md', '/vault/notes/b.md'])
+  })
+
+  it('spaces consecutive refreshes by the minimum refresh interval', async () => {
+    const onVaultChanged = vi.fn()
+    renderHook(() => useVaultWatcher({ vaultPath: '/vault', onVaultChanged }))
+
+    await settleWatcherSubscription()
+    emitVaultChanged({ vaultPath: '/vault', paths: ['notes/a.md'] })
+    await flushWatcherDebounce()
+    expect(onVaultChanged).toHaveBeenCalledTimes(1)
+
+    emitVaultChanged({ vaultPath: '/vault', paths: ['notes/b.md'] })
+    await flushWatcherDebounce()
+    expect(onVaultChanged).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(VAULT_WATCHER_MIN_REFRESH_INTERVAL_MS)
+      await Promise.resolve()
+    })
+
+    expect(onVaultChanged).toHaveBeenCalledTimes(2)
+    expect(onVaultChanged).toHaveBeenLastCalledWith(['/vault/notes/b.md'])
   })
 
   it('lets callers suppress app-owned writes before refreshing', async () => {

@@ -30,6 +30,8 @@ interface VaultBridgeDeps {
   replaceActiveTab: (entry: VaultEntry) => Promise<void>
   hasUnsavedChanges: (path: string) => boolean
   shouldKeepActiveEditorMounted?: () => boolean
+  /** Resolves true when the active tab already shows the on-disk content. */
+  isActiveTabContentCurrent?: (path: string) => Promise<boolean>
   onSelectNote: (entry: VaultEntry) => void
   activeTabPath: string | null
   getActiveTabPath?: () => string | null
@@ -55,6 +57,7 @@ export function useVaultBridge({
   replaceActiveTab,
   hasUnsavedChanges,
   shouldKeepActiveEditorMounted,
+  isActiveTabContentCurrent,
   onSelectNote,
   activeTabPath,
   getActiveTabPath,
@@ -75,6 +78,7 @@ export function useVaultBridge({
       getActiveTabPath,
       hasUnsavedChanges,
       shouldKeepActiveEditorMounted,
+      isActiveTabContentCurrent,
       reloadFolders,
       reloadVault,
       reloadViews,
@@ -88,6 +92,7 @@ export function useVaultBridge({
     getActiveTabPath,
     hasUnsavedChanges,
     shouldKeepActiveEditorMounted,
+    isActiveTabContentCurrent,
     reloadFolders,
     reloadVault,
     reloadViews,

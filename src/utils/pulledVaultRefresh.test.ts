@@ -137,6 +137,44 @@ describe('refreshPulledVaultState', () => {
     expect(options.replaceActiveTab).toHaveBeenCalledWith(movedEntry)
   })
 
+  it('keeps the active tab mounted when the editor already shows the on-disk content', async () => {
+    const options = makeOptions({
+      isActiveTabContentCurrent: vi.fn().mockResolvedValue(true),
+    })
+
+    await refreshPulledVaultState(options)
+
+    expect(options.isActiveTabContentCurrent).toHaveBeenCalledWith('/vault/active.md')
+    expect(options.closeAllTabs).not.toHaveBeenCalled()
+    expect(options.replaceActiveTab).not.toHaveBeenCalled()
+  })
+
+  it('replaces the active tab when the on-disk content differs from the editor', async () => {
+    const options = makeOptions({
+      isActiveTabContentCurrent: vi.fn().mockResolvedValue(false),
+    })
+
+    const entries = await refreshPulledVaultState(options)
+
+    expect(options.closeAllTabs).toHaveBeenCalledOnce()
+    expect(options.replaceActiveTab).toHaveBeenCalledWith(entries[0])
+  })
+
+  it('still retargets externally moved notes without checking tab content', async () => {
+    const movedEntry = makeEntry('/vault/projects/active.md', 'Active')
+    const options = makeOptions({
+      activeTabPath: '/vault/active.md',
+      isActiveTabContentCurrent: vi.fn().mockResolvedValue(true),
+      reloadVault: vi.fn().mockResolvedValue([movedEntry]),
+      updatedFiles: ['active.md', 'projects/active.md'],
+    })
+
+    await refreshPulledVaultState(options)
+
+    expect(options.isActiveTabContentCurrent).not.toHaveBeenCalled()
+    expect(options.replaceActiveTab).toHaveBeenCalledWith(movedEntry)
+  })
+
   it('skips stale tab replacement when the active note changes during reload', async () => {
     let resolveReload!: (entries: VaultEntry[]) => void
     let currentActivePath: string | null = '/vault/active.md'
