@@ -682,6 +682,7 @@
   "viewTable.removeComputedColumn": "Remove computed column",
   "viewTable.computedColumnsEmpty": "No computed columns.",
   "viewTable.copyCsv": "Copy CSV",
+  "viewTable.copyTsv": "Copy as TSV",
   "viewTable.exportCsv": "Export CSV",
   "viewTable.dragColumn": "Drag column",
   "viewTable.sortColumn": "Sort column",

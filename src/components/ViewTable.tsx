@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { AppLocale } from '../lib/i18n'
 import { translate } from '../lib/i18n'
+import { isTauri } from '../mock-tauri'
 import { trackViewTableCopied, trackViewTableConfigured, trackViewTableCsvExported } from '../lib/productAnalytics'
 import type { VaultEntry, ViewDefinition, ViewFile, ViewTableColumnFilter, ViewTableConfig, ViewTableDensity } from '../types'
 import { applySavedViewSort, parseSortConfig, serializeSortConfig, type SortDirection, type SortOption } from '../utils/noteListHelpers'
 import { evaluateView } from '../utils/viewFilters'
-import { viewTableCsvText } from '../utils/viewTableCsv'
+import { viewTableCsvText, viewTableTsvText } from '../utils/viewTableCsv'
 import { buildViewTableRowsResult, buildViewTableSummaries, resolveViewTableColumns, type ViewTableColumn } from '../utils/viewTableColumns'
 import { ViewTableConfigDialog } from './ViewTableConfigDialog'
 
@@ -282,20 +283,48 @@ export const ViewTable = memo(function ViewTable({
     trackViewTableCopied(source)
   }, [])
 
-  const copyCsv = useCallback(() => {
-    if (!navigator.clipboard) return
-    void navigator.clipboard.writeText(viewTableCsvText(columns, rows))
+  const copyCsv = useCallback(async () => {
+    const text = viewTableCsvText(columns, rows)
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('copy_text_to_clipboard', { text })
+    } else {
+      if (!navigator.clipboard) return
+      await navigator.clipboard.writeText(text)
+    }
     trackViewTableCsvExported('copy')
   }, [columns, rows])
 
-  const downloadCsv = useCallback(() => {
-    const blob = new Blob([viewTableCsvText(columns, rows)], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = csvFilename(view.definition.name)
-    link.click()
-    URL.revokeObjectURL(url)
+  const copyTsv = useCallback(async () => {
+    const text = viewTableTsvText(columns, rows)
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('copy_text_to_clipboard', { text })
+    } else {
+      if (!navigator.clipboard) return
+      await navigator.clipboard.writeText(text)
+    }
+    trackViewTableCsvExported('copy_tsv')
+  }, [columns, rows])
+
+  const downloadCsv = useCallback(async () => {
+    const csvText = viewTableCsvText(columns, rows)
+    const filename = csvFilename(view.definition.name)
+    if (isTauri()) {
+      const { save } = await import('@tauri-apps/plugin-dialog')
+      const path = await save({ defaultPath: filename, filters: [{ name: 'CSV', extensions: ['csv'] }] })
+      if (!path) return
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('write_text_file', { path, content: csvText })
+    } else {
+      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      link.click()
+      URL.revokeObjectURL(url)
+    }
     trackViewTableCsvExported('download')
   }, [columns, rows, view.definition.name])
 
@@ -315,6 +344,15 @@ export const ViewTable = memo(function ViewTable({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={copyTsv}
+          >
+            <Copy size={14} className="mr-1" />
+            {translate(locale, 'viewTable.copyTsv')}
+          </Button>
           <Button
             type="button"
             variant="outline"

@@ -325,7 +325,7 @@ describe('ViewTable', () => {
     expect(screen.queryByText('12')).not.toBeInTheDocument()
   })
 
-  it('escapes CSV values with quotes and line breaks', () => {
+  it('escapes CSV values with quotes, line breaks, and tabs', () => {
     const columns = resolveViewTableColumns(['Owner'])
 
     expect(viewTableCsvText(columns, [{
@@ -334,6 +334,13 @@ describe('ViewTable', () => {
         'property:Owner': 'Ada\nIvo',
       },
     }])).toBe('Title,Owner\n"Alpha ""Q1""","Ada\nIvo"')
+
+    expect(viewTableCsvText(columns, [{
+      cells: {
+        title: 'My Note',
+        'property:Owner': 'tag1\ttag2',
+      },
+    }])).toBe('Title,Owner\nMy Note,tag1 tag2')
   })
 
   it('shows an empty state when no notes match', () => {

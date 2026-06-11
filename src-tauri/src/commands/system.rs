@@ -251,6 +251,18 @@ pub fn read_text_from_clipboard() -> Result<String, String> {
 
 #[cfg(desktop)]
 #[tauri::command]
+pub fn write_text_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| format!("Failed to write file: {e}"))
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn write_text_file(_path: String, _content: String) -> Result<(), String> {
+    Err("File writing is not supported on mobile".into())
+}
+
+#[cfg(desktop)]
+#[tauri::command]
 pub async fn sync_mcp_bridge_vault(
     app: tauri::AppHandle,
     vault_path: Option<String>,

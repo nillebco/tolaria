@@ -9,7 +9,22 @@
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(pnpm --filter tolaria exec tsc --noEmit)",
       "Bash(pnpm build *)",
-      "Bash(pnpm test *)"
+      "Bash(pnpm test *)",
+      "Bash(./node_modules/.bin/eslint src/App.tsx)",
+      "Bash(pnpm test:coverage)",
+      "Bash(git commit *)",
+      "Bash(cs review *)",
+      "Bash(git -C /Users/nilleb/dev/nillebco/tolaria show a84a6bbd --stat)",
+      "Bash(git -C /Users/nilleb/dev/nillebco/tolaria show ef79c917 --stat)",
+      "Bash(git -C /Users/nilleb/dev/nillebco/tolaria show ef79c917 -- src/components/ViewTable.tsx)",
+      "Bash(pnpm dev *)",
+      "Bash(xxd /Users/nilleb/dev/nillebco/tolaria/src/utils/viewTableCsv.ts)",
+      "Bash(git -C /Users/nilleb/dev/nillebco/tolaria show a84a6bbd -- src/components/ViewTable.tsx)",
+      "Bash(git -C /Users/nilleb/dev/nillebco/tolaria show a84a6bbd^:src/components/ViewTable.tsx)",
+      "Bash(pnpm build:unsigned *)",
+      "Bash(pnpm tauri:build:unsigned *)",
+      "Bash(pnpm l10n:translate)",
+      "Bash(pnpm l10n:validate)"
     ]
   }
 }

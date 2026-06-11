@@ -101,7 +101,7 @@ export function trackViewTableCopied(source: 'cell' | 'row'): void {
   trackEvent('view_table_copied', { source })
 }
 
-export function trackViewTableCsvExported(action: 'copy' | 'download'): void {
+export function trackViewTableCsvExported(action: 'copy' | 'copy_tsv' | 'download'): void {
   trackEvent('view_table_csv_exported', { action })
 }
 
