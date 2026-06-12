@@ -114,6 +114,29 @@ describe('useRecentVaultWrites', () => {
     ])).toEqual(['/Users/luca/Workspace/laputa/notes/external.md'])
   })
 
+  it('reports an active internal write operation until every holder releases', () => {
+    const { result } = renderHook(() => useRecentVaultWrites({ vaultPath: '/vault', now: () => 1000 }))
+
+    expect(result.current.hasActiveInternalWriteOperation()).toBe(false)
+
+    let releaseFirst!: () => void
+    let releaseSecond!: () => void
+    act(() => {
+      releaseFirst = result.current.beginInternalWriteOperation()
+      releaseSecond = result.current.beginInternalWriteOperation()
+    })
+    expect(result.current.hasActiveInternalWriteOperation()).toBe(true)
+
+    act(() => { releaseFirst() })
+    expect(result.current.hasActiveInternalWriteOperation()).toBe(true)
+
+    act(() => {
+      releaseSecond()
+      releaseSecond()
+    })
+    expect(result.current.hasActiveInternalWriteOperation()).toBe(false)
+  })
+
   it('clears recent writes when the active vault changes', () => {
     const { result, rerender } = renderHook(
       ({ vaultPath }) => useRecentVaultWrites({ vaultPath, now: () => 1000 }),

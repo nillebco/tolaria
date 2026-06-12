@@ -303,12 +303,13 @@ function useUntitledRenameExecutor({
     const renamePromise = (async () => {
       try {
         const renameVaultPath = vaultPathForTabPath(tabsRef.current, path, resolvedPath)
-        const result = await invoke<{ new_path: string; updated_files: number } | null>('auto_rename_untitled', {
+        const result = await invoke<{ new_path: string; updated_files: number; updated_paths?: string[] } | null>('auto_rename_untitled', {
           args: { vaultPath: renameVaultPath, notePath: path },
         })
         if (!result) return path
         onInternalVaultWrite?.(path)
         onInternalVaultWrite?.(result.new_path)
+        for (const updatedPath of result.updated_paths ?? []) onInternalVaultWrite?.(updatedPath)
         trackRenamedPath(renamedPathsRef.current, path, result.new_path)
         await reloadAutoRenamedNote({
           oldPath: path,

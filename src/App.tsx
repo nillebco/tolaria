@@ -429,6 +429,8 @@ function App() {
   const {
     markInternalWrite: markRecentVaultWrite,
     filterExternalPaths: filterExternalVaultPaths,
+    beginInternalWriteOperation,
+    hasActiveInternalWriteOperation,
   } = useRecentVaultWrites({
     vaultPath: noteWindowParams ? '' : resolvedPath,
     vaultPaths: watchedVaultPaths,
@@ -656,6 +658,7 @@ function App() {
     onTypeStateChanged: async () => { await vault.reloadVault() },
     replaceEntry: vault.replaceEntry,
     onInternalVaultWrite: markRecentVaultWrite,
+    beginInternalWriteOperation,
     onFrontmatterPersisted: refreshGitModifiedFiles,
     onPathRenamed: (oldPath, newPath) => appSave.trackRenamedPath(oldPath, newPath),
   })
@@ -819,12 +822,16 @@ function App() {
       cancelled = true
     }
   }, [watchedVaultPaths])
+  const shouldDeferVaultRefresh = useCallback(
+    () => isEditorRecentlyActive() || hasActiveInternalWriteOperation(),
+    [hasActiveInternalWriteOperation, isEditorRecentlyActive],
+  )
   useVaultWatcher({
     vaultPath: noteWindowParams ? '' : resolvedPath,
     vaultPaths: watchedVaultPaths,
     onVaultChanged: handleFocusedVaultUpdate,
     filterChangedPaths: filterExternalVaultPaths,
-    shouldDeferRefresh: isEditorRecentlyActive,
+    shouldDeferRefresh: shouldDeferVaultRefresh,
   })
   const autoSync = useAutoSync({
     enabled: gitRepoState === 'ready',

@@ -47,6 +47,8 @@ export interface NoteActionsConfig {
   onFrontmatterPersisted?: () => void | Promise<void>
   /** Called for note-action owned disk writes so file watchers can ignore app-originated changes. */
   onInternalVaultWrite?: (path: string) => void
+  /** Holds the watcher refresh while a rename rewrites files; returns a release fn. */
+  beginInternalWriteOperation?: () => () => void
   /** Called after type files or type assignments change, so derived type surfaces can reload. */
   onTypeStateChanged?: () => void | Promise<void>
 }
@@ -495,7 +497,14 @@ export function useNoteActions(config: NoteActionsConfig) {
 
   const creation = useNoteCreation(config, { openTabWithContent })
   const rename = useNoteRename(
-    { entries, setToastMessage, reloadVault: config.reloadVault, onPathRenamed: handlePathRenamed },
+    {
+      entries,
+      setToastMessage,
+      reloadVault: config.reloadVault,
+      onPathRenamed: handlePathRenamed,
+      onInternalVaultWrite: config.onInternalVaultWrite,
+      beginInternalWriteOperation: config.beginInternalWriteOperation,
+    },
     { tabs: tabMgmt.tabs, setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
   )
 

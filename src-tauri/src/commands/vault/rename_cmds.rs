@@ -157,6 +157,16 @@ fn rename_existing_note(command: PendingNoteRenameCommand) -> Result<RenameResul
     with_note_path_in_vault(request, |note| command.args.run(note))
 }
 
+/// Vault-wide rename work reads and rewrites many files; run it off the main
+/// thread so the window event loop never blocks while a vault is scanned.
+async fn run_blocking_rename<T: Send + 'static>(
+    task: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tokio::task::spawn_blocking(task)
+        .await
+        .map_err(|e| format!("Task panicked: {e}"))?
+}
+
 fn rename_public_note(args: PublicNoteRenameCommandArgs) -> Result<RenameResult, String> {
     let command = match args {
         PublicNoteRenameCommandArgs::Title(args) => pending_note_rename(
@@ -179,13 +189,16 @@ fn rename_public_note(args: PublicNoteRenameCommandArgs) -> Result<RenameResult,
 }
 
 #[tauri::command]
-pub fn rename_note(args: RenameNoteCommandArgs) -> Result<RenameResult, String> {
-    rename_public_note(PublicNoteRenameCommandArgs::Title(args))
+pub async fn rename_note(args: RenameNoteCommandArgs) -> Result<RenameResult, String> {
+    run_blocking_rename(move || rename_public_note(PublicNoteRenameCommandArgs::Title(args))).await
 }
 
 #[tauri::command]
-pub fn rename_note_filename(args: RenameNoteFilenameCommandArgs) -> Result<RenameResult, String> {
-    rename_public_note(PublicNoteRenameCommandArgs::Filename(args))
+pub async fn rename_note_filename(
+    args: RenameNoteFilenameCommandArgs,
+) -> Result<RenameResult, String> {
+    run_blocking_rename(move || rename_public_note(PublicNoteRenameCommandArgs::Filename(args)))
+        .await
 }
 
 fn run_folder_move(args: MoveNoteToFolderCommandArgs) -> Result<RenameResult, String> {
@@ -217,14 +230,18 @@ fn run_folder_move(args: MoveNoteToFolderCommandArgs) -> Result<RenameResult, St
 }
 
 #[tauri::command]
-pub fn move_note_to_folder(args: MoveNoteToFolderCommandArgs) -> Result<RenameResult, String> {
-    run_folder_move(args)
+pub async fn move_note_to_folder(args: MoveNoteToFolderCommandArgs) -> Result<RenameResult, String> {
+    run_blocking_rename(move || run_folder_move(args)).await
 }
 
 #[tauri::command]
-pub fn move_note_to_workspace(
+pub async fn move_note_to_workspace(
     args: MoveNoteToWorkspaceCommandArgs,
 ) -> Result<RenameResult, String> {
+    run_blocking_rename(move || run_workspace_move(args)).await
+}
+
+fn run_workspace_move(args: MoveNoteToWorkspaceCommandArgs) -> Result<RenameResult, String> {
     let request = RequestedNotePath::new(&args.source_vault_path, &args.old_path);
     with_note_path_in_vault(request, |note| {
         let source_root_path = Path::new(note.vault_path);
@@ -253,33 +270,42 @@ pub fn move_note_to_workspace(
 }
 
 #[tauri::command]
-pub fn auto_rename_untitled(
+pub async fn auto_rename_untitled(
     args: AutoRenameUntitledCommandArgs,
 ) -> Result<Option<RenameResult>, String> {
-    with_existing_path_in_requested_vault(
-        &args.vault_path,
-        &args.note_path,
-        |requested_root, validated_path| {
-            vault::auto_rename_untitled(vault::AutoRenameUntitledRequest {
-                vault_path: requested_root,
-                note_path: validated_path,
-            })
-        },
-    )
+    run_blocking_rename(move || {
+        with_existing_path_in_requested_vault(
+            &args.vault_path,
+            &args.note_path,
+            |requested_root, validated_path| {
+                vault::auto_rename_untitled(vault::AutoRenameUntitledRequest {
+                    vault_path: requested_root,
+                    note_path: validated_path,
+                })
+            },
+        )
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn detect_renames(args: VaultPathCommandArgs) -> Result<Vec<DetectedRename>, String> {
-    let vault_path = expand_tilde(&args.vault_path);
-    vault::detect_renames(Path::new(vault_path.as_ref()))
+pub async fn detect_renames(args: VaultPathCommandArgs) -> Result<Vec<DetectedRename>, String> {
+    run_blocking_rename(move || {
+        let vault_path = expand_tilde(&args.vault_path);
+        vault::detect_renames(Path::new(vault_path.as_ref()))
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn update_wikilinks_for_renames(
+pub async fn update_wikilinks_for_renames(
     args: UpdateWikilinksForRenamesCommandArgs,
 ) -> Result<usize, String> {
-    let vault_path = expand_tilde(&args.vault_path);
-    vault::update_wikilinks_for_renames(Path::new(vault_path.as_ref()), &args.renames)
+    run_blocking_rename(move || {
+        let vault_path = expand_tilde(&args.vault_path);
+        vault::update_wikilinks_for_renames(Path::new(vault_path.as_ref()), &args.renames)
+    })
+    .await
 }
 
 #[cfg(test)]
@@ -301,8 +327,8 @@ mod tests {
         path.to_string_lossy().into_owned()
     }
 
-    #[test]
-    fn rename_note_command_updates_title_file_and_links() {
+    #[tokio::test]
+    async fn rename_note_command_updates_title_file_and_links() {
         let dir = TempDir::new().unwrap();
         let vault = vault_path(&dir);
         let old_path = write_note(
@@ -318,19 +344,21 @@ mod tests {
             new_title: "New Title".to_string(),
             old_title: None,
         })
+        .await
         .unwrap();
 
         assert!(result.new_path.ends_with("new-title.md"));
         assert!(!Path::new(&old_path).exists());
         assert!(Path::new(&result.new_path).exists());
-        assert!(fs::read_to_string(linked_path)
+        assert!(fs::read_to_string(&linked_path)
             .unwrap()
             .contains("[[new-title]]"));
         assert_eq!(result.failed_updates, 0);
+        assert_eq!(result.updated_paths, vec![linked_path]);
     }
 
-    #[test]
-    fn filename_and_folder_commands_preserve_note_content() {
+    #[tokio::test]
+    async fn filename_and_folder_commands_preserve_note_content() {
         let dir = TempDir::new().unwrap();
         let vault = vault_path(&dir);
         let old_path = write_note(
@@ -344,6 +372,7 @@ mod tests {
             old_path,
             new_filename_stem: "custom-name".to_string(),
         })
+        .await
         .unwrap();
         assert!(renamed.new_path.ends_with("custom-name.md"));
 
@@ -353,6 +382,7 @@ mod tests {
             old_path: renamed.new_path.clone(),
             folder_path: "Projects".to_string(),
         })
+        .await
         .unwrap();
 
         assert!(moved.new_path.ends_with("Projects/custom-name.md"));
@@ -361,8 +391,8 @@ mod tests {
             .contains("Draft Title"));
     }
 
-    #[test]
-    fn move_note_to_workspace_command_preserves_relative_path() {
+    #[tokio::test]
+    async fn move_note_to_workspace_command_preserves_relative_path() {
         let source = TempDir::new().unwrap();
         let destination = TempDir::new().unwrap();
         let source_vault = vault_path(&source);
@@ -380,6 +410,7 @@ mod tests {
             old_path: old_path.clone(),
             replacement_target: Some("team/Projects/draft".to_string()),
         })
+        .await
         .unwrap();
 
         assert!(!Path::new(&old_path).exists());
@@ -393,8 +424,8 @@ mod tests {
             .contains("[[team/Projects/draft]]"));
     }
 
-    #[test]
-    fn auto_rename_and_detected_rename_commands_route_through_vault() {
+    #[tokio::test]
+    async fn auto_rename_and_detected_rename_commands_route_through_vault() {
         let dir = TempDir::new().unwrap();
         let vault = vault_path(&dir);
         let untitled = write_note(&dir, "untitled-note-123.md", "# Project Plan\n");
@@ -403,6 +434,7 @@ mod tests {
             vault_path: vault.clone(),
             note_path: untitled,
         })
+        .await
         .unwrap()
         .unwrap();
         assert!(auto.new_path.ends_with("project-plan.md"));
@@ -420,6 +452,7 @@ mod tests {
         let renames = detect_renames(VaultPathCommandArgs {
             vault_path: vault.clone(),
         })
+        .await
         .unwrap();
         assert_eq!(renames.len(), 1);
         assert_eq!(renames[0].old_path, "project-plan.md");
@@ -430,13 +463,14 @@ mod tests {
                 vault_path: vault,
                 renames,
             })
+            .await
             .unwrap(),
             0,
         );
     }
 
-    #[test]
-    fn move_note_to_folder_accepts_empty_folder_as_vault_root() {
+    #[tokio::test]
+    async fn move_note_to_folder_accepts_empty_folder_as_vault_root() {
         let dir = TempDir::new().unwrap();
         let vault = vault_path(&dir);
         let note = write_note(&dir, "Inbox/note.md", "# Note\n");
@@ -446,6 +480,7 @@ mod tests {
             old_path: note,
             folder_path: "  ".to_string(),
         })
+        .await
         .unwrap();
 
         assert!(moved.new_path.ends_with("note.md"));

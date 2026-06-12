@@ -17,6 +17,8 @@ interface RenameResult {
   new_path: string
   updated_files: number
   failed_updates?: number
+  /** Absolute paths of linked notes whose wiki links were rewritten on disk. */
+  updated_paths?: string[]
 }
 
 export { slugify }
@@ -395,6 +397,10 @@ export interface NoteRenameConfig {
   setToastMessage: (msg: string | null) => void
   reloadVault?: () => Promise<unknown>
   onPathRenamed?: (oldPath: string, newPath: string) => void
+  /** Marks a disk write as app-owned so the vault watcher ignores its events. */
+  onInternalVaultWrite?: (path: string) => void
+  /** Holds the watcher refresh while a rename rewrites files; returns a release fn. */
+  beginInternalWriteOperation?: () => () => void
 }
 
 interface RenameTabDeps {
@@ -453,6 +459,21 @@ function useRenameResultApplier(
   }
 }
 
+function markRenameInternalWrites({
+  oldPath,
+  result,
+  onInternalVaultWrite,
+}: {
+  oldPath: string
+  result: RenameResult
+  onInternalVaultWrite?: NoteRenameConfig['onInternalVaultWrite']
+}): void {
+  if (!onInternalVaultWrite) return
+  onInternalVaultWrite(oldPath)
+  onInternalVaultWrite(result.new_path)
+  for (const updatedPath of result.updated_paths ?? []) onInternalVaultWrite(updatedPath)
+}
+
 async function runRenameAction({
   path,
   perform,
@@ -464,6 +485,8 @@ async function runRenameAction({
   logLabel,
   successMessage,
   allowUnchangedResult = false,
+  onInternalVaultWrite,
+  beginInternalWriteOperation,
 }: {
   path: string
   perform: () => Promise<RenameResult>
@@ -481,9 +504,13 @@ async function runRenameAction({
   logLabel: string
   successMessage?: (result: RenameResult) => string
   allowUnchangedResult?: boolean
+  onInternalVaultWrite?: NoteRenameConfig['onInternalVaultWrite']
+  beginInternalWriteOperation?: NoteRenameConfig['beginInternalWriteOperation']
 }): Promise<RenameResult | null> {
+  const releaseWriteOperation = beginInternalWriteOperation?.()
   try {
     const result = await perform()
+    markRenameInternalWrites({ oldPath: path, result, onInternalVaultWrite })
     if (allowUnchangedResult && notePathsMatch(result.new_path, path)) return result
     await applyRenameResult(path, result, buildEntry, onEntryRenamed, { successMessage })
     return result
@@ -491,6 +518,8 @@ async function runRenameAction({
     console.error(`${logLabel}:`, err)
     setToastMessage(errorMessage(err))
     return null
+  } finally {
+    releaseWriteOperation?.()
   }
 }
 
@@ -501,11 +530,15 @@ function useWorkspaceMoveHandler({
   entries,
   setToastMessage,
   tabsRef,
+  onInternalVaultWrite,
+  beginInternalWriteOperation,
 }: {
   applyRenameResult: ApplyRenameResult
   entries: VaultEntry[]
   setToastMessage: (message: string | null) => void
   tabsRef: React.MutableRefObject<Tab[]>
+  onInternalVaultWrite?: NoteRenameConfig['onInternalVaultWrite']
+  beginInternalWriteOperation?: NoteRenameConfig['beginInternalWriteOperation']
 }) {
   return useCallback(async (
     path: string,
@@ -544,12 +577,14 @@ function useWorkspaceMoveHandler({
         result.failed_updates ?? 0,
       ),
       allowUnchangedResult: true,
+      onInternalVaultWrite,
+      beginInternalWriteOperation,
     })
-  }, [applyRenameResult, entries, setToastMessage, tabsRef])
+  }, [applyRenameResult, beginInternalWriteOperation, entries, onInternalVaultWrite, setToastMessage, tabsRef])
 }
 
 export function useNoteRename(config: NoteRenameConfig, tabDeps: RenameTabDeps) {
-  const { entries, setToastMessage } = config
+  const { entries, setToastMessage, onInternalVaultWrite, beginInternalWriteOperation } = config
   const { tabsRef, applyRenameResult } = useRenameResultApplier(config, tabDeps)
 
   const handleRenameNote = useCallback(async (path: string, newTitle: string, vaultPath: string, onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void) => {
@@ -564,8 +599,10 @@ export function useNoteRename(config: NoteRenameConfig, tabDeps: RenameTabDeps) 
       setToastMessage,
       errorMessage: renameErrorMessage,
       logLabel: 'Failed to rename note',
+      onInternalVaultWrite,
+      beginInternalWriteOperation,
     })
-  }, [entries, tabsRef, applyRenameResult, setToastMessage])
+  }, [entries, tabsRef, applyRenameResult, setToastMessage, onInternalVaultWrite, beginInternalWriteOperation])
 
   const handleRenameFilename = useCallback(async (path: string, newFilenameStem: string, vaultPath: string, onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void) => {
     const entry = findRenameEntry(entries, tabsRef.current, path)
@@ -579,8 +616,10 @@ export function useNoteRename(config: NoteRenameConfig, tabDeps: RenameTabDeps) 
       setToastMessage,
       errorMessage: renameErrorMessage,
       logLabel: 'Failed to rename note filename',
+      onInternalVaultWrite,
+      beginInternalWriteOperation,
     })
-  }, [entries, tabsRef, applyRenameResult, setToastMessage])
+  }, [entries, tabsRef, applyRenameResult, setToastMessage, onInternalVaultWrite, beginInternalWriteOperation])
 
   const handleMoveNoteToFolder = useCallback(async (path: string, folderPath: string, vaultPath: string, onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void) => {
     const normalizedFolderPath = normalizeVaultRelativePath(folderPath)
@@ -597,14 +636,18 @@ export function useNoteRename(config: NoteRenameConfig, tabDeps: RenameTabDeps) 
       logLabel: 'Failed to move note to folder',
       successMessage: (result) => moveToastMessage(normalizedFolderPath, result.updated_files, result.failed_updates ?? 0),
       allowUnchangedResult: true,
+      onInternalVaultWrite,
+      beginInternalWriteOperation,
     })
-  }, [entries, tabsRef, applyRenameResult, setToastMessage])
+  }, [entries, tabsRef, applyRenameResult, setToastMessage, onInternalVaultWrite, beginInternalWriteOperation])
 
   const handleMoveNoteToWorkspace = useWorkspaceMoveHandler({
     applyRenameResult,
     entries,
     setToastMessage,
     tabsRef,
+    onInternalVaultWrite,
+    beginInternalWriteOperation,
   })
 
   return { handleRenameNote, handleRenameFilename, handleMoveNoteToFolder, handleMoveNoteToWorkspace, tabsRef }

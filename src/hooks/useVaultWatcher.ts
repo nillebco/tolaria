@@ -134,6 +134,27 @@ function useVaultPathRef(vaultPath: WatchPath) {
   return vaultPathRef
 }
 
+function useInternalWriteOperations() {
+  const activeOperationsRef = useRef(0)
+
+  const beginInternalWriteOperation = useCallback(() => {
+    activeOperationsRef.current += 1
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      activeOperationsRef.current -= 1
+    }
+  }, [])
+
+  const hasActiveInternalWriteOperation = useCallback(
+    () => activeOperationsRef.current > 0,
+    [],
+  )
+
+  return { beginInternalWriteOperation, hasActiveInternalWriteOperation }
+}
+
 export function useRecentVaultWrites({
   vaultPath = '',
   vaultPaths,
@@ -147,6 +168,7 @@ export function useRecentVaultWrites({
   const watchRoots = useMemo(() => watchRootsFromOptions(vaultPath, vaultPaths), [vaultPath, vaultPaths])
   const { watchRootsRef, watchRootsKey } = useWatchRootsRef(watchRoots)
   const vaultPathRef = useVaultPathRef(vaultPath)
+  const internalWriteOperations = useInternalWriteOperations()
 
   useEffect(() => {
     recentWritesRef.current.clear()
@@ -177,7 +199,7 @@ export function useRecentVaultWrites({
     })
   }, [now, vaultPathRef, watchRootsRef])
 
-  return { markInternalWrite, filterExternalPaths }
+  return { markInternalWrite, filterExternalPaths, ...internalWriteOperations }
 }
 
 function clearRefreshQueue({

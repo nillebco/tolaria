@@ -257,6 +257,63 @@ describe('useNoteRename hook', () => {
     expect(setToastMessage).toHaveBeenCalledWith('Failed to rename note')
   })
 
+  it('marks rename writes as internal and holds the write operation guard', async () => {
+    let activeOperations = 0
+    let activeOperationsDuringRename = -1
+    const beginInternalWriteOperation = vi.fn(() => {
+      activeOperations += 1
+      return () => { activeOperations -= 1 }
+    })
+    const onInternalVaultWrite = vi.fn()
+    vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
+      if (cmd === 'rename_note') {
+        activeOperationsDuringRename = activeOperations
+        return {
+          new_path: '/vault/new.md',
+          updated_files: 1,
+          failed_updates: 0,
+          updated_paths: ['/vault/linked.md'],
+        }
+      }
+      if (cmd === 'get_note_content') return '# New\n'
+      return ''
+    })
+
+    const { result } = renderHook(() => useNoteRename(
+      { entries: [], setToastMessage, onInternalVaultWrite, beginInternalWriteOperation },
+      { tabs: [], setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
+    ))
+    await act(async () => {
+      await result.current.handleRenameNote('/vault/old.md', 'New', '/vault', vi.fn())
+    })
+
+    expect(activeOperationsDuringRename).toBe(1)
+    expect(activeOperations).toBe(0)
+    expect(onInternalVaultWrite).toHaveBeenCalledWith('/vault/old.md')
+    expect(onInternalVaultWrite).toHaveBeenCalledWith('/vault/new.md')
+    expect(onInternalVaultWrite).toHaveBeenCalledWith('/vault/linked.md')
+  })
+
+  it('releases the write operation guard when the rename fails', async () => {
+    let activeOperations = 0
+    const beginInternalWriteOperation = vi.fn(() => {
+      activeOperations += 1
+      return () => { activeOperations -= 1 }
+    })
+    vi.mocked(mockInvoke).mockRejectedValueOnce(new Error('fail'))
+
+    const { result } = renderHook(() => useNoteRename(
+      { entries: [], setToastMessage, beginInternalWriteOperation },
+      { tabs: [], setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
+    ))
+    await act(async () => {
+      await result.current.handleRenameNote('/vault/old.md', 'New', '/vault', vi.fn())
+    })
+
+    expect(beginInternalWriteOperation).toHaveBeenCalledOnce()
+    expect(activeOperations).toBe(0)
+  })
+
   it('switches active tab when renamed note is active', async () => {
     await runHandleRenameNote({
       entries: [makeEntry({ path: '/vault/old.md' })],
