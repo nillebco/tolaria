@@ -649,6 +649,32 @@ mod tests {
     }
 
     #[test]
+    fn go_menu_exposes_tab_switch_accelerators() {
+        let go_menu = manifest_section("Go").expect("go menu exists");
+        let previous_tab_item = go_menu
+            .items
+            .iter()
+            .find(|item| item.command_id(manifest()) == Some("tab-prev-tab"))
+            .expect("Go menu exposes previous tab");
+        let next_tab_item = go_menu
+            .items
+            .iter()
+            .find(|item| item.command_id(manifest()) == Some("tab-next-tab"))
+            .expect("Go menu exposes next tab");
+
+        assert_eq!(previous_tab_item.label("macos"), Some("Previous Tab"));
+        assert_eq!(
+            previous_tab_item.accelerator(manifest()),
+            Some("CmdOrCtrl+Shift+Left")
+        );
+        assert_eq!(next_tab_item.label("macos"), Some("Next Tab"));
+        assert_eq!(
+            next_tab_item.accelerator(manifest()),
+            Some("CmdOrCtrl+Shift+Right")
+        );
+    }
+
+    #[test]
     fn no_duplicate_custom_ids() {
         let mut seen = HashSet::new();
         for id in manifest_menu_items().filter_map(|item| item.menu_item_id(manifest())) {

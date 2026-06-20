@@ -1203,6 +1203,8 @@ URL: /reference/keyboard-shortcuts
 | `Cmd+Shift+T` / `Ctrl+Shift+T` | Toggle table of contents. |
 | `Cmd+Shift+I` / `Ctrl+Shift+I` | Toggle Properties panel. |
 | `Cmd+Shift+L` / `Ctrl+Shift+L` | Toggle AI panel. |
+| `Cmd+Shift+Left` / `Ctrl+Shift+Left` | Switch to the previous tab. |
+| `Cmd+Shift+Right` / `Ctrl+Shift+Right` | Switch to the next tab. |
 | `Cmd+[` / `Alt+Left` | Navigate back when available. |
 | `Cmd+]` / `Alt+Right` | Navigate forward when available. |
 | `Cmd+Shift+O` / `Ctrl+Shift+O` | Open current note in a new window. |

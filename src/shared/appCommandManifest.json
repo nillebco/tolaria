@@ -589,6 +589,19 @@
         { "kind": "command", "command": "goChanges", "label": "Changes" },
         { "kind": "command", "command": "goInbox", "label": "Inbox" },
         { "kind": "separator" },
+        {
+          "kind": "command",
+          "command": "tabPrevTab",
+          "label": "Previous Tab",
+          "accelerator": "CmdOrCtrl+Shift+Left"
+        },
+        {
+          "kind": "command",
+          "command": "tabNextTab",
+          "label": "Next Tab",
+          "accelerator": "CmdOrCtrl+Shift+Right"
+        },
+        { "kind": "separator" },
         { "kind": "command", "command": "viewGoBack", "label": "Go Back" },
         { "kind": "command", "command": "viewGoForward", "label": "Go Forward" }
       ]
