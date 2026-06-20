@@ -708,15 +708,27 @@ export function useTabManagement(options: TabManagementOptions = {}) {
         return
       }
 
+      const notesLoaded = !!entries && entries.length > 0
+      const viewsLoaded = !!views && views.length > 0
+      let hasPendingCatalog = false
       const entriesToRestore = storedSession.openPaths
         .map((path) => {
-          const view = viewFromTabPath(path, views ?? [])
-          if (view) return viewTabEntry(view)
-          return entries?.find((entry) => notePathsMatch(entry.path, path)) ?? null
+          if (isViewTabPath(path)) {
+            const view = viewFromTabPath(path, views ?? [])
+            if (view) return viewTabEntry(view)
+            if (!viewsLoaded) hasPendingCatalog = true
+            return null
+          }
+
+          const entry = entries?.find((candidate) => notePathsMatch(candidate.path, path)) ?? null
+          if (entry) return entry
+          if (!notesLoaded) hasPendingCatalog = true
+          return null
         })
         .filter((entry): entry is VaultEntry => entry !== null && entry.fileKind !== 'binary')
 
       // Don't mark as restored if entries are from the wrong vault — retry when correct entries load
+      if (hasPendingCatalog) return
       if (entriesToRestore.length === 0) return
       restoredSessionKeyRef.current = sessionKey
 

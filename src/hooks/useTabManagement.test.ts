@@ -286,6 +286,36 @@ describe('useTabManagement', () => {
       expect(result.current.activeTabPath).toBe('/vault/a.md')
     })
 
+    it('waits for note entries before marking a mixed view and note session restored', async () => {
+      const sessionKey = tabSessionStorageKey('/vault')!
+      const view = makeView()
+      localStorage.setItem(sessionKey, JSON.stringify({
+        version: 1,
+        openPaths: [viewTabPath(view), '/vault/daily.md'],
+        activePath: '/vault/daily.md',
+      }))
+      vi.mocked(mockInvoke).mockResolvedValueOnce('# Daily')
+      const dailyEntry = makeEntry({ path: '/vault/daily.md', title: 'Daily' })
+
+      const { result, rerender } = renderHook(
+        ({ activeEntries, activeViews }) => useTabManagement({
+          entries: activeEntries,
+          sessionKey,
+          views: activeViews,
+        }),
+        { initialProps: { activeEntries: [] as VaultEntry[], activeViews: [view] } },
+      )
+
+      await flushAsyncRestore()
+      expect(result.current.tabs).toEqual([])
+
+      rerender({ activeEntries: [dailyEntry], activeViews: [view] })
+      await flushAsyncRestore()
+
+      expect(result.current.tabs.map((tab) => tab.entry.path)).toEqual([viewTabPath(view), '/vault/daily.md'])
+      expect(result.current.activeTabPath).toBe('/vault/daily.md')
+    })
+
     it('restores when correct vault entries load after entries from wrong vault were present first', async () => {
       // Regression: restoredSessionKeyRef was set before checking entriesToRestore.length,
       // so if sessionKey changed while entries from a different vault were loaded, the ref
