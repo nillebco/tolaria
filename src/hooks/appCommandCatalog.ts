@@ -103,6 +103,7 @@ interface AppCommandManifestDefinition {
   route: AppCommandRoute
   menuOwned: boolean
   shortcut?: AppCommandManifestShortcutDefinition
+  additionalShortcuts?: AppCommandShortcutDefinition[]
   preferredShortcutQaMode?: AppCommandDeterministicQaMode
 }
 
@@ -110,6 +111,7 @@ export interface AppCommandDefinition {
   route: AppCommandRoute
   menuOwned: boolean
   shortcut?: AppCommandShortcutDefinition
+  additionalShortcuts?: AppCommandShortcutDefinition[]
   preferredShortcutQaMode?: AppCommandDeterministicQaMode
 }
 
@@ -197,6 +199,7 @@ export const APP_COMMAND_DEFINITIONS = Object.fromEntries(
       route: command.route,
       menuOwned: command.menuOwned,
       shortcut: toShortcutDefinition(command.shortcut),
+      additionalShortcuts: command.additionalShortcuts,
       preferredShortcutQaMode: command.preferredShortcutQaMode,
     },
   ]),
@@ -312,9 +315,7 @@ function normalizeShortcutKey(key: string): string {
   return key.length === 1 ? key.toLowerCase() : key
 }
 
-for (const [id, definition] of Object.entries(APP_COMMAND_DEFINITIONS) as Array<[AppCommandId, AppCommandDefinition]>) {
-  const shortcut = definition.shortcut
-  if (!shortcut) continue
+function registerShortcut(id: AppCommandId, shortcut: AppCommandShortcutDefinition): void {
   const shortcutKeyMap = Reflect.get(shortcutKeyMaps, shortcut.combo) as Map<string, AppCommandId>
   shortcutKeyMap.set(normalizeShortcutKey(shortcut.key), id)
   for (const alias of shortcut.aliases ?? []) {
@@ -324,6 +325,14 @@ for (const [id, definition] of Object.entries(APP_COMMAND_DEFINITIONS) as Array<
     const shortcutCodeMap = Reflect.get(shortcutCodeMaps, shortcut.combo) as Map<string, AppCommandId>
     shortcutCodeMap.set(shortcut.code, id)
   }
+}
+
+for (const [id, definition] of Object.entries(APP_COMMAND_DEFINITIONS) as Array<[AppCommandId, AppCommandDefinition]>) {
+  const shortcuts = [
+    definition.shortcut,
+    ...(definition.additionalShortcuts ?? []),
+  ].filter((shortcut): shortcut is AppCommandShortcutDefinition => shortcut !== undefined)
+  for (const shortcut of shortcuts) registerShortcut(id, shortcut)
 }
 
 export function isAppCommandId(value: string): value is AppCommandId {

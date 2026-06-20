@@ -272,7 +272,15 @@
         "code": "Tab",
         "display": "⌃⇥",
         "accelerator": "Ctrl+Tab"
-      }
+      },
+      "additionalShortcuts": [
+        {
+          "combo": "command-or-ctrl-shift",
+          "key": "ArrowRight",
+          "code": "ArrowRight",
+          "display": "⌘⇧→"
+        }
+      ]
     },
     "tabPrevTab": {
       "id": "tab-prev-tab",
@@ -284,7 +292,15 @@
         "code": "Tab",
         "display": "⌃⇧⇥",
         "accelerator": "Ctrl+Shift+Tab"
-      }
+      },
+      "additionalShortcuts": [
+        {
+          "combo": "command-or-ctrl-shift",
+          "key": "ArrowLeft",
+          "code": "ArrowLeft",
+          "display": "⌘⇧←"
+        }
+      ]
     },
     "tabCloseCurrentTab": {
       "id": "tab-close-current-tab",

@@ -234,10 +234,18 @@ function replaceTabInList(
   tabsRef: React.MutableRefObject<Tab[]>,
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
   nextTab: Tab,
+  activePath: string | null,
 ) {
   const existingIdx = tabsRef.current.findIndex(t => tabPathsMatch(t.entry.path, nextTab.entry.path))
   if (existingIdx >= 0) {
     const newTabs = tabsRef.current.map((t, i) => i === existingIdx ? nextTab : t)
+    tabsRef.current = newTabs
+    setTabs(newTabs)
+    return
+  }
+  const activeIdx = tabsRef.current.findIndex(t => tabPathsMatch(t.entry.path, activePath))
+  if (activeIdx >= 0) {
+    const newTabs = tabsRef.current.map((t, i) => i === activeIdx ? nextTab : t)
     tabsRef.current = newTabs
     setTabs(newTabs)
     return
@@ -292,6 +300,7 @@ function startEntryNavigation(options: {
   } = options
 
   const seq = ++navSeqRef.current
+  const previousActivePath = activeTabPathRef.current
   const cachedEntry = getCachedNoteContentEntry(entry.path)
   syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
   if (hasResolvedCachedContent(cachedEntry)) {
@@ -300,11 +309,11 @@ function startEntryNavigation(options: {
     if (tabMode === 'add') {
       addOrSwitchTab(tabsRef, setTabs, nextTab)
     } else {
-      replaceTabInList(tabsRef, setTabs, nextTab)
+      replaceTabInList(tabsRef, setTabs, nextTab, previousActivePath)
     }
   }
 
-  return { seq, cachedEntry }
+  return { seq, cachedEntry, previousActivePath }
 }
 
 function openBinaryEntry(options: {
@@ -327,11 +336,12 @@ function openBinaryEntry(options: {
   } = options
 
   navSeqRef.current += 1
+  const previousActivePath = activeTabPathRef.current
   syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
   if (tabMode === 'add') {
     addOrSwitchTab(tabsRef, setTabs, { entry, content: '' })
   } else {
-    replaceTabInList(tabsRef, setTabs, { entry, content: '' })
+    replaceTabInList(tabsRef, setTabs, { entry, content: '' }, previousActivePath)
   }
   finishNoteOpenTrace(entry.path)
 }
@@ -566,7 +576,7 @@ async function loadTextEntry(options: Required<Pick<NavigateToEntryOptions, 'for
     onUnreadableNoteContent,
   } = options
 
-  const { seq, cachedEntry } = startEntryNavigation({
+  const { seq, cachedEntry, previousActivePath } = startEntryNavigation({
     entry,
     navSeqRef,
     tabsRef,
@@ -596,7 +606,7 @@ async function loadTextEntry(options: Required<Pick<NavigateToEntryOptions, 'for
     if (options.tabMode === 'add') {
       addOrSwitchTab(tabsRef, setTabs, { entry, content })
     } else {
-      replaceTabInList(tabsRef, setTabs, { entry, content })
+      replaceTabInList(tabsRef, setTabs, { entry, content }, previousActivePath)
     }
   } catch (err) {
     handleEntryLoadFailure({

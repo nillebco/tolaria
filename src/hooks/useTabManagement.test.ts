@@ -738,6 +738,24 @@ describe('useTabManagement', () => {
       expectSingleActiveTab(result, '/vault/b.md')
     })
 
+    it('preserves other open tabs when replacing the active tab with a new path', async () => {
+      const { result } = renderHook(() => useTabManagement())
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+      await selectNote(result, { path: '/vault/b.md', title: 'B' })
+      await selectNote(result, { path: '/vault/c.md', title: 'C' })
+
+      await act(async () => {
+        await result.current.handleReplaceActiveTab(makeEntry({ path: '/vault/c-renamed.md', title: 'C renamed' }))
+      })
+
+      expect(result.current.tabs.map((tab) => tab.entry.path)).toEqual([
+        '/vault/a.md',
+        '/vault/b.md',
+        '/vault/c-renamed.md',
+      ])
+      expect(result.current.activeTabPath).toBe('/vault/c-renamed.md')
+    })
+
     it('treats /tmp and /private/tmp aliases as the same active note', async () => {
       vi.mocked(mockInvoke)
         .mockResolvedValueOnce('# Stale before pull')

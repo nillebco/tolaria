@@ -153,7 +153,6 @@ export async function refreshPulledVaultState(options: PulledVaultRefreshOptions
     if (await editorAlreadyShowsDiskContent({ activePath, movedEntry, isActiveTabContentCurrent })) {
       return entries
     }
-    closeAllTabs()
     await replaceActiveTab(replacementEntry)
     return entries
   }

@@ -210,6 +210,8 @@ describe('appCommandDispatcher', () => {
     expectShortcutEventCommand({ key: 'I', code: 'KeyI', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleProperties)
     expectShortcutEventCommand({ key: 'ArrowLeft', code: 'ArrowLeft', metaKey: true }, APP_COMMAND_IDS.viewGoBack)
     expectShortcutEventCommand({ key: 'ArrowRight', code: 'ArrowRight', metaKey: true }, APP_COMMAND_IDS.viewGoForward)
+    expectShortcutEventCommand({ key: 'ArrowLeft', code: 'ArrowLeft', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.tabPrevTab)
+    expectShortcutEventCommand({ key: 'ArrowRight', code: 'ArrowRight', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.tabNextTab)
     expectShortcutEventCommand({ key: 'b', code: 'KeyB', ctrlKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleAiChat)
     expectShortcutEventCommand({ key: 'T', code: 'KeyT', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleTableOfContents)
     expectShortcutEventCommand({ key: 'V', code: 'KeyV', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.editPastePlainText)
