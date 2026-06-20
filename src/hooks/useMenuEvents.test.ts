@@ -56,6 +56,8 @@ function makeHandlers(): MenuEventHandlers {
     onRepairVault: vi.fn(),
     onOpenInNewWindow: vi.fn(),
     onRestoreDeletedNote: vi.fn(),
+    onNextTab: vi.fn(),
+    onPrevTab: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
     multiSelectionCommandRef: { current: null },
     activeTabPath: '/vault/test.md',
@@ -364,6 +366,18 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('go-inbox', h)
     expect(h.onSelectFilter).toHaveBeenCalledWith('inbox')
+  })
+
+  it('tab-prev-tab triggers previous tab', () => {
+    const h = makeHandlers()
+    dispatchMenuEvent('tab-prev-tab', h)
+    expect(h.onPrevTab).toHaveBeenCalled()
+  })
+
+  it('tab-next-tab triggers next tab', () => {
+    const h = makeHandlers()
+    dispatchMenuEvent('tab-next-tab', h)
+    expect(h.onNextTab).toHaveBeenCalled()
   })
 
   // Vault menu events

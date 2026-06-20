@@ -262,6 +262,26 @@ type CommandRegistryNoteActions = Pick<
   | 'canCustomizeNoteListColumns'
   | 'noteListColumnsLabel'
 >
+type MenuEventVaultCommandConfig = Pick<
+  AppCommandsConfig,
+  | 'onOpenVault'
+  | 'onRemoveActiveVault'
+  | 'onRestoreGettingStarted'
+  | 'onAddRemote'
+  | 'onCommitPush'
+  | 'onPull'
+  | 'onResolveConflicts'
+  | 'onInstallMcp'
+  | 'onReloadVault'
+  | 'onRepairVault'
+  | 'onOpenInNewWindow'
+  | 'onRestoreDeletedNote'
+  | 'onNextTab'
+  | 'onPrevTab'
+  | 'onCloseCurrentTab'
+  | 'onCloseAllTabs'
+  | 'onCloseOtherTabs'
+>
 
 function aiFeaturesAreEnabled(config: Pick<AppCommandsConfig, 'aiFeaturesEnabled'>): boolean {
   return config.aiFeaturesEnabled !== false
@@ -387,8 +407,8 @@ function createMenuEventActionHandlers(
   }
 }
 
-function createMenuEventVaultHandlers(
-  config: AppCommandsConfig,
+export function createMenuEventVaultHandlers(
+  config: MenuEventVaultCommandConfig,
   viewChanges: () => void,
 ): Pick<
   Omit<Parameters<typeof useMenuEvents>[0], 'onArchiveNote'>,
@@ -405,6 +425,8 @@ function createMenuEventVaultHandlers(
   | 'onRepairVault'
   | 'onOpenInNewWindow'
   | 'onRestoreDeletedNote'
+  | 'onNextTab'
+  | 'onPrevTab'
   | 'onCloseCurrentTab'
   | 'onCloseAllTabs'
   | 'onCloseOtherTabs'
@@ -423,6 +445,8 @@ function createMenuEventVaultHandlers(
     onRepairVault: config.onRepairVault,
     onOpenInNewWindow: config.onOpenInNewWindow,
     onRestoreDeletedNote: config.onRestoreDeletedNote,
+    onNextTab: config.onNextTab,
+    onPrevTab: config.onPrevTab,
     onCloseCurrentTab: config.onCloseCurrentTab,
     onCloseAllTabs: config.onCloseAllTabs,
     onCloseOtherTabs: config.onCloseOtherTabs,
