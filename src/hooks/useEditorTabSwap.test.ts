@@ -41,7 +41,10 @@ function makeMockEditor(docRef: { current: unknown[] }) {
     blocksToHTMLLossy: vi.fn(() => ''),
     tryParseMarkdownToBlocks: vi.fn(() => blocksA),
     _tiptapEditor: {
-      state: { doc: { content: { size: 8 } } },
+      state: {
+        doc: { content: { size: 8 } },
+        selection: { from: 1, to: 1 },
+      },
       commands: {
         setContent: vi.fn(),
         setTextSelection: vi.fn(),
@@ -106,7 +109,7 @@ async function createSwapHarness(options: {
   onContentChange?: (path: string, content: string) => void
   setupEditor?: (editor: ReturnType<typeof makeMockEditor>) => void
 }) {
-  installEditorDomSpies()
+  const domSpies = installEditorDomSpies()
 
   const docRef = { current: blocksA as unknown[] }
   const mockEditor = makeMockEditor(docRef)
@@ -126,6 +129,7 @@ async function createSwapHarness(options: {
 
   return {
     ...rendered,
+    ...domSpies,
     docRef,
     mockEditor,
     async rerenderWith(nextProps: Partial<SwapHarnessProps>) {
@@ -277,6 +281,26 @@ describe('useEditorTabSwap raw mode sync', () => {
 
     expect(mockEditor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
     expect(mockEditor.replaceBlocks).toHaveBeenCalled()
+  })
+
+  it('restores the cached cursor selection when reopening a recently visited note', async () => {
+    const tabA = makeTab('a.md', 'Note A')
+    const tabB = makeTab('b.md', 'Note B')
+
+    const { mockEditor, rerenderWith, scrollEl } = await createSwapHarness({
+      initialProps: { tabs: [tabA], activeTabPath: 'a.md', rawMode: false },
+    })
+
+    mockEditor._tiptapEditor.state.selection = { from: 6, to: 6 }
+    scrollEl.scrollTop = 48
+    await rerenderWith({ tabs: [tabA, tabB], activeTabPath: 'b.md' })
+
+    mockEditor._tiptapEditor.commands.setTextSelection.mockClear()
+    scrollEl.scrollTop = 12
+    await rerenderWith({ tabs: [tabA, tabB], activeTabPath: 'a.md' })
+
+    expect(mockEditor._tiptapEditor.commands.setTextSelection).toHaveBeenCalledWith({ from: 6, to: 6 })
+    expect(scrollEl.scrollTop).toBe(48)
   })
 
   it('uses parsed block cache for a note that was warmed before opening', async () => {

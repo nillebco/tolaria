@@ -275,10 +275,10 @@
       },
       "additionalShortcuts": [
         {
-          "combo": "command-or-ctrl-shift",
+          "combo": "command-or-ctrl-alt",
           "key": "ArrowRight",
           "code": "ArrowRight",
-          "display": "⌘⇧→"
+          "display": "⌘⌥→"
         }
       ]
     },
@@ -295,10 +295,10 @@
       },
       "additionalShortcuts": [
         {
-          "combo": "command-or-ctrl-shift",
+          "combo": "command-or-ctrl-alt",
           "key": "ArrowLeft",
           "code": "ArrowLeft",
-          "display": "⌘⇧←"
+          "display": "⌘⌥←"
         }
       ]
     },
@@ -593,13 +593,13 @@
           "kind": "command",
           "command": "tabPrevTab",
           "label": "Previous Tab",
-          "accelerator": "CmdOrCtrl+Shift+Left"
+          "accelerator": "CmdOrCtrl+Alt+Left"
         },
         {
           "kind": "command",
           "command": "tabNextTab",
           "label": "Next Tab",
-          "accelerator": "CmdOrCtrl+Shift+Right"
+          "accelerator": "CmdOrCtrl+Alt+Right"
         },
         { "kind": "separator" },
         { "kind": "command", "command": "viewGoBack", "label": "Go Back" },

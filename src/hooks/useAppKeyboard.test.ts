@@ -52,6 +52,8 @@ function makeActions() {
     onPastePlainText: vi.fn(),
     onGoBack: vi.fn(),
     onGoForward: vi.fn(),
+    onNextTab: vi.fn(),
+    onPrevTab: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
     multiSelectionCommandRef: { current: null },
   }
@@ -499,6 +501,28 @@ describe('useAppKeyboard', () => {
       editable.addEventListener('keydown', (event) => event.stopPropagation())
       fireKeyOnTarget(editable, 'b', { metaKey: true, shiftKey: true, code: 'KeyB' })
       expect(onToggleAIChat).toHaveBeenCalled()
+    })
+  })
+
+  it('Cmd+Alt+ArrowLeft switches to the previous tab when editor focus stops propagation', () => {
+    const actions = makeActions()
+    actions.onPrevTab = vi.fn()
+    renderHook(() => useAppKeyboard(actions))
+    withFocusedContentEditable((editable) => {
+      editable.addEventListener('keydown', (event) => event.stopPropagation())
+      fireKeyOnTarget(editable, 'ArrowLeft', { code: 'ArrowLeft', metaKey: true, altKey: true })
+      expect(actions.onPrevTab).toHaveBeenCalledOnce()
+    })
+  })
+
+  it('Cmd+Alt+ArrowRight switches to the next tab when editor focus stops propagation', () => {
+    const actions = makeActions()
+    actions.onNextTab = vi.fn()
+    renderHook(() => useAppKeyboard(actions))
+    withFocusedContentEditable((editable) => {
+      editable.addEventListener('keydown', (event) => event.stopPropagation())
+      fireKeyOnTarget(editable, 'ArrowRight', { code: 'ArrowRight', metaKey: true, altKey: true })
+      expect(actions.onNextTab).toHaveBeenCalledOnce()
     })
   })
 

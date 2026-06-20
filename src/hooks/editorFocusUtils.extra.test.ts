@@ -46,6 +46,23 @@ describe('editorFocusUtils extra coverage', () => {
     expect(debugSpy).toHaveBeenCalledWith('[perf] createNote → focus: 50.0ms')
   })
 
+  it('does not call BlockNote focus when body focus succeeds without title selection', () => {
+    const editable = document.createElement('div')
+    editable.className = 'ProseMirror'
+    editable.contentEditable = 'true'
+    editable.setAttribute('contenteditable', 'true')
+    editable.tabIndex = -1
+    Object.defineProperty(editable, 'isContentEditable', { configurable: true, value: true })
+    document.body.appendChild(editable)
+    vi.spyOn(editable, 'focus').mockImplementation(() => HTMLElement.prototype.focus.call(editable))
+
+    const editorFocus = vi.fn()
+    focusEditorWithRetries({ focus: editorFocus }, false, undefined)
+
+    expect(editorFocus).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(editable)
+  })
+
   it('uses the fallback editable selector and treats mixed heading content as empty text', () => {
     const wrapper = document.createElement('div')
     wrapper.className = 'bn-editor'

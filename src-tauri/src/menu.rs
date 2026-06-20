@@ -665,12 +665,12 @@ mod tests {
         assert_eq!(previous_tab_item.label("macos"), Some("Previous Tab"));
         assert_eq!(
             previous_tab_item.accelerator(manifest()),
-            Some("CmdOrCtrl+Shift+Left")
+            Some("CmdOrCtrl+Alt+Left")
         );
         assert_eq!(next_tab_item.label("macos"), Some("Next Tab"));
         assert_eq!(
             next_tab_item.accelerator(manifest()),
-            Some("CmdOrCtrl+Shift+Right")
+            Some("CmdOrCtrl+Alt+Right")
         );
     }
 

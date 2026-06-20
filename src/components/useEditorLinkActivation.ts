@@ -25,6 +25,14 @@ function resolveAnchorHref(target: HTMLElement) {
   return target.closest<HTMLAnchorElement>('a[href]')?.getAttribute('href')?.trim() ?? null
 }
 
+function selectedElementInside(container: HTMLElement): HTMLElement | null {
+  const selection = window.getSelection()
+  const node = selection?.anchorNode ?? null
+  if (!node || !container.contains(node)) return null
+  if (node instanceof HTMLElement) return node
+  return node.parentElement
+}
+
 function blurActiveEditable(container: HTMLElement) {
   const active = document.activeElement
   if (!(active instanceof HTMLElement) || !container.contains(active)) return
@@ -66,6 +74,34 @@ function activateUrl(event: MouseEvent, href: string, vaultPath?: string) {
 
   if (!hasFollowModifier(event)) return
 
+  openEditorAttachmentOrUrl({ url: href, vaultPath, source: 'link' })
+}
+
+function followSelectedEditorLink(
+  event: KeyboardEvent,
+  container: HTMLElement,
+  onNavigateWikilink: (target: string) => void,
+  vaultPath?: string,
+) {
+  if (event.key !== 'Enter' || !hasFollowModifier(event) || event.altKey || event.shiftKey) return
+
+  const target = selectedElementInside(container)
+  if (!target || isInsideCodeContext(target)) return
+
+  const wikilinkTarget = resolveWikilinkTarget(target)
+  if (wikilinkTarget) {
+    event.preventDefault()
+    event.stopPropagation()
+    blurActiveEditable(container)
+    onNavigateWikilink(wikilinkTarget)
+    return
+  }
+
+  const href = resolveAnchorHref(target)
+  if (!href) return
+
+  event.preventDefault()
+  event.stopPropagation()
   openEditorAttachmentOrUrl({ url: href, vaultPath, source: 'link' })
 }
 
@@ -150,9 +186,13 @@ export function useEditorLinkActivation(
       handledMouseDownUrl = null
       handleEditorLinkClick(event, container, onNavigateWikilink, vaultPath)
     }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      followSelectedEditorLink(event, container, onNavigateWikilink, vaultPath)
+    }
 
     container.addEventListener('mousedown', handleMouseDown, true)
     container.addEventListener('click', handleClick, true)
+    window.addEventListener('keydown', handleKeyDown, true)
     window.addEventListener('keydown', handleModifierChange)
     window.addEventListener('keyup', handleModifierChange)
     window.addEventListener('blur', resetModifierState)
@@ -161,6 +201,7 @@ export function useEditorLinkActivation(
     return () => {
       container.removeEventListener('mousedown', handleMouseDown, true)
       container.removeEventListener('click', handleClick, true)
+      window.removeEventListener('keydown', handleKeyDown, true)
       window.removeEventListener('keydown', handleModifierChange)
       window.removeEventListener('keyup', handleModifierChange)
       window.removeEventListener('blur', resetModifierState)

@@ -29,6 +29,7 @@ type VaultPath = string
 
 export type CachedTabState = {
   blocks: EditorBlocks
+  cursorSelection?: { from: number; to: number }
   scrollTop: number
   sourceContent: NoteContent
 }

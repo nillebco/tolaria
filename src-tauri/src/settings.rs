@@ -272,6 +272,15 @@ fn tab_sessions_path() -> Result<PathBuf, String> {
     resolve_existing_or_preferred_app_config_path("tab-sessions.json")
 }
 
+fn write_tab_sessions_path() -> Result<PathBuf, String> {
+    let existing = tab_sessions_path()?;
+    if existing.exists() {
+        return Ok(existing);
+    }
+
+    preferred_app_config_path("tab-sessions.json")
+}
+
 fn get_tab_sessions_at(path: &PathBuf) -> Result<HashMap<String, TabSession>, String> {
     if !path.exists() {
         return Ok(HashMap::new());
@@ -301,7 +310,7 @@ pub fn get_tab_session(session_key: String) -> Result<Option<TabSession>, String
 }
 
 pub fn save_tab_session(session_key: String, session: TabSession) -> Result<(), String> {
-    let path = preferred_app_config_path("tab-sessions.json")?;
+    let path = write_tab_sessions_path()?;
     let mut sessions = get_tab_sessions_at(&path)?;
     sessions.insert(session_key, session);
     save_tab_sessions_at(&path, &sessions)

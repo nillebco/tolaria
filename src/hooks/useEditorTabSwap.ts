@@ -114,11 +114,24 @@ function readEditorScrollTop(): number {
 }
 
 interface PreservedEditorPosition {
+  cursorSelection?: { from: number; to: number }
   scrollTop: number
   cursorIndex: number
 }
 
 type EditorBlockWithId = { id?: string }
+
+function readTiptapSelection(editor: ReturnType<typeof useCreateBlockNote>): { from: number; to: number } | undefined {
+  const selection = (editor as {
+    _tiptapEditor?: { state?: { selection?: { from?: unknown; to?: unknown } } }
+    prosemirrorState?: { selection?: { from?: unknown; to?: unknown } }
+  })._tiptapEditor?.state?.selection
+    ?? (editor as { prosemirrorState?: { selection?: { from?: unknown; to?: unknown } } }).prosemirrorState?.selection
+
+  return typeof selection?.from === 'number' && typeof selection?.to === 'number'
+    ? { from: selection.from, to: selection.to }
+    : undefined
+}
 
 function captureEditorPosition(
   editor: ReturnType<typeof useCreateBlockNote>,
@@ -128,7 +141,11 @@ function captureEditorPosition(
     if (!cursorBlock) return null
     const cursorIndex = (editor.document as EditorBlockWithId[]).findIndex((block) => block.id === cursorBlock.id)
     if (cursorIndex === -1) return null
-    return { scrollTop: readEditorScrollTop(), cursorIndex }
+    return {
+      cursorSelection: readTiptapSelection(editor),
+      scrollTop: readEditorScrollTop(),
+      cursorIndex,
+    }
   } catch {
     return null
   }
@@ -139,6 +156,18 @@ function restoreEditorPosition(
   preservedPosition: PreservedEditorPosition | null | undefined,
 ) {
   if (!preservedPosition) return
+  const setTextSelection = (editor as {
+    _tiptapEditor?: { commands?: { setTextSelection?: (selection: { from: number; to: number }) => unknown } }
+  })._tiptapEditor?.commands?.setTextSelection
+  if (preservedPosition.cursorSelection && typeof setTextSelection === 'function') {
+    try {
+      setTextSelection(preservedPosition.cursorSelection)
+      return
+    } catch {
+      // Fall back to the block-level cursor if the exact selection is stale.
+    }
+  }
+
   const newBlocks = editor.document
   if (newBlocks.length === 0) return
   const idx = Math.min(preservedPosition.cursorIndex, newBlocks.length - 1)
@@ -296,6 +325,7 @@ function useEditorChangeHandler(options: {
     pendingLocalContentRef.current = { path, content: next.content }
     cacheResolvedEditorState(tabCacheRef.current, path, {
       blocks: next.blocks,
+      cursorSelection: readTiptapSelection(editor),
       scrollTop: readEditorScrollTop(),
       sourceContent: next.content,
     }, vaultPathRef.current)
@@ -319,6 +349,7 @@ function cachePreviousTabOnPathChange(options: {
   if (editorContentPathRef.current !== prevPath) return
   cacheEditorState(cache, prevPath, {
     blocks: editor.document,
+    cursorSelection: readTiptapSelection(editor),
     scrollTop: readEditorScrollTop(),
     sourceContent: previousTab.content,
   })
@@ -611,6 +642,7 @@ function cacheStableActivePath(options: {
   editorContentPathRef.current = activeTabPath
   cacheEditorState(cache, activeTabPath, {
     blocks: editor.document,
+    cursorSelection: readTiptapSelection(editor),
     scrollTop: readEditorScrollTop(),
     sourceContent: activeTab.content,
   })
@@ -715,6 +747,7 @@ function applyBlankTabState(options: {
 
   cacheEditorState(cache, targetPath, {
     blocks: blankParagraphBlocks(),
+    cursorSelection: { from: 1, to: 1 },
     scrollTop: 0,
     sourceContent: content,
   })
@@ -799,11 +832,14 @@ function scheduleParsedBlockSwap(options: {
   } = options
 
   void resolveBlocksForTarget({ editor, cache, targetPath, content, vaultPath })
-    .then(({ blocks, scrollTop }) => {
+    .then(({ blocks, cursorSelection, scrollTop }) => {
       if (shouldAbortSwap({ prevActivePathRef, suppressChangeRef, swapSeqRef, tabsRef, token })) return
+      const restoredPosition = preservedPosition ?? (cursorSelection
+        ? { cursorSelection, cursorIndex: 0, scrollTop }
+        : null)
       const effectiveScrollTop = preservedPosition?.scrollTop ?? scrollTop
       if (!applyBlocksToEditor({ editor, blocks, scrollTop: effectiveScrollTop, suppressChangeRef, editorContentPathRef, targetPath })) return
-      restoreEditorPosition(editor, preservedPosition)
+      restoreEditorPosition(editor, restoredPosition)
       signalTabSwap({ path: targetPath })
     })
     .catch((err: unknown) => {

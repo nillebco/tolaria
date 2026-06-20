@@ -130,7 +130,7 @@ describe('useEditorFocus', () => {
     expect(editor.focus).not.toHaveBeenCalled()
   })
 
-  it('falls back to focusing the editable DOM node when editor.focus does not make it active', () => {
+  it('focuses the editable DOM node without resetting body cursor selection', () => {
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
     const editable = document.createElement('div')
     editable.className = 'ProseMirror'
@@ -145,7 +145,7 @@ describe('useEditorFocus', () => {
 
     window.dispatchEvent(new CustomEvent('laputa:focus-editor'))
 
-    expect(editor.focus).toHaveBeenCalled()
+    expect(editor.focus).not.toHaveBeenCalled()
     expect(editableFocus).toHaveBeenCalled()
   })
 

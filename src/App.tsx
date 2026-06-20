@@ -146,6 +146,12 @@ import { useGitFileWorkflows } from './hooks/useGitFileWorkflows'
 import { SidebarSimple } from '@phosphor-icons/react'
 import './App.css'
 
+function signalEditorBodyFocus(path: string): void {
+  window.dispatchEvent(new CustomEvent('laputa:focus-editor', {
+    detail: { t0: performance.now(), selectTitle: false, path },
+  }))
+}
+
 // Type declarations for mock content storage and test overrides
 declare global {
   interface Window {
@@ -718,6 +724,7 @@ function App() {
 
     if (existingEntry) {
       await handleSelectNoteAndClearTable(existingEntry)
+      signalEditorBodyFocus(existingEntry.path)
       return
     }
 
@@ -730,6 +737,7 @@ function App() {
       vault.addEntry(createdEntry)
     }
     await handleSelectNoteAndClearTable(createdEntry)
+    signalEditorBodyFocus(createdEntry.path)
   }, [handleSelectNoteAndClearTable, markRecentVaultWrite, resolvedPath, vault, visibleEntries])
 
   const handleSetPathIcon = useCallback((relativePath: string, emoji: string | null) => {

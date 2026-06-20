@@ -198,6 +198,13 @@ function syncActiveTabPath(
   setActiveTabPath(path)
 }
 
+function signalEditorBodyFocus(path: string | null): void {
+  if (!path || isViewTabPath(path)) return
+  window.dispatchEvent(new CustomEvent('laputa:focus-editor', {
+    detail: { t0: performance.now(), selectTitle: false, path },
+  }))
+}
+
 function resetRequestedPathIfStillPending(
   requestedActiveTabPathRef: React.MutableRefObject<string | null>,
   activeTabPathRef: React.MutableRefObject<string | null>,
@@ -814,6 +821,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   const handleSwitchTab = useCallback((path: string) => {
     requestedActiveTabPathRef.current = path
     syncActiveTabPath(activeTabPathRef, setActiveTabPath, path)
+    signalEditorBodyFocus(path)
   }, [])
 
   /** Open a tab with known content — no IPC round-trip. Used for newly created notes. */
@@ -939,7 +947,9 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     if (currentTabs.length <= 1) return
     const idx = currentTabs.findIndex(t => tabPathsMatch(t.entry.path, activeTabPathRef.current))
     const nextIdx = (idx + 1) % currentTabs.length
-    syncActiveTabPath(activeTabPathRef, setActiveTabPath, currentTabs[nextIdx].entry.path)
+    const nextPath = currentTabs[nextIdx].entry.path
+    syncActiveTabPath(activeTabPathRef, setActiveTabPath, nextPath)
+    signalEditorBodyFocus(nextPath)
   }, [])
 
   const prevTab = useCallback(() => {
@@ -947,7 +957,9 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     if (currentTabs.length <= 1) return
     const idx = currentTabs.findIndex(t => tabPathsMatch(t.entry.path, activeTabPathRef.current))
     const prevIdx = (idx - 1 + currentTabs.length) % currentTabs.length
-    syncActiveTabPath(activeTabPathRef, setActiveTabPath, currentTabs[prevIdx].entry.path)
+    const prevPath = currentTabs[prevIdx].entry.path
+    syncActiveTabPath(activeTabPathRef, setActiveTabPath, prevPath)
+    signalEditorBodyFocus(prevPath)
   }, [])
 
   return {

@@ -71,6 +71,15 @@ function dispatchMouseEvent(target: Node, type: string, options: MouseEventInit 
   return event
 }
 
+function placeCaretInside(node: Node) {
+  const range = document.createRange()
+  range.selectNodeContents(node)
+  range.collapse(false)
+  const selection = window.getSelection()
+  selection?.removeAllRanges()
+  selection?.addRange(range)
+}
+
 describe('useEditorLinkActivation', () => {
   beforeEach(() => {
     mockOpenExternalUrl.mockClear()
@@ -188,6 +197,33 @@ describe('useEditorLinkActivation', () => {
     expect(modifiedClick.defaultPrevented).toBe(true)
     expect(mockOpenLocalFile).toHaveBeenCalledWith('/vault/attachments/report.pdf', '/vault')
     expect(mockOpenExternalUrl).not.toHaveBeenCalled()
+  })
+
+  it('follows the wikilink at the caret on Cmd+Enter', () => {
+    const { container, onNavigateWikilink } = renderHarness()
+    const { editable, wikilink } = appendEditableWikilink(container, 'Alpha Project')
+    wikilink.textContent = 'Alpha Project'
+    editable.focus()
+    placeCaretInside(wikilink.firstChild!)
+
+    fireEvent.keyDown(window, { key: 'Enter', metaKey: true })
+
+    expect(onNavigateWikilink).toHaveBeenCalledWith('Alpha Project')
+    expect(document.activeElement).not.toBe(editable)
+  })
+
+  it('opens the URL at the caret on Ctrl+Enter', () => {
+    const { container } = renderHarness()
+    const editable = document.createElement('div')
+    editable.setAttribute('contenteditable', 'true')
+    const link = appendUrl(editable, 'https://example.com')
+    container.appendChild(editable)
+    editable.focus()
+    placeCaretInside(link.firstChild!)
+
+    fireEvent.keyDown(window, { key: 'Enter', ctrlKey: true })
+
+    expect(mockOpenExternalUrl).toHaveBeenCalledWith('https://example.com')
   })
 
   it('ignores malformed URLs and links inside code blocks', () => {

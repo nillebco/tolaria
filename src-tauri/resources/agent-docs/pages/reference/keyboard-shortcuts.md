@@ -12,14 +12,15 @@ URL: /reference/keyboard-shortcuts
 | `Cmd+N` / `Ctrl+N` | Create a new note. |
 | `Cmd+S` / `Ctrl+S` | Save current note. |
 | `Cmd+F` / `Ctrl+F` | Find in the current note. |
+| `Cmd+Enter` / `Ctrl+Enter` | Follow the link at the cursor in rich editor mode. |
 | `Cmd+Shift+F` / `Ctrl+Shift+F` | Search the vault. |
 | `Cmd+Shift+V` / `Ctrl+Shift+V` | Paste without formatting. |
 | `Cmd+\` / `Ctrl+\` | Toggle raw Markdown mode. |
 | `Cmd+Shift+T` / `Ctrl+Shift+T` | Toggle table of contents. |
 | `Cmd+Shift+I` / `Ctrl+Shift+I` | Toggle Properties panel. |
 | `Cmd+Shift+L` / `Ctrl+Shift+L` | Toggle AI panel. |
-| `Cmd+Shift+Left` / `Ctrl+Shift+Left` | Switch to the previous tab. |
-| `Cmd+Shift+Right` / `Ctrl+Shift+Right` | Switch to the next tab. |
+| `Cmd+Alt+Left` / `Ctrl+Alt+Left` | Switch to the previous tab. |
+| `Cmd+Alt+Right` / `Ctrl+Alt+Right` | Switch to the next tab. |
 | `Cmd+[` / `Alt+Left` | Navigate back when available. |
 | `Cmd+]` / `Alt+Right` | Navigate forward when available. |
 | `Cmd+Shift+O` / `Ctrl+Shift+O` | Open current note in a new window. |

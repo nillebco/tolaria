@@ -200,6 +200,14 @@ describe('appCommandDispatcher', () => {
       ctrlKey: false,
       shiftKey: false,
     })
+    expect(getShortcutEventInit(APP_COMMAND_IDS.tabNextTab)).toMatchObject({
+      key: 'Tab',
+      code: 'Tab',
+      metaKey: true,
+      ctrlKey: false,
+      altKey: false,
+      shiftKey: false,
+    })
     expect(getShortcutEventInit(APP_COMMAND_IDS.appCheckForUpdates)).toBeNull()
   })
 
@@ -210,8 +218,8 @@ describe('appCommandDispatcher', () => {
     expectShortcutEventCommand({ key: 'I', code: 'KeyI', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleProperties)
     expectShortcutEventCommand({ key: 'ArrowLeft', code: 'ArrowLeft', metaKey: true }, APP_COMMAND_IDS.viewGoBack)
     expectShortcutEventCommand({ key: 'ArrowRight', code: 'ArrowRight', metaKey: true }, APP_COMMAND_IDS.viewGoForward)
-    expectShortcutEventCommand({ key: 'ArrowLeft', code: 'ArrowLeft', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.tabPrevTab)
-    expectShortcutEventCommand({ key: 'ArrowRight', code: 'ArrowRight', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.tabNextTab)
+    expectShortcutEventCommand({ key: 'ArrowLeft', code: 'ArrowLeft', metaKey: true, altKey: true }, APP_COMMAND_IDS.tabPrevTab)
+    expectShortcutEventCommand({ key: 'ArrowRight', code: 'ArrowRight', metaKey: true, altKey: true }, APP_COMMAND_IDS.tabNextTab)
     expectShortcutEventCommand({ key: 'b', code: 'KeyB', ctrlKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleAiChat)
     expectShortcutEventCommand({ key: 'T', code: 'KeyT', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.viewToggleTableOfContents)
     expectShortcutEventCommand({ key: 'V', code: 'KeyV', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.editPastePlainText)
