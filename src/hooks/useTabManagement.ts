@@ -903,8 +903,10 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     setTabs(newTabs)
     if (tabPathsMatch(activeTabPathRef.current, path)) {
       const nextTab = newTabs[index - 1] ?? newTabs[index] ?? null
-      requestedActiveTabPathRef.current = nextTab?.entry.path ?? null
-      syncActiveTabPath(activeTabPathRef, setActiveTabPath, nextTab?.entry.path ?? null)
+      const nextPath = nextTab?.entry.path ?? null
+      requestedActiveTabPathRef.current = nextPath
+      syncActiveTabPath(activeTabPathRef, setActiveTabPath, nextPath)
+      signalEditorBodyFocus(nextPath)
     }
   }, [])
 

@@ -975,6 +975,28 @@ describe('useTabManagement', () => {
   })
 
   describe('tab cycling focus', () => {
+    it('focuses the replacement editor after closing the active note tab', async () => {
+      const focusListener = vi.fn()
+      window.addEventListener('laputa:focus-editor', focusListener)
+      const { result } = renderHook(() => useTabManagement())
+
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+      await selectNote(result, { path: '/vault/b.md', title: 'B' })
+
+      act(() => {
+        result.current.closeTab('/vault/b.md')
+      })
+
+      expect(result.current.activeTabPath).toBe('/vault/a.md')
+      expect(focusListener).toHaveBeenLastCalledWith(expect.objectContaining({
+        detail: expect.objectContaining({
+          path: '/vault/a.md',
+          selectTitle: false,
+        }),
+      }))
+      window.removeEventListener('laputa:focus-editor', focusListener)
+    })
+
     it('focuses the editor body after cycling to another note tab', async () => {
       const focusListener = vi.fn()
       window.addEventListener('laputa:focus-editor', focusListener)
