@@ -1,6 +1,6 @@
 import type { VaultEntry } from '../types'
 
-export type FilePreviewKind = 'image' | 'pdf' | 'audio' | 'video'
+export type FilePreviewKind = 'image' | 'pdf' | 'audio' | 'video' | 'excalidraw'
 
 const IMAGE_PREVIEW_EXTENSIONS = new Set([
   'apng',
@@ -19,6 +19,7 @@ const IMAGE_PREVIEW_EXTENSIONS = new Set([
 const PDF_PREVIEW_EXTENSIONS = new Set(['pdf'])
 const AUDIO_PREVIEW_EXTENSIONS = new Set(['aac', 'flac', 'm4a', 'mp3', 'oga', 'ogg', 'opus', 'wav', 'wave'])
 const VIDEO_PREVIEW_EXTENSIONS = new Set(['m4v', 'mov', 'mp4', 'ogv', 'webm'])
+const EXCALIDRAW_PREVIEW_EXTENSIONS = new Set(['excalidraw'])
 
 function extensionFromFilename(filename: string): string | null {
   const lastSegment = filename.split(/[\\/]/u).pop() ?? filename
@@ -48,6 +49,7 @@ export function filePreviewKind(entry: Pick<VaultEntry, 'fileKind' | 'filename' 
   if (PDF_PREVIEW_EXTENSIONS.has(extension)) return 'pdf'
   if (AUDIO_PREVIEW_EXTENSIONS.has(extension)) return 'audio'
   if (VIDEO_PREVIEW_EXTENSIONS.has(extension)) return 'video'
+  if (EXCALIDRAW_PREVIEW_EXTENSIONS.has(extension)) return 'excalidraw'
   return null
 }
 

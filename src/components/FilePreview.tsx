@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { convertFileSrc } from '@tauri-apps/api/core'
-import { ArrowSquareOut, ClipboardText, FileDashed, FilePdf, FolderOpen, ImageSquare, SpeakerHigh, Video, WarningCircle } from '@phosphor-icons/react'
+import { convertFileSrc, invoke } from '@tauri-apps/api/core'
+import { ArrowSquareOut, ClipboardText, FileDashed, FilePdf, FolderOpen, ImageSquare, PenNib, SpeakerHigh, Video, WarningCircle } from '@phosphor-icons/react'
 import type { VaultEntry } from '../types'
 import { trackFilePreviewAction, trackFilePreviewFailed, trackFilePreviewOpened } from '../lib/productAnalytics'
+import { isTauri, mockInvoke } from '../mock-tauri'
 import { filePreviewKind, previewFileTypeLabel, type FilePreviewKind } from '../utils/filePreview'
 import { useExternalMediaPreview } from '../utils/mediaPreviewRuntime'
 import { focusNoteListContainer } from '../utils/neighborhoodHistory'
 import { openLocalFile } from '../utils/url'
+import { workspacePathForEntry } from '../utils/workspaces'
+import { ExcalidrawPreview } from './ExcalidrawPreview'
 import { Button } from './ui/button'
 
 interface FilePreviewProps {
@@ -62,6 +65,10 @@ function FilePreviewHeaderIcon({ previewKind }: { previewKind: FilePreviewKind |
 
   if (previewKind === 'video') {
     return <Video size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+  }
+
+  if (previewKind === 'excalidraw') {
+    return <PenNib size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
   }
 
   return <FileDashed size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -243,6 +250,14 @@ function FilePreviewMedia({
   )
 }
 
+function FilePreviewLoading() {
+  return (
+    <div className="flex h-full min-h-[260px] items-center justify-center px-8" data-testid="file-preview-loading">
+      <div className="h-24 w-40 animate-pulse rounded-sm border border-border bg-muted" />
+    </div>
+  )
+}
+
 function shouldRenderImagePreview(isImage: boolean, imageSrc: string | null, imageFailed: boolean): imageSrc is string {
   return isImage && imageSrc !== null && !imageFailed
 }
@@ -255,6 +270,10 @@ function FilePreviewBody({
   onImageError,
   onAudioError,
   onVideoError,
+  excalidrawContent,
+  excalidrawLoading,
+  excalidrawFailed,
+  onExcalidrawError,
   onOpenExternal,
 }: {
   entry: VaultEntry
@@ -264,6 +283,10 @@ function FilePreviewBody({
   onImageError: () => void
   onAudioError: () => void
   onVideoError: () => void
+  excalidrawContent: string | null
+  excalidrawLoading: boolean
+  excalidrawFailed: boolean
+  onExcalidrawError: () => void
   onOpenExternal: () => void
 }) {
   if (shouldRenderImagePreview(previewKind === 'image', assetSrc, imageFailed)) {
@@ -282,7 +305,14 @@ function FilePreviewBody({
     return <FilePreviewMedia entry={entry} mediaKind="video" mediaSrc={assetSrc} onMediaError={onVideoError} />
   }
 
-  const fallback = fallbackContentForPreviewKind(previewKind)
+  if (previewKind === 'excalidraw') {
+    if (excalidrawContent && !excalidrawFailed) {
+      return <ExcalidrawPreview content={excalidrawContent} title={entry.title} onPreviewError={onExcalidrawError} />
+    }
+    if (excalidrawLoading && !excalidrawFailed) return <FilePreviewLoading />
+  }
+
+  const fallback = fallbackContentForPreviewKind(previewKind === 'excalidraw' && excalidrawFailed ? null : previewKind)
 
   return (
     <FilePreviewFallback
@@ -297,6 +327,7 @@ function FilePreviewBody({
 function useFilePreviewFailureState(entryPath: string) {
   const [failedImagePath, setFailedImagePath] = useState<string | null>(null)
   const [failedMediaPath, setFailedMediaPath] = useState<string | null>(null)
+  const [failedExcalidrawPath, setFailedExcalidrawPath] = useState<string | null>(null)
 
   const handleImageError = useCallback(() => {
     setFailedImagePath(entryPath)
@@ -310,13 +341,56 @@ function useFilePreviewFailureState(entryPath: string) {
     setFailedMediaPath(entryPath)
     trackFilePreviewFailed('video')
   }, [entryPath])
+  const handleExcalidrawError = useCallback(() => {
+    setFailedExcalidrawPath((currentPath) => {
+      if (currentPath !== entryPath) trackFilePreviewFailed('excalidraw')
+      return entryPath
+    })
+  }, [entryPath])
 
   return {
     imageFailed: failedImagePath === entryPath,
     mediaFailed: failedMediaPath === entryPath,
+    excalidrawFailed: failedExcalidrawPath === entryPath,
     handleImageError,
     handleAudioError,
     handleVideoError,
+    handleExcalidrawError,
+  }
+}
+
+function useExcalidrawFileContent(entry: VaultEntry, previewKind: FilePreviewKind | null) {
+  const [loadedContent, setLoadedContent] = useState<{ content: string; path: string } | null>(null)
+  const vaultPath = workspacePathForEntry(entry)
+
+  useEffect(() => {
+    if (previewKind !== 'excalidraw') return
+
+    let canceled = false
+    const request = { path: entry.path, vaultPath }
+
+    const loadContent = isTauri()
+      ? invoke<string>('get_note_content', request)
+      : mockInvoke<string>('get_note_content', request)
+
+    void loadContent
+      .then((nextContent) => {
+        if (!canceled) setLoadedContent({ content: nextContent, path: entry.path })
+      })
+      .catch(() => {
+        if (!canceled) setLoadedContent({ content: '{', path: entry.path })
+      })
+
+    return () => {
+      canceled = true
+    }
+  }, [entry.path, previewKind, vaultPath])
+
+  const hasLoadedContent = loadedContent?.path === entry.path
+
+  return {
+    content: hasLoadedContent ? loadedContent.content : null,
+    loading: previewKind === 'excalidraw' && !hasLoadedContent,
   }
 }
 
@@ -382,6 +456,7 @@ export function FilePreview({
   const fileTypeLabel = previewFileTypeLabel(entry)
   const externalMediaPreview = useExternalMediaPreview()
   const failures = useFilePreviewFailureState(entry.path)
+  const excalidraw = useExcalidrawFileContent(entry, previewKind)
   const actions = useFilePreviewActions({
     entryPath: entry.path,
     onCopyFilePath,
@@ -426,6 +501,10 @@ export function FilePreview({
           onImageError={failures.handleImageError}
           onAudioError={failures.handleAudioError}
           onVideoError={failures.handleVideoError}
+          excalidrawContent={excalidraw.content}
+          excalidrawLoading={excalidraw.loading}
+          excalidrawFailed={failures.excalidrawFailed}
+          onExcalidrawError={failures.handleExcalidrawError}
           onOpenExternal={actions.handleOpenExternal}
         />
       </div>

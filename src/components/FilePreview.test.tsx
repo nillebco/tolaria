@@ -3,17 +3,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FilePreview } from './FilePreview'
 import type { VaultEntry } from '../types'
 
-const { externalMediaPreviewMock, trackEventMock } = vi.hoisted(() => ({
+const { externalMediaPreviewMock, invokeMock, mockInvokeMock, tauriRuntimeMock, trackEventMock } = vi.hoisted(() => ({
   externalMediaPreviewMock: vi.fn(() => false),
+  invokeMock: vi.fn(),
+  mockInvokeMock: vi.fn(),
+  tauriRuntimeMock: vi.fn(() => true),
   trackEventMock: vi.fn(),
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({
   convertFileSrc: (path: string) => `asset://${path}`,
+  invoke: invokeMock,
 }))
 
 vi.mock('../lib/telemetry', () => ({
   trackEvent: trackEventMock,
+}))
+
+vi.mock('../mock-tauri', () => ({
+  isTauri: tauriRuntimeMock,
+  mockInvoke: mockInvokeMock,
 }))
 
 vi.mock('../utils/mediaPreviewRuntime', () => ({
@@ -71,10 +80,49 @@ const videoEntry: VaultEntry = {
   filename: 'demo.mp4',
   title: 'demo.mp4',
 }
+const excalidrawEntry: VaultEntry = {
+  ...imageEntry,
+  path: '/vault/Diagrams/process.excalidraw',
+  filename: 'process.excalidraw',
+  title: 'process.excalidraw',
+}
+
+const excalidrawContent = JSON.stringify({
+  type: 'excalidraw',
+  elements: [
+    {
+      type: 'rectangle',
+      isDeleted: false,
+      x: 10,
+      y: 20,
+      width: 120,
+      height: 60,
+      strokeColor: '#1e1e1e',
+      backgroundColor: '#ffffff',
+      strokeWidth: 2,
+      opacity: 100,
+    },
+    {
+      type: 'text',
+      isDeleted: false,
+      x: 30,
+      y: 40,
+      width: 80,
+      height: 30,
+      text: 'Process',
+      fontSize: 20,
+      strokeColor: '#1e1e1e',
+      opacity: 100,
+    },
+  ],
+})
 
 describe('FilePreview', () => {
   beforeEach(() => {
     externalMediaPreviewMock.mockReturnValue(false)
+    invokeMock.mockResolvedValue(excalidrawContent)
+    mockInvokeMock.mockResolvedValue(excalidrawContent)
+    tauriRuntimeMock.mockReturnValue(true)
     trackEventMock.mockClear()
   })
 
@@ -142,6 +190,26 @@ describe('FilePreview', () => {
     expect(screen.getByTestId('video-file-preview')).toHaveAttribute('src', 'asset:///vault/Attachments/demo.mp4')
     expect(screen.getByTestId('video-file-preview')).toHaveAttribute('title', 'demo.mp4')
     expect(trackEventMock).toHaveBeenCalledWith('file_preview_opened', { preview_kind: 'video' })
+  })
+
+  it('renders supported Excalidraw files from validated vault content', async () => {
+    render(<FilePreview entry={excalidrawEntry} />)
+
+    expect(await screen.findByTestId('excalidraw-file-preview')).toHaveTextContent('Process')
+    expect(screen.getByText('EXCALIDRAW file')).toBeInTheDocument()
+    expect(invokeMock).toHaveBeenCalledWith('get_note_content', {
+      path: '/vault/Diagrams/process.excalidraw',
+      vaultPath: undefined,
+    })
+    expect(trackEventMock).toHaveBeenCalledWith('file_preview_opened', { preview_kind: 'excalidraw' })
+  })
+
+  it('falls back when Excalidraw content is malformed', async () => {
+    invokeMock.mockResolvedValueOnce('{')
+    render(<FilePreview entry={excalidrawEntry} />)
+
+    expect(await screen.findByTestId('file-preview-fallback')).toHaveTextContent('Preview unavailable')
+    expect(trackEventMock).toHaveBeenCalledWith('file_preview_failed', { preview_kind: 'excalidraw' })
   })
 
   it('uses the external-open fallback for media when native playback is unsafe', () => {

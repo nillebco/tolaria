@@ -224,6 +224,7 @@ function resolveNoteTypeIcon(entry: VaultEntry, customIcon?: string | null): Com
   if (previewKind === 'pdf') return FilePdf
   if (previewKind === 'audio') return SpeakerHigh
   if (previewKind === 'video') return Video
+  if (previewKind === 'excalidraw') return ImageSquare
   if (entry.fileKind && entry.fileKind !== 'markdown') return getFileKindIcon(entry.fileKind)
   return getTypeIcon(entry.isA, customIcon)
 }

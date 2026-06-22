@@ -155,9 +155,9 @@ interface VaultEntry {
 |---|---|---|
 | `markdown` or absent | `.md`, `.markdown` | Full Tolaria note model: frontmatter, BlockNote, raw editor, relationships, title sync |
 | `text` | UTF-8 editable formats such as `.yml`, `.json`, `.ts`, `.py`, `.sh` | Opens through the raw editor without Markdown note semantics |
-| `binary` | Images, PDFs, archives, other non-text files | Stays a normal vault file; previewable images open in `FilePreview`, unsupported or broken binaries show an explicit fallback |
+| `binary` | Images, PDFs, Excalidraw drawings, archives, other non-text files | Stays a normal vault file; previewable images, PDFs, media, and `.excalidraw` drawings open in `FilePreview`, unsupported or broken binaries show an explicit fallback |
 
-Image previewability is inferred in the renderer from the filename extension (`src/utils/filePreview.ts`) rather than stored as a new persisted kind. This keeps the filesystem as source of truth and avoids converting assets into proprietary objects.
+Previewability is inferred in the renderer from the filename extension (`src/utils/filePreview.ts`) rather than stored as a new persisted kind. This keeps the filesystem as source of truth and avoids converting assets into proprietary objects. `.excalidraw` files remain normal JSON files on disk; `src/components/ExcalidrawPreview.tsx` renders a read-only SVG preview from parsed scene elements and falls back to external-open controls when parsing fails.
 
 ### Entity Types (isA / type)
 
