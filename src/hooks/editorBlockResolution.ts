@@ -1,4 +1,5 @@
 import type { useCreateBlockNote } from '@blocknote/react'
+import type { VaultEntry } from '../types'
 import { preProcessWikilinks, injectWikilinks } from '../utils/wikilinks'
 import { preProcessMathMarkdown, injectMathInBlocks } from '../utils/mathMarkdown'
 import { injectDurableEditorMarkdownBlocks, preProcessDurableEditorMarkdown } from '../utils/editorDurableMarkdown'
@@ -26,6 +27,7 @@ type NoteContent = string
 type MarkdownBody = string
 type PreprocessedMarkdown = string
 type VaultPath = string
+type VaultImageEntry = Pick<VaultEntry, 'filename' | 'fileKind' | 'path'>
 
 export type CachedTabState = {
   blocks: EditorBlocks
@@ -137,10 +139,13 @@ function preProcessEditorMarkdown(
   markdown: MarkdownBody,
   vaultPath?: VaultPath,
   notePath?: NotePath,
+  entries?: VaultImageEntry[],
 ): PreprocessedMarkdown {
   const withDurableBlocks = preProcessDurableEditorMarkdown({ markdown })
-  const withImageEmbeds = normalizeObsidianImageEmbeds(withDurableBlocks)
-  const withImages = vaultPath ? resolveImageUrls(withImageEmbeds, vaultPath, notePath) : withImageEmbeds
+  const withImageEmbeds = vaultPath
+    ? withDurableBlocks
+    : normalizeObsidianImageEmbeds(withDurableBlocks)
+  const withImages = vaultPath ? resolveImageUrls(withImageEmbeds, vaultPath, notePath, entries) : withImageEmbeds
   const withWikilinks = preProcessWikilinks(withImages)
   return preProcessMathMarkdown({ markdown: withWikilinks })
 }
@@ -166,9 +171,10 @@ export async function resolveBlocksForTarget(
     targetPath: NotePath
     content: NoteContent
     vaultPath?: VaultPath
+    entries?: VaultImageEntry[]
   },
 ): Promise<CachedTabState> {
-  const { editor, cache, targetPath, content, vaultPath } = options
+  const { editor, cache, entries, targetPath, content, vaultPath } = options
   const cached = cache.get(targetPath)
   if (cached?.sourceContent === content) return cached
 
@@ -182,7 +188,7 @@ export async function resolveBlocksForTarget(
   }
 
   const body = extractEditorBody(content)
-  const preprocessed = preProcessEditorMarkdown(body, vaultPath, targetPath)
+  const preprocessed = preProcessEditorMarkdown(body, vaultPath, targetPath, entries)
   const fastPathBlocks = buildFastPathBlocks({ preprocessed })
   if (fastPathBlocks) {
     return cacheResolvedEditorState(cache, targetPath, {
@@ -210,6 +216,7 @@ export async function resolveEmptyHeadingBlocks(
   content: NoteContent,
   vaultPath?: VaultPath,
   targetPath: NotePath = 'empty heading note',
+  entries?: VaultImageEntry[],
 ): Promise<EditorBlocks | null> {
   const remainder = extractBodyRemainderAfterEmptyH1({ content })
   if (remainder === null) return null
@@ -217,7 +224,7 @@ export async function resolveEmptyHeadingBlocks(
 
   const parsed = await parseMarkdownBlocksWithFallback({
     parseMarkdownBlocks: markdown => parseMarkdownBlocks(editor, markdown),
-    preprocessed: preProcessEditorMarkdown(remainder, vaultPath, targetPath),
+    preprocessed: preProcessEditorMarkdown(remainder, vaultPath, targetPath, entries),
     sourceMarkdown: remainder,
     context: targetPath,
   })

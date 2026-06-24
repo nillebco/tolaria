@@ -22,7 +22,7 @@ function httpAssetUrl(path: string): string {
 describe('normalizeObsidianImageEmbeds', () => {
   it('converts Obsidian-style image embeds to markdown images', () => {
     expect(normalizeObsidianImageEmbeds('Before ![[image.png]] after')).toBe(
-      'Before ![image.png](image.png) after',
+      'Before ![image.png](Attachments/image.png) after',
     )
   })
 
@@ -34,7 +34,7 @@ describe('normalizeObsidianImageEmbeds', () => {
 
   it('leaves ordinary wikilinks unchanged', () => {
     expect(normalizeObsidianImageEmbeds('See [[Project]] and ![[shot.png]]')).toBe(
-      'See [[Project]] and ![shot.png](shot.png)',
+      'See [[Project]] and ![shot.png](Attachments/shot.png)',
     )
   })
 })
@@ -50,8 +50,8 @@ describe('resolveImageUrls', () => {
   it('converts Obsidian-style image embeds outside Tauri', () => {
     tauriMode = false
 
-    expect(resolveImageUrls('![[attachments/file.png]]', '/vault')).toBe(
-      '![file.png](attachments/file.png)',
+    expect(resolveImageUrls('![[file.png]]', '/vault')).toBe(
+      '![file.png](Attachments/file.png)',
     )
   })
 
@@ -76,6 +76,37 @@ describe('resolveImageUrls', () => {
 
     expect(resolveImageUrls('![[attachments/diagram.png]]', '/vault')).toBe(
       `![diagram.png](${assetUrl('/vault/attachments/diagram.png')})`,
+    )
+  })
+
+  it('resolves bare Obsidian-style image embeds through unique vault filenames', () => {
+    tauriMode = true
+
+    expect(resolveImageUrls('![[diagram.png]]', '/vault', '/vault/projects/plan.md', [
+      { filename: 'diagram.png', fileKind: 'binary', path: '/vault/Media/Inbox/diagram.png' },
+    ])).toBe(
+      `![diagram.png](${assetUrl('/vault/Media/Inbox/diagram.png')})`,
+    )
+  })
+
+  it('falls back to the configured Attachments path for duplicate bare image filenames', () => {
+    tauriMode = true
+
+    expect(resolveImageUrls('![[diagram.png]]', '/vault', '/vault/projects/plan.md', [
+      { filename: 'diagram.png', fileKind: 'binary', path: '/vault/Media/Inbox/diagram.png' },
+      { filename: 'diagram.png', fileKind: 'binary', path: '/vault/Archive/diagram.png' },
+    ])).toBe(
+      `![diagram.png](${assetUrl('/vault/Attachments/diagram.png')})`,
+    )
+  })
+
+  it('preserves existing attachments folder casing for bare image fallbacks', () => {
+    tauriMode = true
+
+    expect(resolveImageUrls('![[missing.png]]', '/vault', '/vault/projects/plan.md', [
+      { filename: 'known.png', fileKind: 'binary', path: '/vault/attachments/known.png' },
+    ])).toBe(
+      `![missing.png](${assetUrl('/vault/attachments/missing.png')})`,
     )
   })
 

@@ -203,6 +203,7 @@ function EditorEmptyState({ locale = 'en' }: { locale?: AppLocale }) {
 interface EditorSetupParams {
   tabs: Tab[]
   activeTabPath: string | null
+  entries: VaultEntry[]
   vaultPath?: string
   onContentChange?: (path: string, content: string) => void
   onEditorActivity?: () => void
@@ -216,7 +217,7 @@ interface EditorSetupParams {
 }
 
 function useEditorSetup({
-  tabs, activeTabPath, vaultPath, onContentChange, onEditorActivity,
+  tabs, activeTabPath, entries, vaultPath, onContentChange, onEditorActivity,
   onLoadDiff, onLoadDiffAtCommit, pendingCommitDiffRequest, onPendingCommitDiffHandled, getNoteStatus,
   rawToggleRef, diffToggleRef,
 }: EditorSetupParams) {
@@ -267,7 +268,7 @@ function useEditorSetup({
   }, [editorActiveTabPath, setPendingRawExitContent, tabs])
 
   const { handleEditorChange, flushPendingEditorChange, editorMountedRef } = useEditorTabSwap({
-    tabs: tabsForEditorSwap, activeTabPath: editorActiveTabPath, editor, onContentChange, onEditorActivity, rawMode, vaultPath,
+    tabs: tabsForEditorSwap, activeTabPath: editorActiveTabPath, editor, entries, onContentChange, onEditorActivity, rawMode, vaultPath,
   })
   useEffect(() => {
     flushPendingEditorChangeRef.current = flushPendingEditorChange
@@ -650,6 +651,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
   const runtime = useEditorSetup({
     tabs: props.tabs,
     activeTabPath: props.activeTabPath,
+    entries: props.entries,
     vaultPath: props.vaultPath,
     onContentChange: props.onContentChange,
     onEditorActivity: props.onEditorActivity,

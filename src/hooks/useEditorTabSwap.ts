@@ -68,6 +68,7 @@ interface UseEditorTabSwapOptions {
   tabs: Tab[]
   activeTabPath: string | null
   editor: ReturnType<typeof useCreateBlockNote>
+  entries?: VaultEntry[]
   onContentChange?: (path: string, content: string) => void
   onEditorActivity?: () => void
   /** When true, the BlockNote editor is hidden (raw/CodeMirror mode active). */
@@ -79,6 +80,7 @@ interface RunTabSwapEffectOptions {
   tabs: Tab[]
   activeTabPath: string | null
   editor: ReturnType<typeof useCreateBlockNote>
+  entries?: VaultEntry[]
   rawMode?: boolean
   tabCacheRef: MutableRefObject<Map<string, CachedTabState>>
   tabsRef: MutableRefObject<Tab[]>
@@ -770,9 +772,11 @@ function scheduleEmptyHeadingSwap(options: {
   tabsRef: MutableRefObject<Tab[]>
   token: SwapToken
   vaultPath?: string
+  entries?: VaultEntry[]
 }) {
   const {
     editor,
+    entries,
     targetPath,
     content,
     prevActivePathRef,
@@ -786,7 +790,7 @@ function scheduleEmptyHeadingSwap(options: {
 
   if (!startsWithEmptyHeading({ content })) return false
 
-  void resolveEmptyHeadingBlocks(editor, content, vaultPath, targetPath)
+  void resolveEmptyHeadingBlocks(editor, content, vaultPath, targetPath, entries)
     .then((blocks) => {
       if (!blocks || shouldAbortSwap({ prevActivePathRef, suppressChangeRef, swapSeqRef, tabsRef, token })) return
       cacheParsedEditorState(targetPath, { blocks, scrollTop: 0, sourceContent: content }, vaultPath)
@@ -814,10 +818,12 @@ function scheduleParsedBlockSwap(options: {
   tabsRef: MutableRefObject<Tab[]>
   token: SwapToken
   vaultPath?: string
+  entries?: VaultEntry[]
   preservedPosition?: PreservedEditorPosition | null
 }) {
   const {
     editor,
+    entries,
     cache,
     targetPath,
     content,
@@ -831,7 +837,7 @@ function scheduleParsedBlockSwap(options: {
     preservedPosition,
   } = options
 
-  void resolveBlocksForTarget({ editor, cache, targetPath, content, vaultPath })
+  void resolveBlocksForTarget({ editor, cache, entries, targetPath, content, vaultPath })
     .then(({ blocks, cursorSelection, scrollTop }) => {
       if (shouldAbortSwap({ prevActivePathRef, suppressChangeRef, swapSeqRef, tabsRef, token })) return
       const restoredPosition = preservedPosition ?? (cursorSelection
@@ -863,6 +869,7 @@ function scheduleTabSwap(options: {
   suppressChangeRef: MutableRefObject<boolean>
   editorContentPathRef: EditorContentPathRef
   vaultPath?: string
+  entries?: VaultEntry[]
 }) {
   const {
     editor,
@@ -878,6 +885,7 @@ function scheduleTabSwap(options: {
     suppressChangeRef,
     editorContentPathRef,
     vaultPath,
+    entries,
   } = options
 
   const token = createSwapToken(swapSeqRef, targetPath, activeTab.content)
@@ -916,6 +924,7 @@ function scheduleTabSwap(options: {
       tabsRef,
       token,
       vaultPath,
+      entries,
     })) {
       return
     }
@@ -932,6 +941,7 @@ function scheduleTabSwap(options: {
       tabsRef,
       token,
       vaultPath,
+      entries,
       preservedPosition,
     })
   }
@@ -1169,17 +1179,19 @@ function usePrepareParsedBlocks(options: {
   editor: ReturnType<typeof useCreateBlockNote>
   tabCacheRef: MutableRefObject<Map<string, CachedTabState>>
   vaultPathRef: MutableRefObject<string | undefined>
+  entriesRef: MutableRefObject<VaultEntry[] | undefined>
 }) {
-  const { editor, tabCacheRef, vaultPathRef } = options
+  const { editor, entriesRef, tabCacheRef, vaultPathRef } = options
   return useCallback(async (event: ParsedBlockPreloadEvent) => {
     await resolveBlocksForTarget({
       editor,
       cache: tabCacheRef.current,
+      entries: entriesRef.current,
       targetPath: event.path,
       content: event.content,
       vaultPath: vaultPathRef.current,
     })
-  }, [editor, tabCacheRef, vaultPathRef])
+  }, [editor, entriesRef, tabCacheRef, vaultPathRef])
 }
 
 /**
@@ -1194,7 +1206,7 @@ function usePrepareParsedBlocks(options: {
  * Returns the onChange callback for SingleEditorView and a flush hook for
  * save/navigation paths that need the latest rich-editor content immediately.
  */
-export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange, onEditorActivity, rawMode, vaultPath }: UseEditorTabSwapOptions) {
+export function useEditorTabSwap({ tabs, activeTabPath, editor, entries, onContentChange, onEditorActivity, rawMode, vaultPath }: UseEditorTabSwapOptions) {
   const tabCacheRef = useRef<Map<string, CachedTabState>>(new Map())
   const pendingLocalContentRef = useRef<PendingLocalContent | null>(null)
   const prevActivePathRef = useRef<string | null>(null)
@@ -1210,6 +1222,7 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
   const onContentChangeRef = useLatestRef(onContentChange)
   const tabsRef = useLatestRef(tabs)
   const vaultPathRef = useLatestRef(vaultPath)
+  const entriesRef = useLatestRef(entries)
   const { handleEditorChange, flushPendingEditorChange } = useEditorChangeHandler({
     editor,
     tabsRef,
@@ -1223,7 +1236,7 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
     vaultPathRef,
   })
   const { foregroundWorkAtRef, handleForegroundEditorChange } = useForegroundWorkTracker(activeTabPath, handleEditorChange)
-  const prepareParsedBlocks = usePrepareParsedBlocks({ editor, tabCacheRef, vaultPathRef })
+  const prepareParsedBlocks = usePrepareParsedBlocks({ editor, entriesRef, tabCacheRef, vaultPathRef })
   useEditorMountState(editor, editorMountedRef, pendingSwapRef)
   useParsedBlockPreload({
     activeTabPathRef: activeTabPathLatestRef,
@@ -1236,6 +1249,7 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
     tabs,
     activeTabPath,
     editor,
+    entries,
     rawMode,
     tabCacheRef,
     tabsRef,

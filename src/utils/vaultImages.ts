@@ -1,4 +1,5 @@
 import { isTauri } from '../mock-tauri'
+import type { VaultEntry } from '../types'
 import {
   attachmentAssetUrlFromPath,
   filesystemPathFromAssetUrl,
@@ -15,11 +16,25 @@ type VaultPath = string
 type NotePath = string
 type AbsolutePath = string
 type MarkdownImageUrl = string
+type VaultImageEntry = Pick<VaultEntry, 'filename' | 'fileKind' | 'path'>
 
 const OBSIDIAN_IMAGE_EMBED_RE = /!\[\[([^\]\r\n]+)\]\]/g
 const URL_SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
 const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:[\\/]/
 const MARKDOWN_IMAGE_URL_FORBIDDEN_CHARS = ['\t', '\n', '\r', '"']
+const DEFAULT_ATTACHMENT_FOLDER = 'Attachments'
+const IMAGE_FILE_EXTENSIONS = new Set([
+  'avif',
+  'bmp',
+  'gif',
+  'jpeg',
+  'jpg',
+  'png',
+  'svg',
+  'tif',
+  'tiff',
+  'webp',
+])
 
 interface MarkdownImageToken {
   alt: string
@@ -36,6 +51,7 @@ interface MarkdownImageDestination {
 
 interface ImageUrlContext {
   vaultPath: VaultPath
+  imagePathIndex?: VaultImagePathIndex
   notePath?: NotePath
 }
 
@@ -80,7 +96,94 @@ interface ObsidianImageEmbed {
   target: MarkdownImageUrl
 }
 
-function parseObsidianImageEmbedTarget(inner: string): ObsidianImageEmbed | null {
+interface VaultImagePathIndex {
+  attachmentFolder: string
+  pathsByFilename: Map<string, string | null>
+}
+
+interface VaultImagePathIndexRequest {
+  entries?: VaultImageEntry[]
+  vaultPath: VaultPath
+}
+
+interface ObsidianImageEmbedRequest {
+  imagePathIndex?: VaultImagePathIndex
+  inner: string
+}
+
+function pathFilename(path: string): string {
+  return path.replace(/\\/g, '/').split('/').pop() ?? path
+}
+
+function fileExtension(filename: string): string {
+  const index = filename.lastIndexOf('.')
+  return index === -1 ? '' : filename.slice(index + 1).toLowerCase()
+}
+
+function isImageEntry(entry: VaultImageEntry): boolean {
+  return IMAGE_FILE_EXTENSIONS.has(fileExtension(entry.filename || pathFilename(entry.path)))
+}
+
+function normalizedVaultPrefix(vaultPath: VaultPath): string {
+  return vaultPath.replace(/\\/g, '/').replace(/\/+$/u, '')
+}
+
+function vaultRelativeEntryPath(entryPath: string, vaultPath: VaultPath): string | null {
+  const normalizedPath = entryPath.replace(/\\/g, '/')
+  const prefix = normalizedVaultPrefix(vaultPath)
+  if (!prefix) return null
+  if (normalizedPath === prefix) return ''
+  if (!normalizedPath.startsWith(`${prefix}/`)) return null
+  return normalizedPath.slice(prefix.length + 1)
+}
+
+function firstPathSegment(path: string): string | null {
+  const [segment] = path.replace(/\\/g, '/').split('/')
+  return segment || null
+}
+
+function attachmentFolderFromEntries(entries: VaultImageEntry[] | undefined, vaultPath: VaultPath): string {
+  for (const entry of entries ?? []) {
+    const relativePath = vaultRelativeEntryPath(entry.path, vaultPath)
+    const segment = relativePath ? firstPathSegment(relativePath) : null
+    if (segment?.toLowerCase() === 'attachments') return segment
+  }
+  return DEFAULT_ATTACHMENT_FOLDER
+}
+
+export function buildVaultImagePathIndex({ entries, vaultPath }: VaultImagePathIndexRequest): VaultImagePathIndex {
+  const pathsByFilename = new Map<string, string | null>()
+
+  for (const entry of entries ?? []) {
+    if (!isImageEntry(entry)) continue
+
+    const filename = entry.filename || pathFilename(entry.path)
+    const key = filename.toLowerCase()
+    const relativePath = vaultRelativeEntryPath(entry.path, vaultPath)
+    if (!relativePath) continue
+
+    pathsByFilename.set(key, pathsByFilename.has(key) ? null : relativePath)
+  }
+
+  return {
+    attachmentFolder: attachmentFolderFromEntries(entries, vaultPath),
+    pathsByFilename,
+  }
+}
+
+function isBareFilename(target: string): boolean {
+  return target.length > 0 && !target.includes('/') && !target.includes('\\')
+}
+
+function resolveVaultImageEmbedTarget(target: MarkdownImageUrl, imagePathIndex?: VaultImagePathIndex): MarkdownImageUrl {
+  if (!isBareFilename(target)) return target
+
+  const indexedPath = imagePathIndex?.pathsByFilename.get(target.toLowerCase())
+  if (indexedPath) return indexedPath
+  return `${imagePathIndex?.attachmentFolder ?? DEFAULT_ATTACHMENT_FOLDER}/${target}`
+}
+
+function parseObsidianImageEmbedTarget({ imagePathIndex, inner }: ObsidianImageEmbedRequest): ObsidianImageEmbed | null {
   const pipeIndex = inner.indexOf('|')
   const target = (pipeIndex === -1 ? inner : inner.slice(0, pipeIndex)).trim()
   if (!target) return null
@@ -90,13 +193,13 @@ function parseObsidianImageEmbedTarget(inner: string): ObsidianImageEmbed | null
   const fallbackAlt = pathParts.at(-1) || target
   return {
     alt: explicitAlt || fallbackAlt,
-    target,
+    target: resolveVaultImageEmbedTarget(target, imagePathIndex),
   }
 }
 
-export function normalizeObsidianImageEmbeds(markdown: Markdown): Markdown {
+export function normalizeObsidianImageEmbeds(markdown: Markdown, imagePathIndex?: VaultImagePathIndex): Markdown {
   return markdown.replace(OBSIDIAN_IMAGE_EMBED_RE, (match, inner: string) => {
-    const embed = parseObsidianImageEmbedTarget(inner)
+    const embed = parseObsidianImageEmbedTarget({ imagePathIndex, inner })
     return embed ? `![${embed.alt}](${embed.target})` : match
   })
 }
@@ -236,6 +339,18 @@ function joinNoteRelativePath(request: NoteRelativePathRequest): AbsolutePath {
   return useBackslash ? joined.replace(/\//g, '\\') : joined
 }
 
+function joinVaultRelativePath(vaultPath: VaultPath, relativePath: MarkdownImageUrl): AbsolutePath {
+  const segments = pathSegments({ path: vaultPath })
+  const useBackslash = usesWindowsSeparators({ path: vaultPath })
+
+  for (const segment of decodePathUrl({ url: relativePath }).replace(/\\/g, '/').split('/')) {
+    appendRelativeSegment(segments, segment)
+  }
+
+  const joined = segments.join('/') || '.'
+  return useBackslash ? joined.replace(/\//g, '\\') : joined
+}
+
 function samePathSegment(request: PathSegmentComparisonRequest): boolean {
   const { left, right, caseInsensitive } = request
   return caseInsensitive ? left.toLowerCase() === right.toLowerCase() : left === right
@@ -303,6 +418,19 @@ function resolveAbsoluteFilesystemUrl(request: UrlOnlyRequest): MarkdownImageUrl
     : null
 }
 
+function resolveIndexedVaultRelativeUrl(request: ImageUrlRequest): MarkdownImageUrl | null {
+  const { imagePathIndex, url, vaultPath } = request
+  if (!imagePathIndex) return null
+
+  for (const indexedPath of imagePathIndex.pathsByFilename.values()) {
+    if (indexedPath === url) {
+      return attachmentAssetUrlFromPath({ path: joinVaultRelativePath(vaultPath, url) })
+    }
+  }
+
+  return null
+}
+
 function resolveNoteRelativeUrl(request: ImageUrlRequest): MarkdownImageUrl | null {
   const { url, notePath } = request
   if (!notePath || hasUrlScheme({ url })) return null
@@ -313,6 +441,7 @@ function resolveImageUrl(request: ImageUrlRequest): MarkdownImageUrl | null {
   return resolvePortableAttachmentUrl(request)
     ?? resolveLegacyAttachmentAssetUrl(request)
     ?? resolveAbsoluteFilesystemUrl({ url: request.url })
+    ?? resolveIndexedVaultRelativeUrl(request)
     ?? resolveNoteRelativeUrl(request)
 }
 
@@ -320,11 +449,18 @@ export function resolveImageUrls(
   markdown: Markdown,
   vaultPath: VaultPath,
   notePath?: NotePath,
+  entries?: VaultImageEntry[],
 ): Markdown {
-  const normalizedMarkdown = normalizeObsidianImageEmbeds(markdown)
+  const imagePathIndex = buildVaultImagePathIndex({ entries, vaultPath })
+  const normalizedMarkdown = normalizeObsidianImageEmbeds(markdown, imagePathIndex)
   if (!isTauri() || !vaultPath) return normalizedMarkdown
 
-  return rewriteMarkdownImages(normalizedMarkdown, url => resolveImageUrl({ url, vaultPath, notePath }))
+  return rewriteMarkdownImages(normalizedMarkdown, url => resolveImageUrl({
+    imagePathIndex,
+    notePath,
+    url,
+    vaultPath,
+  }))
 }
 
 function portableCurrentAttachmentPath(request: ImageUrlRequest): MarkdownImageUrl | null {

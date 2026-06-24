@@ -11,7 +11,7 @@ import { schema } from './editorSchema'
 import type { ProbeTarget } from './editorMemoryProbeTypes'
 import { SingleEditorView } from './SingleEditorView'
 
-function useProbeEditor(target: ProbeTarget, vaultPath?: string) {
+function useProbeEditor(target: ProbeTarget, entries: VaultEntry[], vaultPath?: string) {
   const editor = useCreateBlockNote({
     schema,
     uploadFile: (file: File) => uploadImageFile(file, vaultPath),
@@ -22,6 +22,7 @@ function useProbeEditor(target: ProbeTarget, vaultPath?: string) {
     tabs: [{ entry: target.entry, content: target.content }],
     activeTabPath: target.entry.path,
     editor,
+    entries,
     rawMode: false,
     vaultPath,
   })
@@ -52,7 +53,7 @@ export function HiddenEditorMemoryProbe({
   target: ProbeTarget
   vaultPath?: string
 }) {
-  const editor = useProbeEditor(target, vaultPath)
+  const editor = useProbeEditor(target, entries, vaultPath)
   useProbeReadySignal(target, onReady)
 
   return (
