@@ -8,7 +8,7 @@ import type { NoteWidthMode } from '../types'
 import type { ThemeMode } from './themeMode'
 
 type TrackedPreviewKind = FilePreviewKind | 'unsupported'
-type FilePreviewAction = 'copy_path' | 'open_external' | 'reveal'
+type FilePreviewAction = 'copy_image' | 'copy_path' | 'open_external' | 'reveal'
 type AgentBlockedReason = 'agent_unavailable' | 'missing_vault'
 
 const ALL_NOTES_VISIBILITY_CATEGORIES: ReadonlyArray<keyof AllNotesFileVisibility> = [

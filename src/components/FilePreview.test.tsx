@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FilePreview } from './FilePreview'
 import type { VaultEntry } from '../types'
 
@@ -117,6 +117,30 @@ const excalidrawContent = JSON.stringify({
   ],
 })
 
+class MockClipboardItem {
+  items: Record<string, Blob>
+
+  constructor(items: Record<string, Blob>) {
+    this.items = items
+  }
+}
+
+function mockImageClipboard(blob: Blob) {
+  const write = vi.fn().mockResolvedValue(undefined)
+  const fetchImage = vi.fn().mockResolvedValue(new Response(blob, {
+    headers: { 'Content-Type': blob.type },
+  }))
+
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { write },
+  })
+  vi.stubGlobal('ClipboardItem', MockClipboardItem)
+  vi.stubGlobal('fetch', fetchImage)
+
+  return { fetchImage, write }
+}
+
 describe('FilePreview', () => {
   beforeEach(() => {
     externalMediaPreviewMock.mockReturnValue(false)
@@ -124,6 +148,10 @@ describe('FilePreview', () => {
     mockInvokeMock.mockResolvedValue(excalidrawContent)
     tauriRuntimeMock.mockReturnValue(true)
     trackEventMock.mockClear()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('routes header file actions to the active file path', () => {
@@ -161,6 +189,34 @@ describe('FilePreview', () => {
       action: 'open_external',
       preview_kind: 'image',
     })
+  })
+
+  it('copies image preview bytes to the clipboard', async () => {
+    const blob = new Blob(['image'], { type: 'image/png' })
+    const { fetchImage, write } = mockImageClipboard(blob)
+
+    render(<FilePreview entry={imageEntry} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy image' }))
+
+    await waitFor(() => {
+      expect(write).toHaveBeenCalledTimes(1)
+    })
+
+    const clipboardItems = write.mock.calls.at(0)?.at(0) as MockClipboardItem[] | undefined
+    expect(clipboardItems?.at(0)?.items['image/png']?.type).toBe('image/png')
+    expect(fetchImage).toHaveBeenCalledWith('asset:///vault/Attachments/photo.png')
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeInTheDocument()
+    expect(trackEventMock).toHaveBeenCalledWith('file_preview_action', {
+      action: 'copy_image',
+      preview_kind: 'image',
+    })
+  })
+
+  it('keeps image copying out of non-image previews', () => {
+    render(<FilePreview entry={pdfEntry} />)
+
+    expect(screen.queryByRole('button', { name: 'Copy image' })).not.toBeInTheDocument()
   })
 
   it('renders supported PDF files through the asset preview path', () => {

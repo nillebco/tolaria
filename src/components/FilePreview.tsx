@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
-import { ArrowSquareOut, ClipboardText, FileDashed, FilePdf, FolderOpen, ImageSquare, PenNib, SpeakerHigh, Video, WarningCircle } from '@phosphor-icons/react'
+import { ArrowSquareOut, Clipboard, ClipboardText, FileDashed, FilePdf, FolderOpen, ImageSquare, PenNib, SpeakerHigh, Video, WarningCircle } from '@phosphor-icons/react'
 import type { VaultEntry } from '../types'
 import { trackFilePreviewAction, trackFilePreviewFailed, trackFilePreviewOpened } from '../lib/productAnalytics'
+import { translate, type AppLocale } from '../lib/i18n'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import { filePreviewKind, previewFileTypeLabel, type FilePreviewKind } from '../utils/filePreview'
+import { copyImageSourceToClipboard } from '../utils/imageClipboard'
 import { useExternalMediaPreview } from '../utils/mediaPreviewRuntime'
 import { focusNoteListContainer } from '../utils/neighborhoodHistory'
 import { openLocalFile } from '../utils/url'
@@ -14,10 +16,13 @@ import { Button } from './ui/button'
 
 interface FilePreviewProps {
   entry: VaultEntry
+  locale?: AppLocale
   onCopyFilePath?: (path: string) => void
   onOpenExternalFile?: (path: string) => void
   onRevealFile?: (path: string) => void
 }
+
+type ImageCopyStatus = 'copied' | 'copying' | 'failed' | 'idle'
 
 interface FilePreviewFallbackProps {
   icon: 'warning' | 'file'
@@ -97,15 +102,19 @@ function FilePreviewFallback({ icon, title, description, onOpenExternal }: FileP
 
 function FilePreviewHeader({
   entry,
+  imageCopyLabel,
   previewKind,
   fileTypeLabel,
+  onCopyImage,
   onOpenExternal,
   onRevealFile,
   onCopyFilePath,
 }: {
   entry: VaultEntry
+  imageCopyLabel: string
   previewKind: FilePreviewKind | null
   fileTypeLabel: string
+  onCopyImage?: () => void
   onOpenExternal: () => void
   onRevealFile?: () => void
   onCopyFilePath?: () => void
@@ -123,6 +132,12 @@ function FilePreviewHeader({
         </div>
       </div>
       <div className="flex items-center gap-1">
+        {onCopyImage && (
+          <Button type="button" variant="ghost" size="sm" onClick={onCopyImage}>
+            <Clipboard size={15} />
+            {imageCopyLabel}
+          </Button>
+        )}
         {onRevealFile && (
           <Button type="button" variant="ghost" size="sm" onClick={onRevealFile}>
             <FolderOpen size={15} />
@@ -399,14 +414,33 @@ function useFilePreviewActions({
   onCopyFilePath,
   onOpenExternalFile,
   onRevealFile,
+  assetSrc,
   previewKind,
 }: {
   entryPath: string
   onCopyFilePath?: (path: string) => void
   onOpenExternalFile?: (path: string) => void
   onRevealFile?: (path: string) => void
+  assetSrc: string | null
   previewKind: FilePreviewKind | null
 }) {
+  const [imageCopyStatus, setImageCopyStatus] = useState<ImageCopyStatus>('idle')
+
+  const handleCopyImage = useCallback(() => {
+    if (previewKind !== 'image' || assetSrc === null) return
+
+    setImageCopyStatus('copying')
+    void copyImageSourceToClipboard(assetSrc)
+      .then(() => {
+        trackFilePreviewAction('copy_image', previewKind)
+        setImageCopyStatus('copied')
+      })
+      .catch((error) => {
+        console.warn('Failed to copy image to clipboard:', error)
+        setImageCopyStatus('failed')
+      })
+  }, [assetSrc, previewKind])
+
   const handleOpenExternal = useCallback(() => {
     trackFilePreviewAction('open_external', previewKind)
     if (onOpenExternalFile) {
@@ -429,7 +463,20 @@ function useFilePreviewActions({
     onCopyFilePath?.(entryPath)
   }, [entryPath, onCopyFilePath, previewKind])
 
-  return { handleOpenExternal, handleRevealFile, handleCopyFilePath }
+  return {
+    handleCopyImage,
+    handleOpenExternal,
+    handleRevealFile,
+    handleCopyFilePath,
+    imageCopyStatus,
+  }
+}
+
+function imageCopyButtonLabel(locale: AppLocale, status: ImageCopyStatus): string {
+  if (status === 'copying') return translate(locale, 'filePreview.copyImage.copying')
+  if (status === 'copied') return translate(locale, 'filePreview.copyImage.copied')
+  if (status === 'failed') return translate(locale, 'filePreview.copyImage.failed')
+  return translate(locale, 'filePreview.copyImage')
 }
 
 function isMediaPreviewKind(previewKind: FilePreviewKind | null): boolean {
@@ -447,6 +494,7 @@ function previewKindForBody(
 
 export function FilePreview({
   entry,
+  locale = 'en',
   onCopyFilePath,
   onOpenExternalFile,
   onRevealFile,
@@ -462,6 +510,7 @@ export function FilePreview({
     onCopyFilePath,
     onOpenExternalFile,
     onRevealFile,
+    assetSrc,
     previewKind,
   })
 
@@ -488,6 +537,8 @@ export function FilePreview({
         entry={entry}
         previewKind={previewKind}
         fileTypeLabel={fileTypeLabel}
+        imageCopyLabel={imageCopyButtonLabel(locale, actions.imageCopyStatus)}
+        onCopyImage={previewKind === 'image' ? actions.handleCopyImage : undefined}
         onOpenExternal={actions.handleOpenExternal}
         onRevealFile={onRevealFile ? actions.handleRevealFile : undefined}
         onCopyFilePath={onCopyFilePath ? actions.handleCopyFilePath : undefined}
