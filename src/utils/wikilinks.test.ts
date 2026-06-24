@@ -491,6 +491,11 @@ describe('extractOutgoingLinks', () => {
     expect(extractOutgoingLinks(content)).toEqual(['First', 'Second', 'Third'])
   })
 
+  it('ignores Obsidian-style image embeds', () => {
+    const content = 'See [[Project]]\n\n![[attachments/diagram.png]]'
+    expect(extractOutgoingLinks(content)).toEqual(['Project'])
+  })
+
   it('ignores empty wikilinks', () => {
     const content = 'Text [[]] and [[Valid]]'
     expect(extractOutgoingLinks(content)).toEqual(['Valid'])

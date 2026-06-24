@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { resolveImageUrls, portableImageUrls } from './vaultImages'
+import { normalizeObsidianImageEmbeds, resolveImageUrls, portableImageUrls } from './vaultImages'
 
 let tauriMode = false
 
@@ -19,12 +19,40 @@ function httpAssetUrl(path: string): string {
   return `http://asset.localhost/${encodeURIComponent(path)}`
 }
 
+describe('normalizeObsidianImageEmbeds', () => {
+  it('converts Obsidian-style image embeds to markdown images', () => {
+    expect(normalizeObsidianImageEmbeds('Before ![[image.png]] after')).toBe(
+      'Before ![image.png](image.png) after',
+    )
+  })
+
+  it('uses an explicit alias as image alt text', () => {
+    expect(normalizeObsidianImageEmbeds('![[assets/photo.png|Project photo]]')).toBe(
+      '![Project photo](assets/photo.png)',
+    )
+  })
+
+  it('leaves ordinary wikilinks unchanged', () => {
+    expect(normalizeObsidianImageEmbeds('See [[Project]] and ![[shot.png]]')).toBe(
+      'See [[Project]] and ![shot.png](shot.png)',
+    )
+  })
+})
+
 describe('resolveImageUrls', () => {
   it('is a no-op outside Tauri', () => {
     tauriMode = false
     const markdown = '![alt](attachments/file.png)'
 
     expect(resolveImageUrls(markdown, '/vault')).toBe(markdown)
+  })
+
+  it('converts Obsidian-style image embeds outside Tauri', () => {
+    tauriMode = false
+
+    expect(resolveImageUrls('![[attachments/file.png]]', '/vault')).toBe(
+      '![file.png](attachments/file.png)',
+    )
   })
 
   it('is a no-op when vaultPath is empty', () => {
@@ -40,6 +68,14 @@ describe('resolveImageUrls', () => {
 
     expect(resolveImageUrls(markdown, '/vault')).toBe(
       `![screenshot](${assetUrl('/vault/attachments/1776369786040-CleanShot_2026-04-16.png')})`,
+    )
+  })
+
+  it('converts Obsidian-style attachment image embeds to asset URLs', () => {
+    tauriMode = true
+
+    expect(resolveImageUrls('![[attachments/diagram.png]]', '/vault')).toBe(
+      `![diagram.png](${assetUrl('/vault/attachments/diagram.png')})`,
     )
   })
 

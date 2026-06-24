@@ -299,6 +299,7 @@ export function extractOutgoingLinks(content: MarkdownSource): WikilinkTarget[] 
   const re = /\[\[([^\]]+)\]\]/g
   let match
   while ((match = re.exec(content)) !== null) {
+    if (content.charAt(match.index - 1) === '!') continue
     const inner = match[1]
     const pipeIdx = inner.indexOf('|')
     const target = pipeIdx !== -1 ? inner.slice(0, pipeIdx) : inner

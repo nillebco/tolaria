@@ -16,6 +16,7 @@ type NotePath = string
 type AbsolutePath = string
 type MarkdownImageUrl = string
 
+const OBSIDIAN_IMAGE_EMBED_RE = /!\[\[([^\]\r\n]+)\]\]/g
 const URL_SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
 const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:[\\/]/
 const MARKDOWN_IMAGE_URL_FORBIDDEN_CHARS = ['\t', '\n', '\r', '"']
@@ -72,6 +73,32 @@ interface PathSegmentComparisonRequest {
   left: string
   right: string
   caseInsensitive: boolean
+}
+
+interface ObsidianImageEmbed {
+  alt: string
+  target: MarkdownImageUrl
+}
+
+function parseObsidianImageEmbedTarget(inner: string): ObsidianImageEmbed | null {
+  const pipeIndex = inner.indexOf('|')
+  const target = (pipeIndex === -1 ? inner : inner.slice(0, pipeIndex)).trim()
+  if (!target) return null
+
+  const explicitAlt = pipeIndex === -1 ? '' : inner.slice(pipeIndex + 1).trim()
+  const pathParts = target.replace(/\\/g, '/').split('/')
+  const fallbackAlt = pathParts.at(-1) || target
+  return {
+    alt: explicitAlt || fallbackAlt,
+    target,
+  }
+}
+
+export function normalizeObsidianImageEmbeds(markdown: Markdown): Markdown {
+  return markdown.replace(OBSIDIAN_IMAGE_EMBED_RE, (match, inner: string) => {
+    const embed = parseObsidianImageEmbedTarget(inner)
+    return embed ? `![${embed.alt}](${embed.target})` : match
+  })
 }
 
 function rewriteMarkdownImages(
@@ -294,9 +321,10 @@ export function resolveImageUrls(
   vaultPath: VaultPath,
   notePath?: NotePath,
 ): Markdown {
-  if (!isTauri() || !vaultPath) return markdown
+  const normalizedMarkdown = normalizeObsidianImageEmbeds(markdown)
+  if (!isTauri() || !vaultPath) return normalizedMarkdown
 
-  return rewriteMarkdownImages(markdown, url => resolveImageUrl({ url, vaultPath, notePath }))
+  return rewriteMarkdownImages(normalizedMarkdown, url => resolveImageUrl({ url, vaultPath, notePath }))
 }
 
 function portableCurrentAttachmentPath(request: ImageUrlRequest): MarkdownImageUrl | null {
