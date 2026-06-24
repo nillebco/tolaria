@@ -172,7 +172,9 @@ fn replace_wikilinks_in_files(
         match rewrite_wikilinks_in_file(path, re, replacement) {
             Ok(true) => {
                 summary.updated_files += 1;
-                summary.updated_paths.push(path.to_string_lossy().to_string());
+                summary
+                    .updated_paths
+                    .push(path.to_string_lossy().to_string());
             }
             Ok(false) => {}
             Err(_) => summary.failed_updates += 1,
@@ -550,7 +552,11 @@ pub fn move_note_to_workspace(
         new_path: new_file.to_string_lossy().to_string(),
         updated_files: source_summary.updated_files + destination_summary.updated_files,
         failed_updates: source_summary.failed_updates + destination_summary.failed_updates,
-        updated_paths: [source_summary.updated_paths, destination_summary.updated_paths].concat(),
+        updated_paths: [
+            source_summary.updated_paths,
+            destination_summary.updated_paths,
+        ]
+        .concat(),
     })
 }
 

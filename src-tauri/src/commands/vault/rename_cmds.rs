@@ -230,7 +230,9 @@ fn run_folder_move(args: MoveNoteToFolderCommandArgs) -> Result<RenameResult, St
 }
 
 #[tauri::command]
-pub async fn move_note_to_folder(args: MoveNoteToFolderCommandArgs) -> Result<RenameResult, String> {
+pub async fn move_note_to_folder(
+    args: MoveNoteToFolderCommandArgs,
+) -> Result<RenameResult, String> {
     run_blocking_rename(move || run_folder_move(args)).await
 }
 
